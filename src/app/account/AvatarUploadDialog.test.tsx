@@ -1,6 +1,7 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import { AvatarUploadDialog } from './AvatarUploadDialog';
 
 const mockMutate = vi.fn();
@@ -99,7 +100,7 @@ describe('AvatarUploadDialog', () => {
     describe('Dialog Open/Close', () => {
         it('opens dialog when trigger button is clicked', async () => {
             const user = userEvent.setup();
-            render(<AvatarUploadDialog />);
+            renderWithIntl(<AvatarUploadDialog />);
 
             const triggerButton = screen.getByRole('button', { name: /upload avatar/i });
             expect(triggerButton).toBeInTheDocument();
@@ -115,7 +116,7 @@ describe('AvatarUploadDialog', () => {
 
         it('resets upload state when cancel is clicked', async () => {
             const user = userEvent.setup();
-            render(<AvatarUploadDialog />);
+            renderWithIntl(<AvatarUploadDialog />);
 
             const triggerButton = screen.getByRole('button', { name: /upload avatar/i });
             await user.click(triggerButton);
@@ -146,7 +147,7 @@ describe('AvatarUploadDialog', () => {
     describe('File Validation', () => {
         it('accepts valid PNG file under 1MB', async () => {
             const user = userEvent.setup();
-            render(<AvatarUploadDialog />);
+            renderWithIntl(<AvatarUploadDialog />);
 
             const triggerButton = screen.getByRole('button', { name: /upload avatar/i });
             await user.click(triggerButton);
@@ -167,7 +168,7 @@ describe('AvatarUploadDialog', () => {
 
         it('rejects non-PNG files with error message', async () => {
             const user = userEvent.setup();
-            render(<AvatarUploadDialog />);
+            renderWithIntl(<AvatarUploadDialog />);
 
             const triggerButton = screen.getByRole('button', { name: /upload avatar/i });
             await user.click(triggerButton);
@@ -188,7 +189,7 @@ describe('AvatarUploadDialog', () => {
 
         it('rejects files larger than 1MB', async () => {
             const user = userEvent.setup();
-            render(<AvatarUploadDialog />);
+            renderWithIntl(<AvatarUploadDialog />);
 
             const triggerButton = screen.getByRole('button', { name: /upload avatar/i });
             await user.click(triggerButton);
@@ -211,7 +212,7 @@ describe('AvatarUploadDialog', () => {
     describe('Drag and Drop', () => {
         it('shows drag state when file is dragged over', async () => {
             const user = userEvent.setup();
-            render(<AvatarUploadDialog />);
+            renderWithIntl(<AvatarUploadDialog />);
 
             const triggerButton = screen.getByRole('button', { name: /upload avatar/i });
             await user.click(triggerButton);
@@ -234,7 +235,7 @@ describe('AvatarUploadDialog', () => {
 
         it('restores default styling when drag leaves', async () => {
             const user = userEvent.setup();
-            render(<AvatarUploadDialog />);
+            renderWithIntl(<AvatarUploadDialog />);
 
             const triggerButton = screen.getByRole('button', { name: /upload avatar/i });
             await user.click(triggerButton);
@@ -257,7 +258,7 @@ describe('AvatarUploadDialog', () => {
 
         it('handles file drop correctly', async () => {
             const user = userEvent.setup();
-            render(<AvatarUploadDialog />);
+            renderWithIntl(<AvatarUploadDialog />);
 
             const triggerButton = screen.getByRole('button', { name: /upload avatar/i });
             await user.click(triggerButton);
@@ -291,7 +292,7 @@ describe('AvatarUploadDialog', () => {
             });
 
             const user = userEvent.setup();
-            render(<AvatarUploadDialog />);
+            renderWithIntl(<AvatarUploadDialog />);
 
             const triggerButton = screen.getByRole('button', { name: /upload avatar/i });
             await user.click(triggerButton);
@@ -330,7 +331,7 @@ describe('AvatarUploadDialog', () => {
             });
 
             const user = userEvent.setup();
-            render(<AvatarUploadDialog />);
+            renderWithIntl(<AvatarUploadDialog />);
 
             const triggerButton = screen.getByRole('button', { name: /upload avatar/i });
             await user.click(triggerButton);
@@ -369,7 +370,7 @@ describe('AvatarUploadDialog', () => {
             });
 
             const user = userEvent.setup();
-            render(<AvatarUploadDialog />);
+            renderWithIntl(<AvatarUploadDialog />);
 
             const triggerButton = screen.getByRole('button', { name: /upload avatar/i });
             await user.click(triggerButton);
@@ -400,7 +401,7 @@ describe('AvatarUploadDialog', () => {
             });
 
             const user = userEvent.setup();
-            render(<AvatarUploadDialog />);
+            renderWithIntl(<AvatarUploadDialog />);
 
             const triggerButton = screen.getByRole('button', { name: /upload avatar/i });
             await user.click(triggerButton);

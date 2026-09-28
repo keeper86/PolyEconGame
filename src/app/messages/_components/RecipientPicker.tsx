@@ -7,6 +7,7 @@ import { useTRPC } from '@/lib/trpc';
 import { cn } from '@/lib/utils';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useId, useRef, useState } from 'react';
 
 const SEARCH_DEBOUNCE_MS = 200;
@@ -22,6 +23,7 @@ export function RecipientPicker({
     onChange: (recipient: RecipientCandidate | null) => void;
 }) {
     const trpc = useTRPC();
+    const t = useTranslations('Messages');
     const containerRef = useRef<HTMLDivElement>(null);
     const listboxId = useId();
     const [open, setOpen] = useState(false);
@@ -103,14 +105,14 @@ export function RecipientPicker({
                     }
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder='Search by name or company…'
+                placeholder={t('compose.searchPlaceholder')}
                 className={cn(value && !open && 'pr-8')}
             />
 
             {value && !open && (
                 <button
                     type='button'
-                    aria-label='Clear recipient'
+                    aria-label={t('compose.clearRecipient')}
                     onClick={() => onChange(null)}
                     className='absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
                 >
@@ -126,7 +128,7 @@ export function RecipientPicker({
                 >
                     {recipients.length === 0 ? (
                         <div className='px-2 py-6 text-center text-sm text-muted-foreground'>
-                            {isFetching ? 'Searching…' : 'No player found.'}
+                            {isFetching ? t('compose.searching') : t('compose.noPlayerFound')}
                         </div>
                     ) : (
                         recipients.map((recipient, index) => (

@@ -1,11 +1,10 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 const TOAST_ID = 'navigation-guard';
-const DEFAULT_MESSAGE = 'You have unsaved changes.';
-const DEFAULT_ACTION_LABEL = 'Leave anyway';
 const TOAST_DURATION_MS = 8_000;
 
 export type NavigationGuardOptions = {
@@ -21,6 +20,9 @@ export function useNavigationGuard(
     options?: NavigationGuardOptions,
 ): void {
     const router = useRouter();
+    const t = useTranslations('Guards');
+    const defaultMessage = t('unsavedChanges');
+    const defaultActionLabel = t('leaveAnyway');
 
     const dummyStatePushedRef = useRef(false);
 
@@ -73,8 +75,8 @@ export function useNavigationGuard(
                     e.stopPropagation();
                     const isSameOrigin = target.origin === current.origin;
                     const destination = isSameOrigin ? target.pathname + target.search + target.hash : href;
-                    const message = options?.message ?? DEFAULT_MESSAGE;
-                    const actionLabel = options?.actionLabel ?? DEFAULT_ACTION_LABEL;
+                    const message = options?.message ?? defaultMessage;
+                    const actionLabel = options?.actionLabel ?? defaultActionLabel;
                     const showToast = options?.infoStyle ? toast.info : toast.warning;
                     showToast(message, {
                         id: TOAST_ID,
@@ -109,8 +111,8 @@ export function useNavigationGuard(
 
         const popStateHandler = () => {
             window.history.pushState(null, '', window.location.href);
-            const message = options?.message ?? DEFAULT_MESSAGE;
-            const actionLabel = options?.actionLabel ?? DEFAULT_ACTION_LABEL;
+            const message = options?.message ?? defaultMessage;
+            const actionLabel = options?.actionLabel ?? defaultActionLabel;
             const showToast = options?.infoStyle ? toast.info : toast.warning;
             showToast(message, {
                 id: TOAST_ID,
@@ -135,5 +137,5 @@ export function useNavigationGuard(
             document.removeEventListener('click', clickHandler, true);
             window.removeEventListener('popstate', popStateHandler);
         };
-    }, [isActive, router, onForceLeave, options]);
+    }, [isActive, router, onForceLeave, options, defaultMessage, defaultActionLabel]);
 }

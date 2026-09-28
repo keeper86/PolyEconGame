@@ -29,6 +29,7 @@ import { useErrorMessage } from '@/i18n/errors';
 
 function CarouselNav() {
     const { scrollPrev, scrollNext, canScrollPrev, canScrollNext } = useCarousel();
+    const t = useTranslations('Planets');
 
     return (
         <div className='absolute bottom-0 left-0 right-0 z-10 flex items-center justify-between p-3 sm:p-5 pointer-events-none rounded-b-xl'>
@@ -39,7 +40,7 @@ function CarouselNav() {
                 className='pointer-events-auto inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow hover:bg-primary/90 h-8 w-8 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer'
             >
                 <ChevronLeft className='h-4 w-4' />
-                <span className='sr-only'>Previous planet</span>
+                <span className='sr-only'>{t('previous')}</span>
             </button>
 
             <button
@@ -49,7 +50,7 @@ function CarouselNav() {
                 className='pointer-events-auto inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow hover:bg-primary/90 h-8 w-8 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer'
             >
                 <ChevronRight className='h-4 w-4' />
-                <span className='sr-only'>Next planet</span>
+                <span className='sr-only'>{t('next')}</span>
             </button>
         </div>
     );
@@ -58,6 +59,8 @@ function CarouselNav() {
 export function FoundingPage() {
     const locale = useLocale();
     const t = useTranslations('Toasts');
+    const tf = useTranslations('Founding');
+    const tp = useTranslations('Planets');
     const showError = useErrorMessage();
     const trpc = useTRPC();
     const router = useRouter();
@@ -156,7 +159,7 @@ export function FoundingPage() {
 
     if (foundedAtTick !== null) {
         return (
-            <Page title='Register your Company'>
+            <Page title={tf('title')}>
                 <InteractivePaperworkProcess />
             </Page>
         );
@@ -165,11 +168,11 @@ export function FoundingPage() {
     const planets = planetsQuery.data?.planets ?? [];
 
     return (
-        <Page title='Register your Company'>
+        <Page title={tf('title')}>
             <form onSubmit={handleSubmit} className='grid gap-6 max-w-lg'>
                 <div className='flex flex-row gap-4'>
                     <Input
-                        placeholder='Your company name'
+                        placeholder={tf('companyNamePlaceholder')}
                         value={agentName}
                         onChange={(e) => {
                             setAgentName(e.target.value);
@@ -200,7 +203,7 @@ export function FoundingPage() {
                     {planetsQuery.isLoading ? (
                         <div className='flex items-center gap-2 text-muted-foreground'>
                             <Spinner className='h-4 w-4' />
-                            <span className='text-sm'>Loading planets…</span>
+                            <span className='text-sm'>{tf('loadingPlanets')}</span>
                         </div>
                     ) : (
                         <Carousel setApi={setCarouselApi}>
@@ -217,7 +220,7 @@ export function FoundingPage() {
                                             <button
                                                 type='button'
                                                 onClick={() => setPlanetId(p.planetId)}
-                                                aria-label={`Select ${p.name}`}
+                                                aria-label={tf('selectPlanet', { planetName: p.name })}
                                                 className={`relative isolate overflow-hidden rounded-xl border text-left w-full transition-all ${
                                                     isSelected
                                                         ? 'ring-2 ring-primary border-primary shadow-lg'
@@ -241,7 +244,9 @@ export function FoundingPage() {
                                                     <h3 className='text-xl font-semibold'>{p.name}</h3>
 
                                                     <div className='grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-outline-strong'>
-                                                        <span className='text-muted-foreground'>Population</span>
+                                                        <span className='text-muted-foreground'>
+                                                            {tp('population')}
+                                                        </span>
                                                         <span className='text-right font-medium'>
                                                             {formatNumberWithUnit(
                                                                 p.populationTotal,
@@ -251,7 +256,7 @@ export function FoundingPage() {
                                                             )}
                                                         </span>
 
-                                                        <span className='text-muted-foreground'>GDP</span>
+                                                        <span className='text-muted-foreground'>{tp('gdp')}</span>
                                                         <span className='text-right font-medium'>
                                                             {formatNumberWithUnit(
                                                                 p.gdp,
@@ -261,7 +266,9 @@ export function FoundingPage() {
                                                             )}
                                                         </span>
 
-                                                        <span className='text-muted-foreground'>Money Supply</span>
+                                                        <span className='text-muted-foreground'>
+                                                            {tp('moneySupply')}
+                                                        </span>
                                                         <span className='text-right font-medium'>
                                                             {formatNumberWithUnit(
                                                                 p.moneySupply,
@@ -271,7 +278,9 @@ export function FoundingPage() {
                                                             )}
                                                         </span>
 
-                                                        <span className='text-muted-foreground'>Bank Equity</span>
+                                                        <span className='text-muted-foreground'>
+                                                            {tp('bankEquity')}
+                                                        </span>
                                                         <span className='text-right font-medium'>
                                                             {formatNumberWithUnit(
                                                                 bankEquity(p.bank),
@@ -281,12 +290,16 @@ export function FoundingPage() {
                                                             )}
                                                         </span>
 
-                                                        <span className='text-muted-foreground'>Interest Rate</span>
+                                                        <span className='text-muted-foreground'>
+                                                            {tp('interestRate')}
+                                                        </span>
                                                         <span className='text-right font-medium tabular-nums'>
                                                             {(p.policyRate * 100).toFixed(2)} %
                                                         </span>
 
-                                                        <span className='text-muted-foreground'>Cost of Living</span>
+                                                        <span className='text-muted-foreground'>
+                                                            {tp('costOfLiving')}
+                                                        </span>
                                                         <span className='text-right font-medium'>
                                                             {formatNumberWithUnit(
                                                                 p.costOfLiving,
@@ -303,7 +316,7 @@ export function FoundingPage() {
                                                             )}
                                                         </span>
 
-                                                        <span className='text-muted-foreground'>Wages</span>
+                                                        <span className='text-muted-foreground'>{tp('wages')}</span>
                                                         <span className='text-right font-medium'>
                                                             {formatNumberWithUnit(
                                                                 minWage,
@@ -323,7 +336,7 @@ export function FoundingPage() {
 
                                                     <div>
                                                         <p className='text-xs text-muted-foreground mb-1.5'>
-                                                            Available Resources
+                                                            {tp('availableResources')}
                                                         </p>
                                                         {p.claims.length > 0 ? (
                                                             <div className='flex flex-wrap gap-1.5'>
@@ -376,7 +389,7 @@ export function FoundingPage() {
                         onCheckedChange={(checked) => setEnableTour(checked === true)}
                     />
                     <Label htmlFor='enable-tour' className='text-sm text-muted-foreground cursor-pointer'>
-                        Show a guided tour
+                        {tf('showGuidedTour')}
                     </Label>
                 </div>
 
@@ -384,10 +397,10 @@ export function FoundingPage() {
                     {createAgentMutation.isPending ? (
                         <>
                             <Spinner className='mr-2 h-4 w-4' />
-                            Registering…
+                            {tf('registering')}
                         </>
                     ) : (
-                        'Register new Company'
+                        tf('register')
                     )}
                 </Button>
             </form>

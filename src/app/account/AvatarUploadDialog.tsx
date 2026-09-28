@@ -17,14 +17,14 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useTRPC } from '@/lib/trpc';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
-interface AvatarUploadDialogProps {
-    triggerLabel?: string;
-}
-
-export function AvatarUploadDialog({ triggerLabel = 'Upload Avatar' }: AvatarUploadDialogProps) {
+export function AvatarUploadDialog() {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const t = useTranslations('Account');
+    const tErrors = useTranslations('Errors');
+    const tc = useTranslations('Common');
 
     const [open, setOpen] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -44,7 +44,7 @@ export function AvatarUploadDialog({ triggerLabel = 'Upload Avatar' }: AvatarUpl
                 }
             },
             onError: (err) => {
-                setError(err instanceof Error ? err.message : 'Operation failed');
+                setError(err instanceof Error ? err.message : tErrors('operationFailed'));
             },
         }),
     );
@@ -62,11 +62,11 @@ export function AvatarUploadDialog({ triggerLabel = 'Upload Avatar' }: AvatarUpl
         const maxSize = 1024 * 1024;
 
         if (file.type !== 'image/png') {
-            return 'Please upload a PNG image file';
+            return tErrors('avatarPngFile');
         }
 
         if (file.size > maxSize) {
-            return 'File size must be less than 1MB';
+            return tErrors('avatarFileTooLarge');
         }
 
         return null;
@@ -128,7 +128,7 @@ export function AvatarUploadDialog({ triggerLabel = 'Upload Avatar' }: AvatarUpl
             { avatar: previewUrl },
             {
                 onSuccess: () => {
-                    setSuccessMessage('Avatar uploaded successfully');
+                    setSuccessMessage(t('avatarUploaded'));
                 },
             },
         );
@@ -142,7 +142,7 @@ export function AvatarUploadDialog({ triggerLabel = 'Upload Avatar' }: AvatarUpl
             { avatar: '' },
             {
                 onSuccess: () => {
-                    setSuccessMessage('Avatar removed successfully');
+                    setSuccessMessage(t('avatarRemoved'));
                 },
             },
         );
@@ -169,13 +169,13 @@ export function AvatarUploadDialog({ triggerLabel = 'Upload Avatar' }: AvatarUpl
             <DialogTrigger asChild>
                 <Button className='w-full justify-start' variant='outline'>
                     <Camera className='w-4 h-4' />
-                    {triggerLabel}
+                    {t('uploadAvatar')}
                 </Button>
             </DialogTrigger>
             <DialogContent className='max-w-2xl'>
                 <DialogHeader>
-                    <DialogTitle>Profile Picture</DialogTitle>
-                    <DialogDescription>Upload a profile picture to personalize your account</DialogDescription>
+                    <DialogTitle>{t('profilePicture')}</DialogTitle>
+                    <DialogDescription>{t('profilePictureDescription')}</DialogDescription>
                 </DialogHeader>
 
                 <div className='flex flex-col items-center gap-6 py-4'>
@@ -199,15 +199,15 @@ export function AvatarUploadDialog({ triggerLabel = 'Upload Avatar' }: AvatarUpl
                                 </div>
                                 <div>
                                     <p className='font-medium'>
-                                        Drop your image here, or{' '}
+                                        {t('dropHere')}{' '}
                                         <button
                                             onClick={() => fileInputRef.current?.click()}
                                             className='text-primary hover:underline'
                                         >
-                                            browse
+                                            {t('browse')}
                                         </button>
                                     </p>
-                                    <p className='text-muted-foreground text-sm mt-1'>PNG only (max 1MB)</p>
+                                    <p className='text-muted-foreground text-sm mt-1'>{t('pngOnly')}</p>
                                 </div>
                                 <Input
                                     ref={fileInputRef}
@@ -233,7 +233,7 @@ export function AvatarUploadDialog({ triggerLabel = 'Upload Avatar' }: AvatarUpl
                                 <AlertDescription className='text-green-600'>{successMessage}</AlertDescription>
                             </Alert>
                             <Button onClick={handleClose} className='w-full'>
-                                Close
+                                {tc('close')}
                             </Button>
                         </>
                     )}
@@ -242,7 +242,7 @@ export function AvatarUploadDialog({ triggerLabel = 'Upload Avatar' }: AvatarUpl
                         <div className='flex gap-3 w-full'>
                             <Button onClick={handleUpload} className='flex-1' disabled={isUploading}>
                                 <Camera className='h-4 w-4 mr-2' />
-                                {isUploading ? 'Uploading...' : 'Upload Photo'}
+                                {isUploading ? t('uploading') : t('uploadPhoto')}
                             </Button>
                             <Button
                                 onClick={setToDefault}
@@ -250,7 +250,7 @@ export function AvatarUploadDialog({ triggerLabel = 'Upload Avatar' }: AvatarUpl
                                 className='flex-1'
                                 disabled={isUploading}
                             >
-                                Cancel
+                                {tc('cancel')}
                             </Button>
                         </div>
                     )}
@@ -264,7 +264,7 @@ export function AvatarUploadDialog({ triggerLabel = 'Upload Avatar' }: AvatarUpl
                                 disabled={isUploading}
                             >
                                 <Camera className='h-4 w-4 mr-2' />
-                                Change Photo
+                                {t('changePhoto')}
                             </Button>
                             <Button
                                 onClick={handleRemove}
@@ -273,7 +273,7 @@ export function AvatarUploadDialog({ triggerLabel = 'Upload Avatar' }: AvatarUpl
                                 disabled={isUploading}
                             >
                                 <X className='h-4 w-4 mr-2' />
-                                {isUploading ? 'Removing...' : 'Remove'}
+                                {isUploading ? t('removing') : t('remove')}
                             </Button>
                         </div>
                     )}

@@ -7,6 +7,7 @@ import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import { TourTooltip } from '@/components/tour/TourTooltip';
 import dynamic from 'next/dynamic';
 import { useParams, usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { EventHandler, Props } from 'react-joyride';
 
@@ -45,6 +46,8 @@ export function TourJoyride() {
     const { isTourActive, currentStepIndex, completeTour, setCurrentStepIndex, completedActions, goToNextPage } =
         useTour();
     const { agentId: resolvedAgentId } = useAgentId() as { agentId: string | null };
+    const t = useTranslations('Tour');
+    const tGuards = useTranslations('Guards');
 
     const [mounted, setMounted] = useState(false);
     const [targetsReady, setTargetsReady] = useState(false);
@@ -135,8 +138,8 @@ export function TourJoyride() {
     }, [completeTour]);
 
     useNavigationGuard(isTourActive, handleGuardForceLeave, {
-        message: 'The guided tour is active. Navigating away will end the tutorial.',
-        actionLabel: 'End tutorial & leave',
+        message: tGuards('tourActive'),
+        actionLabel: tGuards('endTourAndLeave'),
         infoStyle: true,
     });
 
@@ -208,12 +211,12 @@ export function TourJoyride() {
                     blockTargetInteraction: true,
                 }}
                 locale={{
-                    back: 'Back',
-                    close: 'Close',
-                    last: 'Finish',
-                    next: 'Next',
-                    open: 'Open the dialog',
-                    skip: 'Skip tour',
+                    back: t('back'),
+                    close: t('close'),
+                    last: t('finish'),
+                    next: t('next'),
+                    open: t('open'),
+                    skip: t('skip'),
                 }}
             />
         </>

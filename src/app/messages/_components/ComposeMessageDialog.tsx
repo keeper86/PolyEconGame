@@ -29,6 +29,8 @@ export function ComposeMessageDialog() {
 
     const sendMessage = useSendMessage();
     const t = useTranslations('Toasts');
+    const tMsg = useTranslations('Messages');
+    const tc = useTranslations('Common');
     const showError = useErrorMessage();
 
     const reset = () => {
@@ -70,23 +72,23 @@ export function ComposeMessageDialog() {
             <DialogTrigger asChild>
                 <Button className='gap-2'>
                     <PenSquare className='h-4 w-4' />
-                    New message
+                    {tMsg('compose.button')}
                 </Button>
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>New message</DialogTitle>
-                    <DialogDescription>Send a direct message to another player.</DialogDescription>
+                    <DialogTitle>{tMsg('compose.title')}</DialogTitle>
+                    <DialogDescription>{tMsg('compose.description')}</DialogDescription>
                 </DialogHeader>
 
                 <div className='flex flex-col gap-4 py-2'>
                     <div className='flex flex-col gap-2'>
-                        <Label htmlFor='message-recipient'>Recipient</Label>
+                        <Label htmlFor='message-recipient'>{tMsg('compose.recipient')}</Label>
                         <RecipientPicker id='message-recipient' value={recipient} onChange={setRecipient} />
                     </div>
 
                     <div className='flex flex-col gap-2'>
-                        <Label htmlFor='message-subject'>Subject</Label>
+                        <Label htmlFor='message-subject'>{tMsg('compose.subject')}</Label>
                         <Input
                             id='message-subject'
                             value={subject}
@@ -96,7 +98,7 @@ export function ComposeMessageDialog() {
                     </div>
 
                     <div className='flex flex-col gap-2'>
-                        <Label htmlFor='message-body'>Message</Label>
+                        <Label htmlFor='message-body'>{tMsg('compose.message')}</Label>
                         <textarea
                             id='message-body'
                             value={body}
@@ -110,10 +112,10 @@ export function ComposeMessageDialog() {
 
                 <DialogFooter>
                     <Button variant='outline' onClick={() => handleOpenChange(false)}>
-                        Cancel
+                        {tc('cancel')}
                     </Button>
                     <Button disabled={!canSubmit || sendMessage.isPending} onClick={handleSubmit}>
-                        Send
+                        {tMsg('compose.send')}
                     </Button>
                 </DialogFooter>
             </DialogContent>

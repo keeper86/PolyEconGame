@@ -27,7 +27,10 @@
         "workforceBuildLicenseRequired": "Für den Bau von Anlagen auf diesem Planeten ist eine aktive Arbeitskräfte-Lizenz erforderlich",
         "workforceExpandLicenseRequired": "Für den Ausbau von Anlagen auf diesem Planeten ist eine aktive Arbeitskräfte-Lizenz erforderlich",
         "invalidResourceName": "Ungültiger Ressourcenname",
-        "invalidResourceNameInCargoGoal": "Ungültiger Ressourcenname im Frachtziel"
+        "invalidResourceNameInCargoGoal": "Ungültiger Ressourcenname im Frachtziel",
+        "avatarPngFile": "Bitte lade eine PNG-Bilddatei hoch",
+        "avatarFileTooLarge": "Die Dateigröße muss unter 1 MB liegen",
+        "operationFailed": "Vorgang fehlgeschlagen"
     },
     "Bankruptcy": {
         "liquidated": "{agentName} ist insolvent; das Unternehmen wurde aufgelöst und das Vermögen verwertet",
@@ -84,7 +87,11 @@
         "Demographics": "Demografie",
         "Central Bank": "Zentralbank",
         "Resources": "Ressourcen",
-        "Companies": "Unternehmen"
+        "Companies": "Unternehmen",
+        "logoAlt": "Enterprise Engine Logo",
+        "brandLine1": "Enterprise",
+        "brandLine2": "Engine",
+        "pongFrameTitle": "Pong-Spiel"
     },
     "Sidebar": {
         "login": "Anmelden",
@@ -158,6 +165,58 @@
         "saving": "Speichern…",
         "awaitingNextDay": "Warte auf nächsten Tag…"
     },
+    "Messages": {
+        "title": "Nachrichten",
+        "unread": "{count} ungelesen",
+        "tabs": {
+            "inbox": "Posteingang",
+            "sent": "Gesendet"
+        },
+        "inbox": {
+            "description": "{count} Nachrichten",
+            "fallback": "Eingehende Nachrichten",
+            "empty": "Noch keine Nachrichten."
+        },
+        "sent": {
+            "description": "{count} Nachrichten",
+            "fallback": "Gesendete Nachrichten",
+            "empty": "Noch keine gesendeten Nachrichten."
+        },
+        "markAllRead": "Alle als gelesen markieren",
+        "deleteAllRead": "Alle gelesenen löschen",
+        "deleteAll": "Alle löschen",
+        "page": "Seite {page} von {total}",
+        "from": "Von",
+        "to": "An",
+        "loading": "Lädt…",
+        "delete": "Löschen",
+        "status": {
+            "deleted": "Gelöscht",
+            "read": "Gelesen",
+            "unread": "Ungelesen"
+        },
+        "confirm": {
+            "messageTitle": "Nachricht löschen?",
+            "messageDescription": "Dadurch wird die Nachricht aus deiner Ansicht entfernt. Dies kann nicht rückgängig gemacht werden.",
+            "readTitle": "Alle gelesenen Nachrichten löschen?",
+            "readDescription": "Dadurch werden alle gelesenen Nachrichten aus deinem Posteingang entfernt. Dies kann nicht rückgängig gemacht werden.",
+            "sentTitle": "Alle gesendeten Nachrichten löschen?",
+            "sentDescription": "Dadurch werden alle Nachrichten aus deinem Ordner „Gesendet“ entfernt. Dies kann nicht rückgängig gemacht werden."
+        },
+        "compose": {
+            "button": "Neue Nachricht",
+            "title": "Neue Nachricht",
+            "description": "Sende eine Direktnachricht an einen anderen Spieler.",
+            "recipient": "Empfänger",
+            "subject": "Betreff",
+            "message": "Nachricht",
+            "send": "Senden",
+            "searchPlaceholder": "Nach Name oder Unternehmen suchen…",
+            "searching": "Suche…",
+            "noPlayerFound": "Kein Spieler gefunden.",
+            "clearRecipient": "Empfänger entfernen"
+        }
+    },
     "Market": {
         "saveConfig": "Konfiguration speichern",
         "saving": "Speichern…",
@@ -169,7 +228,44 @@
     "Common": {
         "waitingForData": "Warte auf Simulationsdaten…",
         "loading": "Lädt…",
-        "duration": "Dauer"
+        "loadingLabel": "Wird geladen",
+        "duration": "Dauer",
+        "close": "Schließen",
+        "more": "Mehr",
+        "breadcrumb": "Brotkrümelnavigation",
+        "backToTop": "Nach oben",
+        "toggleSidebar": "Seitenleiste umschalten",
+        "sidebar": "Seitenleiste",
+        "sidebarDescription": "Zeigt die mobile Seitenleiste an.",
+        "deposits": "Einlagen",
+        "previous": "Zurück",
+        "next": "Weiter",
+        "all": "Alle",
+        "save": "Speichern",
+        "cancel": "Abbrechen",
+        "reset": "Zurücksetzen",
+        "set": "Setzen",
+        "saving": "Speichert…",
+        "setting": "Setze…"
+    },
+    "Charts": {
+        "year": "Jahr {year}",
+        "decade": "{decade}er",
+        "previousDecember": "Vorheriger Dezember"
+    },
+    "Guards": {
+        "unsavedChanges": "Du hast ungespeicherte Änderungen.",
+        "leaveAnyway": "Trotzdem verlassen",
+        "tourActive": "Die geführte Tour ist aktiv. Beim Verlassen wird das Tutorial beendet.",
+        "endTourAndLeave": "Tutorial beenden & verlassen"
+    },
+    "Tour": {
+        "back": "Zurück",
+        "close": "Schließen",
+        "finish": "Fertig",
+        "next": "Weiter",
+        "open": "Dialog öffnen",
+        "skip": "Tour überspringen"
     },
     "Planets": {
         "title": "Planeten",
@@ -183,6 +279,40 @@
         "costOfLiving": "Lebenshaltungskosten",
         "wages": "Löhne",
         "availableResources": "Verfügbare Ressourcen"
+    },
+    "Founding": {
+        "title": "Unternehmen registrieren",
+        "companyNamePlaceholder": "Dein Firmenname",
+        "loadingPlanets": "Lade Planeten…",
+        "selectPlanet": "{planetName} auswählen",
+        "showGuidedTour": "Geführte Tour anzeigen",
+        "registering": "Registriere…",
+        "register": "Neues Unternehmen registrieren"
+    },
+    "Imprint": {
+        "intro": "Dies ist das Impressum für Enterprise Engine.",
+        "responsible": "Verantwortlich für den Inhalt:",
+        "email": "E-Mail:",
+        "placeholder": "Dies ist ein Platzhalter. Bitte aktualisiere ihn mit deinen tatsächlichen rechtlichen Angaben, wie es das Gesetz verlangt.",
+        "assets": "Assets erstellt mit gemini.",
+        "backToHome": "Zurück zur Startseite"
+    },
+    "Account": {
+        "title": "Kontoverwaltung",
+        "restartTutorial": "Tutorial neu starten",
+        "uploadAvatar": "Profilbild hochladen",
+        "profilePicture": "Profilbild",
+        "profilePictureDescription": "Lade ein Profilbild hoch, um dein Konto zu personalisieren",
+        "dropHere": "Bild hier ablegen oder",
+        "browse": "durchsuchen",
+        "pngOnly": "Nur PNG (max. 1 MB)",
+        "uploadPhoto": "Foto hochladen",
+        "uploading": "Lädt hoch…",
+        "changePhoto": "Foto ändern",
+        "removing": "Entferne…",
+        "remove": "Entfernen",
+        "avatarUploaded": "Profilbild erfolgreich hochgeladen",
+        "avatarRemoved": "Profilbild erfolgreich entfernt"
     },
     "Companies": {
         "title": "Unternehmen",
@@ -210,7 +340,9 @@
         "notBuilt": "Nicht gebaut",
         "company": "Unternehmen",
         "basedOn": "Ansässig auf {planetId}",
-        "founded": "Gegründet {date}"
+        "founded": "Gegründet {date}",
+        "hrProductivity": "HR-Produktivität {percent} %",
+        "storageHealth": "Lagerzustand {percent} %"
     },
     "Storage": {
         "volumeUsed": "Volumen genutzt",

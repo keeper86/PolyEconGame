@@ -36,6 +36,8 @@ import { toast } from 'sonner';
 
 const PAGE_SIZE = 25;
 
+type MessagesTranslator = ReturnType<typeof useTranslations<'Messages'>>;
+
 const counterpartName = (message: MessageSummary): string =>
     recipientLabel({
         userId: message.counterpartUserId,
@@ -44,34 +46,34 @@ const counterpartName = (message: MessageSummary): string =>
         companyName: message.counterpartCompanyName,
     });
 
-const sentMessageStatus = (message: MessageSummary): { label: string; className: string } => {
+const sentMessageStatus = (message: MessageSummary, t: MessagesTranslator): { label: string; className: string } => {
     if (message.counterpartDeleted) {
-        return { label: 'Deleted', className: 'shrink-0' };
+        return { label: t('status.deleted'), className: 'shrink-0' };
     }
     if (message.readAt) {
-        return { label: 'Read', className: 'shrink-0' };
+        return { label: t('status.read'), className: 'shrink-0' };
     }
-    return { label: 'Unread', className: 'shrink-0 font-medium text-primary' };
+    return { label: t('status.unread'), className: 'shrink-0 font-medium text-primary' };
 };
 
 type ConfirmTarget = { kind: 'message'; messageId: string } | { kind: 'inboxRead' } | { kind: 'sentAll' };
 
-const confirmCopy = (confirm: ConfirmTarget): { title: string; description: string } => {
+const confirmCopy = (confirm: ConfirmTarget, t: MessagesTranslator): { title: string; description: string } => {
     switch (confirm.kind) {
         case 'message':
             return {
-                title: 'Delete message?',
-                description: 'This removes the message from your view. This cannot be undone.',
+                title: t('confirm.messageTitle'),
+                description: t('confirm.messageDescription'),
             };
         case 'inboxRead':
             return {
-                title: 'Delete all read messages?',
-                description: 'This removes all read messages from your inbox. This cannot be undone.',
+                title: t('confirm.readTitle'),
+                description: t('confirm.readDescription'),
             };
         case 'sentAll':
             return {
-                title: 'Delete all sent messages?',
-                description: 'This removes all messages from your sent folder. This cannot be undone.',
+                title: t('confirm.sentTitle'),
+                description: t('confirm.sentDescription'),
             };
     }
 };
@@ -86,8 +88,9 @@ function MessageRow({
     onSelect: () => void;
 }) {
     const format = useFormatter();
+    const t = useTranslations('Messages');
     const unread = direction === 'inbox' && message.readAt === null;
-    const status = sentMessageStatus(message);
+    const status = sentMessageStatus(message, t);
 
     return (
         <button
@@ -138,6 +141,8 @@ function MessagePane({
     total: number;
     onPageChange: (page: number) => void;
 }) {
+    const t = useTranslations('Messages');
+    const tc = useTranslations('Common');
     return (
         <div className='rounded-lg border border-border'>
             <div className='flex items-start justify-between gap-3 border-b border-border px-3 py-3'>
@@ -148,7 +153,7 @@ function MessagePane({
                 {headerAction}
             </div>
             {isLoading ? (
-                <div className='px-3 py-6 text-sm text-muted-foreground'>Loading…</div>
+                <div className='px-3 py-6 text-sm text-muted-foreground'>{tc('loading')}</div>
             ) : messages.length === 0 ? (
                 <div className='px-3 py-6 text-sm text-muted-foreground'>{emptyText}</div>
             ) : (
@@ -163,9 +168,7 @@ function MessagePane({
             )}
             {total > PAGE_SIZE && (
                 <div className='flex items-center justify-between border-t border-border px-3 py-2 text-xs text-muted-foreground'>
-                    <span>
-                        Page {page + 1} of {Math.max(1, Math.ceil(total / PAGE_SIZE))}
-                    </span>
+                    <span>{t('page', { page: page + 1, total: Math.max(1, Math.ceil(total / PAGE_SIZE)) })}</span>
                     <div className='flex items-center gap-2'>
                         <Button
                             variant='outline'
@@ -173,7 +176,7 @@ function MessagePane({
                             disabled={page === 0}
                             onClick={() => onPageChange(page - 1)}
                         >
-                            Previous
+                            {tc('previous')}
                         </Button>
                         <Button
                             variant='outline'
@@ -181,7 +184,7 @@ function MessagePane({
                             disabled={(page + 1) * PAGE_SIZE >= total}
                             onClick={() => onPageChange(page + 1)}
                         >
-                            Next
+                            {tc('next')}
                         </Button>
                     </div>
                 </div>
@@ -195,6 +198,8 @@ export default function MessagesPage() {
     const trpc = useTRPC();
     const format = useFormatter();
     const t = useTranslations('Toasts');
+    const tMsg = useTranslations('Messages');
+    const tc = useTranslations('Common');
     const showError = useErrorMessage();
     const unreadCount = useUnreadMessageCount();
     const markAllRead = useMarkAllRead();
@@ -285,24 +290,26 @@ export default function MessagesPage() {
 
     return (
         <Page
-            title='Messages'
+            title={tMsg('title')}
             headerComponent={
                 <span className='flex items-center gap-2'>
-                    {unreadCount > 0 && <Badge variant='destructive'>{unreadCount} unread</Badge>}
+                    {unreadCount > 0 && <Badge variant='destructive'>{tMsg('unread', { count: unreadCount })}</Badge>}
                     <ComposeMessageDialog />
                 </span>
             }
         >
             <Tabs defaultValue='inbox' className='w-full'>
                 <TabsList>
-                    <TabsTrigger value='inbox'>Inbox</TabsTrigger>
-                    <TabsTrigger value='sent'>Sent</TabsTrigger>
+                    <TabsTrigger value='inbox'>{tMsg('tabs.inbox')}</TabsTrigger>
+                    <TabsTrigger value='sent'>{tMsg('tabs.sent')}</TabsTrigger>
                 </TabsList>
                 <TabsContent value='inbox' className='pt-4'>
                     <MessagePane
-                        title='Inbox'
-                        description={inbox.data ? `${inbox.data.total} messages` : 'Incoming messages'}
-                        emptyText='No messages yet.'
+                        title={tMsg('tabs.inbox')}
+                        description={
+                            inbox.data ? tMsg('inbox.description', { count: inbox.data.total }) : tMsg('inbox.fallback')
+                        }
+                        emptyText={tMsg('inbox.empty')}
                         isLoading={inbox.isLoading}
                         messages={inboxMessages}
                         direction='inbox'
@@ -320,7 +327,7 @@ export default function MessagesPage() {
                                     onClick={() => markAllRead.mutate()}
                                 >
                                     <CheckCheck className='h-4 w-4' />
-                                    Mark all read
+                                    {tMsg('markAllRead')}
                                 </Button>
                                 <Button
                                     variant='outline'
@@ -330,7 +337,7 @@ export default function MessagesPage() {
                                     onClick={() => setConfirm({ kind: 'inboxRead' })}
                                 >
                                     <Trash2 className='h-4 w-4' />
-                                    Delete all read
+                                    {tMsg('deleteAllRead')}
                                 </Button>
                             </div>
                         }
@@ -338,9 +345,11 @@ export default function MessagesPage() {
                 </TabsContent>
                 <TabsContent value='sent' className='pt-4'>
                     <MessagePane
-                        title='Sent'
-                        description={sent.data ? `${sent.data.total} messages` : 'Sent messages'}
-                        emptyText='No sent messages yet.'
+                        title={tMsg('tabs.sent')}
+                        description={
+                            sent.data ? tMsg('sent.description', { count: sent.data.total }) : tMsg('sent.fallback')
+                        }
+                        emptyText={tMsg('sent.empty')}
                         isLoading={sent.isLoading}
                         messages={sentMessages}
                         direction='sent'
@@ -357,7 +366,7 @@ export default function MessagesPage() {
                                 onClick={() => setConfirm({ kind: 'sentAll' })}
                             >
                                 <Trash2 className='h-4 w-4' />
-                                Delete all
+                                {tMsg('deleteAll')}
                             </Button>
                         }
                     />
@@ -370,12 +379,12 @@ export default function MessagesPage() {
                         <DialogTitle>{selected?.message.subject}</DialogTitle>
                         <DialogDescription>
                             {selected
-                                ? `${selected.direction === 'inbox' ? 'From' : 'To'} ${counterpartName(selected.message)}`
+                                ? `${selected.direction === 'inbox' ? tMsg('from') : tMsg('to')} ${counterpartName(selected.message)}`
                                 : ''}
                             {selected ? ` · ${format.dateTime(new Date(selected.message.createdAt), 'timestamp')}` : ''}
                         </DialogDescription>
                     </DialogHeader>
-                    <p className='whitespace-pre-wrap text-sm'>{selectedBody ?? 'Loading…'}</p>
+                    <p className='whitespace-pre-wrap text-sm'>{selectedBody ?? tc('loading')}</p>
                     <DialogFooter>
                         <Button
                             variant='destructive'
@@ -384,7 +393,7 @@ export default function MessagesPage() {
                             onClick={() => selected && setConfirm({ kind: 'message', messageId: selected.message.id })}
                         >
                             <Trash2 className='h-4 w-4' />
-                            Delete
+                            {tMsg('delete')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -393,19 +402,19 @@ export default function MessagesPage() {
             <Dialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{confirm ? confirmCopy(confirm).title : ''}</DialogTitle>
-                        <DialogDescription>{confirm ? confirmCopy(confirm).description : ''}</DialogDescription>
+                        <DialogTitle>{confirm ? confirmCopy(confirm, tMsg).title : ''}</DialogTitle>
+                        <DialogDescription>{confirm ? confirmCopy(confirm, tMsg).description : ''}</DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant='outline' onClick={() => setConfirm(null)}>
-                            Cancel
+                            {tc('cancel')}
                         </Button>
                         <Button
                             variant='destructive'
                             disabled={deleteMessage.isPending || deleteMessages.isPending}
                             onClick={handleConfirm}
                         >
-                            Delete
+                            {tMsg('delete')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import { TourJoyride } from './TourJoyride';
 import { useTour } from './TourContext';
 import { useAgentId } from '@/hooks/useAgentId';
@@ -125,7 +125,7 @@ afterEach(() => {
 // ── Test helpers ───────────────────────────────────────────────────
 function renderTourJoyride() {
     capturedOnEvent = null;
-    const result = render(<TourJoyride />);
+    const result = renderWithIntl(<TourJoyride />);
     return {
         ...result,
         get onEvent() {

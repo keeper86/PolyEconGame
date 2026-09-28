@@ -29,7 +29,6 @@ export type RouteMetadata = {
     label: NavLabel;
     icon?: LucideIcon | IconType;
     isPublic?: boolean;
-    description?: string;
     isMainNav?: boolean;
     isSecondaryNav?: boolean;
 };
@@ -55,21 +54,18 @@ export const APP_ROUTES = {
         label: 'Enterprise Engine',
         icon: Home,
         isPublic: true,
-        description: 'Dashboard and overview',
     },
     pong: {
         path: '/pong',
         label: 'Paddle War',
         icon: Gamepad,
         isPublic: true,
-        description: 'Classic pong game',
     },
     account: {
         root: {
             path: '/account',
             label: 'Account',
             icon: User,
-            description: 'User account settings',
         },
     },
     messages: {
@@ -77,7 +73,6 @@ export const APP_ROUTES = {
         label: 'Messages',
         icon: Mail,
         isSecondaryNav: true,
-        description: 'Direct messages from other players',
     },
     imprint: {
         path: '/imprint',
@@ -85,7 +80,6 @@ export const APP_ROUTES = {
         icon: FileText,
         isPublic: true,
         isSecondaryNav: true,
-        description: 'Legal information and imprint',
     },
     simulation: {
         path: '/simulation',
@@ -93,14 +87,12 @@ export const APP_ROUTES = {
         icon: FlaskConical,
         isPublic: true,
         isSecondaryNav: true,
-        description: 'Scientific description of the simulation model with mathematical formulations',
     },
     supplyChain: {
         path: '/supply-chain',
         label: 'Supply Chain Simulator',
         icon: Network,
         isSecondaryNav: true,
-        description: 'Interactive supply chain balance calculator and dependency visualiser',
     },
 } as const satisfies RouteManifest;
 

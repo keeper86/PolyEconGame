@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 
 const recipients = [
     { userId: 'alice-1', displayName: 'Alice Anderson', username: 'aa-dev', companyName: 'AnderTech' },
@@ -41,19 +42,19 @@ describe('RecipientPicker', () => {
     });
 
     it('shows the chosen recipient name in the field when closed', () => {
-        render(<RecipientPicker id='test' value={recipients[0]} onChange={vi.fn()} />);
+        renderWithIntl(<RecipientPicker id='test' value={recipients[0]} onChange={vi.fn()} />);
 
         expect(screen.getByRole('combobox')).toHaveValue('Alice Anderson (AnderTech)');
     });
 
     it('falls back to the user name when the recipient has no display name', () => {
-        render(<RecipientPicker id='test' value={recipients[1]} onChange={vi.fn()} />);
+        renderWithIntl(<RecipientPicker id='test' value={recipients[1]} onChange={vi.fn()} />);
 
         expect(screen.getByRole('combobox')).toHaveValue('bobby');
     });
 
     it('does not show the list until the field is focused', async () => {
-        render(<RecipientPicker id='test' value={null} onChange={vi.fn()} />);
+        renderWithIntl(<RecipientPicker id='test' value={null} onChange={vi.fn()} />);
 
         expect(screen.queryByText('Alice Anderson (AnderTech)')).not.toBeInTheDocument();
 
@@ -63,7 +64,7 @@ describe('RecipientPicker', () => {
     });
 
     it('updates the field while typing', async () => {
-        render(<RecipientPicker id='test' value={null} onChange={vi.fn()} />);
+        renderWithIntl(<RecipientPicker id='test' value={null} onChange={vi.fn()} />);
 
         const input = screen.getByRole('combobox');
         await userEvent.click(input);
@@ -74,7 +75,7 @@ describe('RecipientPicker', () => {
 
     it('calls onChange with the picked recipient', async () => {
         const onChange = vi.fn();
-        render(<RecipientPicker id='test' value={null} onChange={onChange} />);
+        renderWithIntl(<RecipientPicker id='test' value={null} onChange={onChange} />);
 
         await userEvent.click(screen.getByRole('combobox'));
         await userEvent.click(screen.getByText('bobby'));
@@ -84,7 +85,7 @@ describe('RecipientPicker', () => {
 
     it('clears the recipient', async () => {
         const onChange = vi.fn();
-        render(<RecipientPicker id='test' value={recipients[0]} onChange={onChange} />);
+        renderWithIntl(<RecipientPicker id='test' value={recipients[0]} onChange={onChange} />);
 
         await userEvent.click(screen.getByRole('button', { name: 'Clear recipient' }));
 
@@ -93,7 +94,7 @@ describe('RecipientPicker', () => {
 
     it('shows an empty state when there are no recipients', async () => {
         mockUseQuery.mockReturnValue({ data: { recipients: [] }, isFetching: false });
-        render(<RecipientPicker id='test' value={null} onChange={vi.fn()} />);
+        renderWithIntl(<RecipientPicker id='test' value={null} onChange={vi.fn()} />);
 
         await userEvent.click(screen.getByRole('combobox'));
 
@@ -101,7 +102,7 @@ describe('RecipientPicker', () => {
     });
 
     it('exposes the options through combobox and listbox roles', async () => {
-        render(<RecipientPicker id='test' value={null} onChange={vi.fn()} />);
+        renderWithIntl(<RecipientPicker id='test' value={null} onChange={vi.fn()} />);
 
         const input = screen.getByRole('combobox');
         expect(input).toHaveAttribute('aria-expanded', 'false');
@@ -115,7 +116,7 @@ describe('RecipientPicker', () => {
 
     it('selects the highlighted recipient with the keyboard', async () => {
         const onChange = vi.fn();
-        render(<RecipientPicker id='test' value={null} onChange={onChange} />);
+        renderWithIntl(<RecipientPicker id='test' value={null} onChange={onChange} />);
 
         await userEvent.click(screen.getByRole('combobox'));
         await userEvent.keyboard('{ArrowDown}{Enter}');

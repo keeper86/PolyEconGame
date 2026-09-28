@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 
 vi.mock('@tanstack/react-query', () => ({
     useQuery: vi.fn(),
@@ -55,9 +56,9 @@ describe('UserAvatar', () => {
             error: null,
         });
 
-        render(<UserAvatar userId={'user-1'} />);
+        renderWithIntl(<UserAvatar userId={'user-1'} />);
 
-        const { container } = render(<UserAvatar userId={'user-1'} />);
+        const { container } = renderWithIntl(<UserAvatar userId={'user-1'} />);
         const avatarImage = container.querySelector('[data-testid="avatar-image"]') as HTMLImageElement | null;
         expect(avatarImage).toBeTruthy();
         expect(avatarImage?.getAttribute('src')).toContain('data:image/png;base64,R0lGODlhAQABAIAAAAUEBA==');
@@ -72,7 +73,7 @@ describe('UserAvatar', () => {
             error: null,
         });
 
-        render(<UserAvatar userId={'user-2'} />);
+        renderWithIntl(<UserAvatar userId={'user-2'} />);
 
         const fallback = screen.getByText('JD');
         expect(fallback).toBeInTheDocument();
@@ -87,9 +88,9 @@ describe('UserAvatar', () => {
             error: null,
         });
 
-        render(<UserAvatar />);
+        renderWithIntl(<UserAvatar />);
 
-        const { container } = render(<UserAvatar />);
+        const { container } = renderWithIntl(<UserAvatar />);
         const fallback = container.querySelector('[data-testid="avatar-fallback"]');
         expect(fallback).toBeInTheDocument();
     });
@@ -103,7 +104,7 @@ describe('UserAvatar', () => {
             error: null,
         });
 
-        render(<UserAvatar userId={'abc-123'} />);
+        renderWithIntl(<UserAvatar userId={'abc-123'} />);
         expect(mockQueryOptions).toHaveBeenCalledWith({ userId: 'abc-123' });
 
         // @ts-expect-error mocked data
@@ -114,7 +115,7 @@ describe('UserAvatar', () => {
             error: null,
         });
 
-        render(<UserAvatar />);
+        renderWithIntl(<UserAvatar />);
         expect(mockQueryOptions).toHaveBeenCalledWith({ userId: undefined });
     });
 
@@ -127,7 +128,7 @@ describe('UserAvatar', () => {
             error: null,
         });
 
-        const { container } = render(<UserAvatar userId={'loading-user'} />);
+        const { container } = renderWithIntl(<UserAvatar userId={'loading-user'} />);
         const spinner = container.querySelector('[role="status"][aria-label="Loading"]');
         expect(spinner).toBeTruthy();
     });
@@ -142,7 +143,7 @@ describe('UserAvatar', () => {
             error: { message: errMsg },
         });
 
-        render(<UserAvatar userId={'err-user'} />);
+        renderWithIntl(<UserAvatar userId={'err-user'} />);
 
         const fallback = screen.getByTestId('avatar-fallback');
         expect(fallback).toBeInTheDocument();

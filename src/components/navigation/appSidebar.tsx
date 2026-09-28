@@ -17,19 +17,15 @@ import {
 import { APP_ROUTES } from '@/lib/appRoutes';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 import logo from '@/../public/logo.png';
 import { Separator } from '../ui/separator';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+    const t = useTranslations('Nav');
     const mainLogo = (
-        <Image
-            src={logo}
-            alt='Enterprise Engine Logo'
-            width={140}
-            height={140}
-            className='rounded-lg border border-black'
-        />
+        <Image src={logo} alt={t('logoAlt')} width={140} height={140} className='rounded-lg border border-black' />
     );
     return (
         <Sidebar variant='inset' {...props}>
@@ -42,8 +38,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                     {mainLogo}
                                 </div>
                                 <span className='flex flex-col gap--1'>
-                                    <span className='font-bold text-[18px] leading-tight'>Enterprise</span>
-                                    <span className='text-[18px] leading-tight'>Engine</span>
+                                    <span className='font-bold text-[18px] leading-tight'>{t('brandLine1')}</span>
+                                    <span className='text-[18px] leading-tight'>{t('brandLine2')}</span>
                                 </span>
                             </Link>
                         </SidebarMenuButton>

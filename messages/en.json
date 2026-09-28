@@ -27,7 +27,10 @@
         "workforceBuildLicenseRequired": "An active workforce license is required to build facilities on this planet",
         "workforceExpandLicenseRequired": "An active workforce license is required to expand facilities on this planet",
         "invalidResourceName": "Invalid resource name",
-        "invalidResourceNameInCargoGoal": "Invalid resource name in cargo goal"
+        "invalidResourceNameInCargoGoal": "Invalid resource name in cargo goal",
+        "avatarPngFile": "Please upload a PNG image file",
+        "avatarFileTooLarge": "File size must be less than 1MB",
+        "operationFailed": "Operation failed"
     },
     "Bankruptcy": {
         "liquidated": "{agentName} bankrupt; company dissolved and assets liquidated by the receiver",
@@ -84,7 +87,11 @@
         "Demographics": "Demographics",
         "Central Bank": "Central Bank",
         "Resources": "Resources",
-        "Companies": "Companies"
+        "Companies": "Companies",
+        "logoAlt": "Enterprise Engine logo",
+        "brandLine1": "Enterprise",
+        "brandLine2": "Engine",
+        "pongFrameTitle": "Pong game"
     },
     "Sidebar": {
         "login": "Login",
@@ -158,6 +165,58 @@
         "saving": "Saving…",
         "awaitingNextDay": "Awaiting next day…"
     },
+    "Messages": {
+        "title": "Messages",
+        "unread": "{count} unread",
+        "tabs": {
+            "inbox": "Inbox",
+            "sent": "Sent"
+        },
+        "inbox": {
+            "description": "{count} messages",
+            "fallback": "Incoming messages",
+            "empty": "No messages yet."
+        },
+        "sent": {
+            "description": "{count} messages",
+            "fallback": "Sent messages",
+            "empty": "No sent messages yet."
+        },
+        "markAllRead": "Mark all read",
+        "deleteAllRead": "Delete all read",
+        "deleteAll": "Delete all",
+        "page": "Page {page} of {total}",
+        "from": "From",
+        "to": "To",
+        "loading": "Loading…",
+        "delete": "Delete",
+        "status": {
+            "deleted": "Deleted",
+            "read": "Read",
+            "unread": "Unread"
+        },
+        "confirm": {
+            "messageTitle": "Delete message?",
+            "messageDescription": "This removes the message from your view. This cannot be undone.",
+            "readTitle": "Delete all read messages?",
+            "readDescription": "This removes all read messages from your inbox. This cannot be undone.",
+            "sentTitle": "Delete all sent messages?",
+            "sentDescription": "This removes all messages from your sent folder. This cannot be undone."
+        },
+        "compose": {
+            "button": "New message",
+            "title": "New message",
+            "description": "Send a direct message to another player.",
+            "recipient": "Recipient",
+            "subject": "Subject",
+            "message": "Message",
+            "send": "Send",
+            "searchPlaceholder": "Search by name or company…",
+            "searching": "Searching…",
+            "noPlayerFound": "No player found.",
+            "clearRecipient": "Clear recipient"
+        }
+    },
     "Market": {
         "saveConfig": "Save Config",
         "saving": "Saving…",
@@ -169,7 +228,44 @@
     "Common": {
         "waitingForData": "Waiting for simulation data…",
         "loading": "Loading…",
-        "duration": "Duration"
+        "loadingLabel": "Loading",
+        "duration": "Duration",
+        "close": "Close",
+        "more": "More",
+        "breadcrumb": "Breadcrumb",
+        "backToTop": "Back to top",
+        "toggleSidebar": "Toggle sidebar",
+        "sidebar": "Sidebar",
+        "sidebarDescription": "Displays the mobile sidebar.",
+        "deposits": "Deposits",
+        "previous": "Previous",
+        "next": "Next",
+        "all": "All",
+        "save": "Save",
+        "cancel": "Cancel",
+        "reset": "Reset",
+        "set": "Set",
+        "saving": "Saving…",
+        "setting": "Setting…"
+    },
+    "Charts": {
+        "year": "Year {year}",
+        "decade": "{decade}s",
+        "previousDecember": "Previous December"
+    },
+    "Guards": {
+        "unsavedChanges": "You have unsaved changes.",
+        "leaveAnyway": "Leave anyway",
+        "tourActive": "The guided tour is active. Navigating away will end the tutorial.",
+        "endTourAndLeave": "End tutorial & leave"
+    },
+    "Tour": {
+        "back": "Back",
+        "close": "Close",
+        "finish": "Finish",
+        "next": "Next",
+        "open": "Open the dialog",
+        "skip": "Skip tour"
     },
     "Planets": {
         "title": "Planets",
@@ -183,6 +279,40 @@
         "costOfLiving": "Cost of Living",
         "wages": "Wages",
         "availableResources": "Available Resources"
+    },
+    "Founding": {
+        "title": "Register your Company",
+        "companyNamePlaceholder": "Your company name",
+        "loadingPlanets": "Loading planets…",
+        "selectPlanet": "Select {planetName}",
+        "showGuidedTour": "Show a guided tour",
+        "registering": "Registering…",
+        "register": "Register new Company"
+    },
+    "Imprint": {
+        "intro": "This is the legal imprint for Enterprise Engine.",
+        "responsible": "Responsible for content:",
+        "email": "Email:",
+        "placeholder": "This is a placeholder. Please update with your actual legal information as required by law.",
+        "assets": "Assets generated by gemini.",
+        "backToHome": "Back to Home"
+    },
+    "Account": {
+        "title": "Account Management",
+        "restartTutorial": "Restart Tutorial",
+        "uploadAvatar": "Upload Avatar",
+        "profilePicture": "Profile Picture",
+        "profilePictureDescription": "Upload a profile picture to personalize your account",
+        "dropHere": "Drop your image here, or",
+        "browse": "browse",
+        "pngOnly": "PNG only (max 1MB)",
+        "uploadPhoto": "Upload Photo",
+        "uploading": "Uploading…",
+        "changePhoto": "Change Photo",
+        "removing": "Removing…",
+        "remove": "Remove",
+        "avatarUploaded": "Avatar uploaded successfully",
+        "avatarRemoved": "Avatar removed successfully"
     },
     "Companies": {
         "title": "Companies",
@@ -210,7 +340,9 @@
         "notBuilt": "Not built",
         "company": "Company",
         "basedOn": "Based on {planetId}",
-        "founded": "Founded {date}"
+        "founded": "Founded {date}",
+        "hrProductivity": "HR productivity {percent}%",
+        "storageHealth": "Storage health {percent}%"
     },
     "Storage": {
         "volumeUsed": "Volume used",

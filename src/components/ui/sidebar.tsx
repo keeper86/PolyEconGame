@@ -8,6 +8,7 @@ import { PanelLeftIcon } from 'lucide-react';
 
 import { useIsMobile } from '@/hooks/useMobile';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -143,6 +144,7 @@ function Sidebar({
     collapsible?: 'offcanvas' | 'icon' | 'none';
 }) {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+    const t = useTranslations('Common');
 
     const edgeWidth = 50;
     const threshold = 60;
@@ -233,8 +235,8 @@ function Sidebar({
                     onTouchEnd={handleTouchEnd}
                 >
                     <SheetHeader className='sr-only'>
-                        <SheetTitle>Sidebar</SheetTitle>
-                        <SheetDescription>Displays the mobile sidebar.</SheetDescription>
+                        <SheetTitle>{t('sidebar')}</SheetTitle>
+                        <SheetDescription>{t('sidebarDescription')}</SheetDescription>
                     </SheetHeader>
                     <div className='flex h-full w-full flex-col'>{children}</div>
                 </SheetContent>
@@ -292,6 +294,7 @@ function Sidebar({
 
 function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<typeof Button>) {
     const { toggleSidebar } = useSidebar();
+    const t = useTranslations('Common');
 
     return (
         <Button
@@ -307,7 +310,7 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
             {...props}
         >
             <PanelLeftIcon />
-            <span className='sr-only'>Toggle Sidebar</span>
+            <span className='sr-only'>{t('toggleSidebar')}</span>
         </Button>
     );
 }

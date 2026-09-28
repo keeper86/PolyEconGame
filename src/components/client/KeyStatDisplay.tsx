@@ -9,7 +9,7 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import { getAssetPath } from '@/lib/assetManifest';
 import Image from 'next/image';
 import { useIsSmallScreen } from '@/hooks/useMobile';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 export default function KeyStatDisplay() {
     const params = useParams<'/planets/[planetId]'>();
@@ -28,6 +28,7 @@ export default function KeyStatDisplay() {
 
 function MoneyDisplay({ agentId, planetId }: { agentId: string; planetId: string }) {
     const locale = useLocale();
+    const t = useTranslations('Common');
     const trpc = useTRPC();
     const smallScreen = useIsSmallScreen();
     const { data, isLoading } = useSimulationQuery(
@@ -45,7 +46,7 @@ function MoneyDisplay({ agentId, planetId }: { agentId: string; planetId: string
 
     return (
         <div className='flex items-center text-sm text-muted-foreground text-outline-strong'>
-            {!smallScreen && <span className='pr-2'>Deposits</span>}
+            {!smallScreen && <span className='pr-2'>{t('deposits')}</span>}
             <span className='tabular-nums whitespace-nowrap font-bold text-foreground text-md'>
                 {formatNumberWithUnit(data.deposits, 'none', undefined, locale)}
             </span>
