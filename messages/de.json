@@ -150,5 +150,38 @@
         "invalidOfferPrice": "Verkaufsprüfung fehlgeschlagen: Ungültiger Angebotspreis.",
         "depositBorrowPrefix": "Du kannst Geld aufnehmen auf der ",
         "depositBorrowLink": "Finanzseite"
+    },
+    "Common": {
+        "waitingForData": "Warte auf Simulationsdaten…",
+        "loading": "Lädt…"
+    },
+    "Planets": {
+        "title": "Planeten",
+        "previous": "Vorheriger Planet",
+        "next": "Nächster Planet",
+        "population": "Bevölkerung",
+        "gdp": "BIP",
+        "moneySupply": "Geldmenge",
+        "bankEquity": "Bankkapital",
+        "interestRate": "Zinssatz",
+        "costOfLiving": "Lebenshaltungskosten",
+        "wages": "Löhne",
+        "availableResources": "Verfügbare Ressourcen"
+    },
+    "Companies": {
+        "title": "Unternehmen",
+        "allPlanets": "Alle Planeten",
+        "showFromAllPlanets": "Von allen Planeten anzeigen",
+        "hideAutomated": "Automatisierte ausblenden",
+        "hideAutomatedAgents": "Automatisierte Agenten ausblenden",
+        "company": "Unternehmen",
+        "netWorth": "Nettovermögen",
+        "home": "Heimat",
+        "none": "Keine Unternehmen gefunden."
+    },
+    "CentralBank": {
+        "title": "Zentralbank",
+        "loading": "Wirtschaftsdaten werden geladen…",
+        "notFound": "Planet oder Agent nicht gefunden."
     }
 }

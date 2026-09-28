@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useAgentId } from '@/hooks/useAgentId';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
+import { useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
 import BankPanel from './_components/BankPanel';
 
@@ -13,6 +14,7 @@ export default function CentralBankPage() {
     const params = useParams();
     const planetId = (params?.planetId as string) ?? '';
     const trpc = useTRPC();
+    const t = useTranslations('CentralBank');
     const { agentId, isLoading: agentIdLoading } = useAgentId();
 
     const { data: planetData, isLoading: planetLoading } = useSimulationQuery(
@@ -30,16 +32,16 @@ export default function CentralBankPage() {
 
     if (planetLoading || agentIdLoading) {
         return (
-            <Page title='Central Bank'>
-                <div className='text-sm text-muted-foreground'>Loading economy data…</div>
+            <Page title={t('title')}>
+                <div className='text-sm text-muted-foreground'>{t('loading')}</div>
             </Page>
         );
     }
 
     if (!economy || !agentId) {
         return (
-            <Page title='Central Bank'>
-                <div className='text-sm text-muted-foreground'>Planet or agent not found.</div>
+            <Page title={t('title')}>
+                <div className='text-sm text-muted-foreground'>{t('notFound')}</div>
             </Page>
         );
     }
@@ -47,7 +49,7 @@ export default function CentralBankPage() {
     const licenses = agentDetailData?.detail?.assets?.licenses;
 
     return (
-        <Page title='Central Bank'>
+        <Page title={t('title')}>
             <span className='flex flex-col gap-3'>
                 <Card>
                     <CardContent className='px-3 py-3 space-y-3'>

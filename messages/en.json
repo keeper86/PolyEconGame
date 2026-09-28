@@ -150,5 +150,38 @@
         "invalidOfferPrice": "Sell validation failed: Invalid offer price.",
         "depositBorrowPrefix": "You can borrow funds on the ",
         "depositBorrowLink": "Financial page"
+    },
+    "Common": {
+        "waitingForData": "Waiting for simulation data…",
+        "loading": "Loading…"
+    },
+    "Planets": {
+        "title": "Planets",
+        "previous": "Previous planet",
+        "next": "Next planet",
+        "population": "Population",
+        "gdp": "GDP",
+        "moneySupply": "Money Supply",
+        "bankEquity": "Bank Equity",
+        "interestRate": "Interest Rate",
+        "costOfLiving": "Cost of Living",
+        "wages": "Wages",
+        "availableResources": "Available Resources"
+    },
+    "Companies": {
+        "title": "Companies",
+        "allPlanets": "All planets",
+        "showFromAllPlanets": "Show from all planets",
+        "hideAutomated": "Hide automated",
+        "hideAutomatedAgents": "Hide automated agents",
+        "company": "Company",
+        "netWorth": "Net Worth",
+        "home": "Home",
+        "none": "No companies found."
+    },
+    "CentralBank": {
+        "title": "Central Bank",
+        "loading": "Loading economy data…",
+        "notFound": "Planet or agent not found."
     }
 }
