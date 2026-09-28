@@ -2,6 +2,7 @@ import type { useTranslations } from 'next-intl';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import type { TickerEventDetails } from '@/server/controller/simulation';
 import type { Locale } from './config';
+import { termFor } from './terms';
 
 export type EventTranslator = ReturnType<typeof useTranslations<'Events'>>;
 
@@ -20,7 +21,7 @@ const renderLoad = (load: ShipLoad, t: EventTranslator, locale: Locale): string 
             return t('load.cargoRange', {
                 current: formatNumberWithUnit(load.current, resourceFormToUnit(load.resourceForm), undefined, locale),
                 goal: formatNumberWithUnit(load.goal, resourceFormToUnit(load.resourceForm), undefined, locale),
-                resourceName: load.resourceName,
+                resourceName: termFor(locale, load.resourceName),
             });
         case 'construction':
             return t('load.construction');
@@ -41,26 +42,26 @@ export const renderTickerEventMessage = (
         case 'licenseAcquired':
             return t('licenseAcquired', {
                 agentName,
-                licenseType: details.licenseType,
+                licenseType: termFor(locale, details.licenseType),
                 planetName: details.planetName,
             });
         case 'facilityCompleted':
             return t('facilityCompleted', {
                 agentName,
-                facilityName: details.facilityName,
+                facilityName: termFor(locale, details.facilityName),
                 planetName: details.planetName,
             });
         case 'facilityScrapped':
             return t('facilityScrapped', {
                 agentName,
-                facilityName: details.facilityName,
+                facilityName: termFor(locale, details.facilityName),
                 planetName: details.planetName,
             });
         case 'shipCompleted':
             return t('shipCompleted', {
                 agentName,
                 shipName: details.shipName,
-                shipType: details.shipType,
+                shipType: termFor(locale, details.shipType),
                 planetName: details.planetName,
             });
         case 'shipDispatched':

@@ -61,7 +61,7 @@ describe('renderTickerEventMessage', () => {
         expect(message).toBe('Acme completed Iron Mine on Gune');
     });
 
-    it('renders the German wording', () => {
+    it('renders the German wording with translated terms', () => {
         const message = renderTickerEventMessage(
             { kind: 'facilityCompleted', planetName: 'Gune', facilityName: 'Iron Mine' },
             'Acme',
@@ -69,7 +69,7 @@ describe('renderTickerEventMessage', () => {
             'de',
         );
 
-        expect(message).toBe('Acme stellte Iron Mine auf Gune fertig');
+        expect(message).toBe('Acme stellte Eisenbergwerk auf Gune fertig');
     });
 
     it('formats the ship cargo with the active locale', () => {
