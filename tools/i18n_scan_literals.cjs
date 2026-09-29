@@ -77,7 +77,7 @@ const isExcluded = (rel) =>
     EXCLUDED_DIRS.some((dir) => rel.startsWith(dir)) ||
     [...DEBUG_FILES, ...KEY_REF_FILES].some((file) => rel.endsWith(file));
 
-const enMessages = JSON.parse(fs.readFileSync(path.join(root, 'messages/en.json'), 'utf8'));
+const enMessages = JSON.parse(fs.readFileSync(path.join(root, 'src/i18n/messages/en.json'), 'utf8'));
 const collectLeafKeys = (value, out) => {
     for (const [key, child] of Object.entries(value)) {
         if (typeof child === 'string') out.add(key);

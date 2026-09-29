@@ -80,6 +80,30 @@ export function extrapolateLive(previous: number | undefined, live: number, prog
     return previous * (1 - weight) + live;
 }
 
+export function monthsIntoBucket(tick: number, granularity: 'yearly' | 'decade'): number {
+    const { year, monthIndex, day } = tickToDate(tick);
+    const monthsBeforeBucket =
+        granularity === 'decade' ? (year - Math.floor(year / DECADE_YEARS) * DECADE_YEARS) * MONTHS_PER_YEAR : 0;
+    return monthsBeforeBucket + monthIndex + Math.min(1, Math.max(day, 0) / TICKS_PER_MONTH);
+}
+
+export function bucketAverageToDate(
+    previous: number | undefined,
+    liveMonthToDate: number,
+    tick: number,
+    granularity: 'yearly' | 'decade',
+): number {
+    const monthProgress = Math.min(1, Math.max(tickToDate(tick).day, 0) / TICKS_PER_MONTH);
+    const elapsed = monthsIntoBucket(tick, granularity);
+    if (previous === undefined) {
+        return monthProgress > 0 ? liveMonthToDate / monthProgress : liveMonthToDate;
+    }
+    if (elapsed <= 0) {
+        return previous;
+    }
+    return ((elapsed - monthProgress) * previous + liveMonthToDate) / elapsed;
+}
+
 export function yearCentre(bucket: number): number {
     return tickToDate(bucket).year + 0.5;
 }

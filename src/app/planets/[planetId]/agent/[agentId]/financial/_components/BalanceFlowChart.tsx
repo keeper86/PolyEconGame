@@ -6,6 +6,7 @@ import {
     DECADE_WINDOW,
     YEAR_WINDOW,
     blendLive,
+    bucketAverageToDate,
     bucketProgress,
     decadeStart,
     decadeWindowAxis,
@@ -175,7 +176,7 @@ export function BalanceFlowChart({
                 cashBalance: blendLive(previous?.cashBalance, liveRow.cashBalance, progress),
                 assetValue: blendLive(previous?.assetValue, liveRow.assetValue, progress),
                 netPosition: blendLive(previous?.netPosition, liveRow.netPosition, progress),
-                netIncome: blendLive(previous?.netIncome, liveRow.netIncome, progress),
+                netIncome: bucketAverageToDate(previous?.netIncome, liveRow.netIncome, live.tick, granularity),
             },
         ];
     }, [data, ghostData, granularity, live, liveRow]);

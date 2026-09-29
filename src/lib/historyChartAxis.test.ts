@@ -9,16 +9,19 @@ import {
     PREVIOUS_DECEMBER_IDX,
     YEAR_WINDOW,
     blendLive,
+    bucketAverageToDate,
     bucketProgress,
     decadeAxis,
     decadeCentre,
     decadeStart,
     decadeWindowAxis,
+    extrapolateLive,
     ghostMonthVisible,
     isLiveMonthPoint,
     monthAxis,
     monthCentre,
     monthEnd,
+    monthsIntoBucket,
     yearAxis,
     yearCentre,
     yearStart,
@@ -176,13 +179,22 @@ describe('historyChartAxis', () => {
         );
     });
 
-    it('retains the remaining share of the previous bucket and adds the live bucket', () => {
+    it('mixes the live value toward the previous value by the bucket progress', () => {
         expect(blendLive(undefined, 5, 0.3)).toBe(5);
-        expect(blendLive(10, 20, 0)).toBe(30);
-        expect(blendLive(10, 20, 0.5)).toBe(25);
+        expect(blendLive(10, 20, 0)).toBe(10);
+        expect(blendLive(10, 20, 0.5)).toBe(15);
         expect(blendLive(10, 20, 1)).toBe(20);
         expect(blendLive(10, 20, 2)).toBe(20);
-        expect(blendLive(10, 20, -1)).toBe(30);
+        expect(blendLive(10, 20, -1)).toBe(10);
+    });
+
+    it('retains the remaining share of the previous bucket and adds the live bucket', () => {
+        expect(extrapolateLive(undefined, 5, 0.3)).toBe(5);
+        expect(extrapolateLive(10, 20, 0)).toBe(30);
+        expect(extrapolateLive(10, 20, 0.5)).toBe(25);
+        expect(extrapolateLive(10, 20, 1)).toBe(20);
+        expect(extrapolateLive(10, 20, 2)).toBe(20);
+        expect(extrapolateLive(10, 20, -1)).toBe(30);
     });
 
     it('keeps a flat daily series flat instead of sagging mid-bucket', () => {
@@ -191,7 +203,38 @@ describe('historyChartAxis', () => {
         for (let day = 1; day <= TICKS_PER_MONTH; day++) {
             const live = day * perDay;
             const progress = bucketProgress(tickFor(START_YEAR, 0, day), 'monthly');
-            expect(blendLive(previous, live, progress)).toBeCloseTo(previous, 6);
+            expect(extrapolateLive(previous, live, progress)).toBeCloseTo(previous, 6);
+        }
+    });
+
+    it('counts the months elapsed since the start of the year or decade', () => {
+        expect(monthsIntoBucket(tickFor(START_YEAR + 1, 6, 1), 'yearly')).toBeCloseTo(6 + 1 / TICKS_PER_MONTH, 6);
+        expect(monthsIntoBucket(tickFor(START_YEAR + 5, 0, 1), 'decade')).toBeCloseTo(
+            5 * MONTHS_PER_YEAR + 1 / TICKS_PER_MONTH,
+            6,
+        );
+    });
+
+    it('averages the elapsed months with the live month instead of extrapolating a monthly accumulator over the bucket', () => {
+        expect(bucketAverageToDate(600, 1300, tickFor(START_YEAR + 1, 6, 1), 'yearly')).toBeCloseTo(
+            (6 * 600 + 1300) / (6 + 1 / TICKS_PER_MONTH),
+            6,
+        );
+        expect(bucketAverageToDate(10, 1300, tickFor(START_YEAR + 5, 0, 1), 'decade')).toBeCloseTo(
+            (5 * MONTHS_PER_YEAR * 10 + 1300) / (5 * MONTHS_PER_YEAR + 1 / TICKS_PER_MONTH),
+            6,
+        );
+    });
+
+    it('keeps a steady monthly rate flat on the yearly and decade axes', () => {
+        const perMonth = 100;
+        for (let month = 0; month < MONTHS_PER_YEAR; month++) {
+            for (const day of [1, 15, TICKS_PER_MONTH]) {
+                const tick = tickFor(START_YEAR + 1, month, day);
+                const monthToDate = (day * perMonth) / TICKS_PER_MONTH;
+                expect(bucketAverageToDate(perMonth, monthToDate, tick, 'yearly')).toBeCloseTo(perMonth, 6);
+                expect(bucketAverageToDate(perMonth, monthToDate, tick, 'decade')).toBeCloseTo(perMonth, 6);
+            }
         }
     });
 

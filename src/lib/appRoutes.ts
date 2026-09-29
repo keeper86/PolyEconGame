@@ -20,7 +20,7 @@ import { GoRocket } from 'react-icons/go';
 
 import type { Route } from 'nextjs-routes';
 import type { IconType } from 'react-icons';
-import type en from '../../messages/en.json';
+import type en from '../i18n/messages/en.json';
 
 export type NavLabel = keyof typeof en.Nav;
 

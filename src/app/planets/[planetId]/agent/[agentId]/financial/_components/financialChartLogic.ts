@@ -4,6 +4,7 @@ import { liveYearX } from '@/lib/chartTime';
 import {
     PREVIOUS_DECEMBER_IDX,
     blendLive,
+    bucketAverageToDate,
     bucketProgress,
     decadeCentre,
     extrapolateLive,
@@ -225,7 +226,6 @@ export function computeExpensesRevenueBuckets(
     }
 
     const previous = rows[rows.length - 1];
-    const progress = bucketProgress(live.tick, granularity);
     rows.push({
         xVal: liveYearX(live.tick),
         year: tickToDate(live.tick).year,
@@ -233,23 +233,33 @@ export function computeExpensesRevenueBuckets(
         revenue:
             scale === 'log' && live.avgMonthlyNetIncome <= 0
                 ? null
-                : blendLive(previous?.revenue ?? undefined, live.avgMonthlyNetIncome, progress),
+                : bucketAverageToDate(previous?.revenue ?? undefined, live.avgMonthlyNetIncome, live.tick, granularity),
         wages:
             scale === 'log' && live.avgWages <= 0
                 ? null
-                : blendLive(previous?.wages ?? undefined, live.avgWages, progress),
+                : bucketAverageToDate(previous?.wages ?? undefined, live.avgWages, live.tick, granularity),
         purchases:
             scale === 'log' && live.sumPurchases <= 0
                 ? null
-                : blendLive(previous?.purchases ?? undefined, live.sumPurchases, progress),
+                : bucketAverageToDate(previous?.purchases ?? undefined, live.sumPurchases, live.tick, granularity),
         claimPayments:
             scale === 'log' && live.sumClaimPayments <= 0
                 ? null
-                : blendLive(previous?.claimPayments ?? undefined, live.sumClaimPayments, progress),
+                : bucketAverageToDate(
+                      previous?.claimPayments ?? undefined,
+                      live.sumClaimPayments,
+                      live.tick,
+                      granularity,
+                  ),
         misc:
             scale === 'log' && live.sumInterestPaid + live.sumWealthTaxPaid <= 0
                 ? null
-                : blendLive(previous?.misc ?? undefined, live.sumInterestPaid + live.sumWealthTaxPaid, progress),
+                : bucketAverageToDate(
+                      previous?.misc ?? undefined,
+                      live.sumInterestPaid + live.sumWealthTaxPaid,
+                      live.tick,
+                      granularity,
+                  ),
         ghostRevenue: null,
         ghostWages: null,
         ghostPurchases: null,
