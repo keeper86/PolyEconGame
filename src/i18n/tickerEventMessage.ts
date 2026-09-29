@@ -41,31 +41,27 @@ export const renderTickerEventMessage = (
 ): string => {
     switch (details.kind) {
         case 'agentCreated':
-            return t('agentCreated', { agentName, planetName: details.planetName });
+            return t('agentCreated', { agentName });
         case 'licenseAcquired':
             return t('licenseAcquired', {
                 agentName,
                 licenseType: termFor(locale, details.licenseType),
-                planetName: details.planetName,
             });
         case 'facilityCompleted':
             return t('facilityCompleted', {
                 agentName,
                 facilityName: termFor(locale, details.facilityName),
-                planetName: details.planetName,
             });
         case 'facilityScrapped':
             return t('facilityScrapped', {
                 agentName,
                 facilityName: termFor(locale, details.facilityName),
-                planetName: details.planetName,
             });
         case 'shipCompleted':
             return t('shipCompleted', {
                 agentName,
                 shipName: details.shipName,
                 shipType: termFor(locale, details.shipType),
-                planetName: details.planetName,
             });
         case 'shipDispatched':
             return t('shipDispatched', {

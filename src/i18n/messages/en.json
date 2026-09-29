@@ -136,11 +136,11 @@
         "foundNewCompany": "Found a new company"
     },
     "Events": {
-        "agentCreated": "{agentName} founded on {planetName}",
-        "licenseAcquired": "{agentName} acquired {licenseType} license on {planetName}",
-        "facilityCompleted": "{agentName} completed {facilityName} on {planetName}",
-        "facilityScrapped": "{agentName} reduced {facilityName} on {planetName}",
-        "shipCompleted": "{agentName} completed {shipName} ({shipType}) on {planetName}",
+        "agentCreated": "{agentName} founded",
+        "licenseAcquired": "{agentName} acquired a {licenseType} license",
+        "facilityCompleted": "{agentName} completed {facilityName}",
+        "facilityScrapped": "{agentName} reduced {facilityName}",
+        "shipCompleted": "{agentName} completed {shipName} ({shipType})",
         "shipDispatched": "{agentName}'s {shipName} departed {from} → {to} ({load})",
         "shipArrived": "{agentName}'s {shipName} arrived at {to} from {from}",
         "companyDissolved": "{agentName} bankrupt; company dissolved",

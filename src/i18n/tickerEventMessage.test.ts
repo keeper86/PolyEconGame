@@ -64,7 +64,7 @@ describe('renderTickerEventMessage', () => {
             'en',
         );
 
-        expect(message).toBe('Acme completed Iron Mine on Gune');
+        expect(message).toBe('Acme completed Iron Mine');
     });
 
     it('renders the German wording with translated terms', () => {
@@ -75,7 +75,7 @@ describe('renderTickerEventMessage', () => {
             'de',
         );
 
-        expect(message).toBe('Acme stellte Eisenbergwerk auf Gune fertig');
+        expect(message).toBe('Acme stellte Eisenbergwerk fertig');
     });
 
     it('formats the ship cargo with the active locale', () => {

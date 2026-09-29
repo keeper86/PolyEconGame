@@ -1,7 +1,7 @@
 {
     "Errors": {
         "notLoggedIn": "Du musst angemeldet sein oder ein gültiges PAT angeben, um auf diese Ressource zuzugreifen.",
-        "notOwner": "Diese Firma gehört dir nicht",
+        "notOwner": "Diese Firma gehört Ihnen nicht",
         "workforceLicenseRequired": "Für Arbeitskräfteziele auf diesem Planeten ist eine aktive Arbeitskräfte-Lizenz erforderlich",
         "commercialLicenseRequired": "Für Verkaufsangebote auf diesem Planeten ist eine aktive Gewerbelizenz erforderlich",
         "unknownResource": "Unbekannte Ressource: {resourceName}",
@@ -10,9 +10,9 @@
         "agentNotFound": "Unternehmen nicht gefunden",
         "messageNotFound": "Nachricht nicht gefunden",
         "recipientNotFound": "Empfänger nicht gefunden",
-        "cannotMessageSelf": "Du kannst dir nicht selbst eine Nachricht senden",
-        "messageRateLimited": "Zu viele Nachrichten gesendet. Bitte warte einen Moment und versuche es erneut.",
-        "userAlreadyHasAgent": "Du hast bereits ein Unternehmen",
+        "cannotMessageSelf": "Sie können sich nicht selbst eine Nachricht senden",
+        "messageRateLimited": "Zu viele Nachrichten gesendet. Bitte warten Sie einen Moment und versuche es erneut.",
+        "userAlreadyHasAgent": "Sie haben bereits ein Unternehmen",
         "agentNameEmpty": "Der Firmenname darf nicht leer sein",
         "agentNameTooLong": "Der Firmenname darf höchstens 64 Zeichen lang sein",
         "agentNameInvalid": "Der Firmenname muss mindestens einen Buchstaben oder eine Ziffer enthalten",
@@ -136,16 +136,16 @@
         "foundNewCompany": "Neues Unternehmen gründen"
     },
     "Events": {
-        "agentCreated": "{agentName} gegründet auf {planetName}",
-        "licenseAcquired": "{agentName} erwarb eine Lizenz für {licenseType} auf {planetName}",
-        "facilityCompleted": "{agentName} stellte {facilityName} auf {planetName} fertig",
-        "facilityScrapped": "{agentName} baute {facilityName} auf {planetName} ab",
-        "shipCompleted": "{agentName} stellte {shipName} ({shipType}) auf {planetName} fertig",
+        "agentCreated": "{agentName} gegründet",
+        "licenseAcquired": "{agentName} erwarb eine Lizenz für {licenseType}",
+        "facilityCompleted": "{agentName} erweitert {facilityName}",
+        "facilityScrapped": "{agentName} verkleinerte {facilityName}",
+        "shipCompleted": "{agentName} stellte {shipName} ({shipType}) fertig",
         "shipDispatched": "{agentName}s {shipName} startete von {from} nach {to} ({load})",
         "shipArrived": "{agentName}s {shipName} erreichte {to} von {from}",
-        "companyDissolved": "{agentName} ist insolvent; das Unternehmen wurde aufgelöst",
-        "companyRefounded": "{agentName} ist insolvent; neu gegründet als {successorName}",
-        "companyRestructured": "{agentName} ist insolvent; als {successorName} unter Zwangsverwaltung umstrukturiert",
+        "companyDissolved": "{agentName} ist insolvent und aufgelöst",
+        "companyRefounded": "{agentName} ist insolvent und restrukturiert",
+        "companyRestructured": "{agentName} ist insolvent und unter Zwangsverwaltung gestellt",
         "load": {
             "empty": "leer",
             "cargo": "Ladung {quantity}",
@@ -508,12 +508,12 @@
         "resourceRaw": "Roh",
         "resourceRefined": "Veredelt",
         "resourceManufactured": "Gefertigt",
-        "resourceServices": "Dienste",
+        "resourceServices": "Dienstleistungen",
         "resourceCurrency": "Währung",
         "facilityRaw": "Rohstoffförderung",
         "facilityRefined": "Veredelung",
         "facilityManufactured": "Fertigung",
-        "facilityServices": "Dienste",
+        "facilityServices": "Dienstleistungen",
         "facilityInternal": "Intern"
     },
     "Ships": {
@@ -953,15 +953,15 @@
                     "title": "⏳ Geduld zahlt sich aus"
                 },
                 "10": {
-                    "content": "Dein Unternehmen braucht eine HR-Abteilung, um die Belegschaft zu verwalten. Die HR-Abteilung verbraucht Verwaltungsdienste und erzeugt Personalressourcen. Ohne sie sinkt die Produktivität deiner Arbeitskräfte drastisch. Klicke auf \"Bauen\", um den Bau zu beauftragen — das ist nötig, bevor du fortfahren kannst.",
+                    "content": "Dein Unternehmen braucht eine HR-Abteilung, um die Belegschaft zu verwalten. Die HR-Abteilung verbraucht VerwaltungsDienstleistungen und erzeugt Personalressourcen. Ohne sie sinkt die Produktivität deiner Arbeitskräfte drastisch. Klicke auf \"Bauen\", um den Bau zu beauftragen — das ist nötig, bevor du fortfahren kannst.",
                     "title": "🏢 HR-Abteilung bauen"
                 },
                 "11": {
-                    "content": "Der Bau deiner HR-Abteilung ist jetzt in der Warteschlange! Nach dem nächsten Tag erscheint sie als \"Im Bau\" und braucht ein paar Tage bis zur Fertigstellung. Die benötigten Verwaltungsdienste werden automatisch am Markt gekauft, sobald wir das eingerichtet haben.",
+                    "content": "Der Bau deiner HR-Abteilung ist jetzt in der Warteschlange! Nach dem nächsten Tag erscheint sie als \"Im Bau\" und braucht ein paar Tage bis zur Fertigstellung. Die benötigten VerwaltungsDienstleistungen werden automatisch am Markt gekauft, sobald wir das eingerichtet haben.",
                     "title": "✅ HR-Bau in der Warteschlange!"
                 },
                 "12": {
-                    "content": "Sobald sie aktiv ist, erzeugt die HR-Abteilung Personalressourcen aus Verwaltungsdiensten. Die Anzeige zeigt deinen HR-Puffer, und die Bilanzzeile zeigt Produktion − Bedarf → Puffer. Solange der Puffer deine Arbeitskräfte deckt, läuft die Produktivität bei 100 % — geht er zur Neige, sinkt die Produktivität und dein ganzes Unternehmen leidet.",
+                    "content": "Sobald sie aktiv ist, erzeugt die HR-Abteilung Personalressourcen aus VerwaltungsDienstleistungenn. Die Anzeige zeigt deinen HR-Puffer, und die Bilanzzeile zeigt Produktion − Bedarf → Puffer. Solange der Puffer deine Arbeitskräfte deckt, läuft die Produktivität bei 100 % — geht er zur Neige, sinkt die Produktivität und dein ganzes Unternehmen leidet.",
                     "title": "🏢 So funktioniert die HR-Abteilung"
                 },
                 "13": {
@@ -975,7 +975,7 @@
                     "title": "🏪 Marktübersicht"
                 },
                 "1": {
-                    "content": "Ressourcen sind nach Stufe gruppiert: Roh, Veredelt, Gefertigt, Dienste und Währung (Devisen). Bauleistungen findest du im Tab für Dienste. Klicke auf den Tab für Dienste, um sie zu finden.",
+                    "content": "Ressourcen sind nach Stufe gruppiert: Roh, Veredelt, Gefertigt, Dienstleistungen und Währung (Devisen). Bauleistungen findest du im Tab für Dienstleistungen. Klicke auf den Tab für Dienstleistungen, um sie zu finden.",
                     "title": "📂 Ressourcenstufen"
                 },
                 "2": {
@@ -999,7 +999,7 @@
                     "title": "🔍 Verwaltung aufklappen"
                 },
                 "7": {
-                    "content": "Aktiviere diesen Schalter, um den Kauf von Verwaltungsdiensten zu automatisieren. Deine Abteilungen brauchen sie jeden Tag — geht sie aus, werden HR und Lager langsamer. Wenn dein Unternehmen richtig groß wird, kann es sinnvoll sein, eine Grundmenge Verwaltung selbst über ein Verwaltungszentrum zu produzieren.",
+                    "content": "Aktiviere diesen Schalter, um den Kauf von VerwaltungsDienstleistungenn zu automatisieren. Deine Abteilungen brauchen sie jeden Tag — geht sie aus, werden HR und Lager langsamer. Wenn dein Unternehmen richtig groß wird, kann es sinnvoll sein, eine Grundmenge Verwaltung selbst über ein Verwaltungszentrum zu produzieren.",
                     "title": "🛒 Kauf für Verwaltung aktivieren"
                 },
                 "8": {
@@ -1007,15 +1007,15 @@
                     "title": "🔍 Logistik aufklappen"
                 },
                 "9": {
-                    "content": "Aktiviere diesen Schalter, um den Kauf von Logistikdiensten zu automatisieren. Ohne ausreichend Logistik hungert dein Lagerdurchsatz aus und Waren gehen verloren. Wenn dein Unternehmen richtig groß wird, kann es sinnvoll sein, eine Grundmenge Logistik selbst über einen Logistikknoten zu produzieren.",
+                    "content": "Aktiviere diesen Schalter, um den Kauf von LogistikDienstleistungenn zu automatisieren. Ohne ausreichend Logistik hungert dein Lagerdurchsatz aus und Waren gehen verloren. Wenn dein Unternehmen richtig groß wird, kann es sinnvoll sein, eine Grundmenge Logistik selbst über einen Logistikknoten zu produzieren.",
                     "title": "🛒 Kauf für Logistik aktivieren"
                 },
                 "10": {
-                    "content": "Wartung hält deine Anlagen in gutem Zustand. Jede Anlage verbraucht jeden Tag Wartungsdienste — ohne sie sinkt der Zustand und die Leistung fällt. Klicke auf die Zeile für Wartung, um sie aufzuklappen.",
+                    "content": "Wartung hält deine Anlagen in gutem Zustand. Jede Anlage verbraucht jeden Tag WartungsDienstleistungen — ohne sie sinkt der Zustand und die Leistung fällt. Klicke auf die Zeile für Wartung, um sie aufzuklappen.",
                     "title": "🔍 Wartung aufklappen"
                 },
                 "11": {
-                    "content": "Aktiviere diesen Schalter, um den Kauf von Wartungsdiensten zu automatisieren. Deine Anlagen brauchen sie jeden Tag, um gesund zu bleiben. Wenn dein Unternehmen richtig groß wird, kann es sinnvoll sein, eine Grundmenge Wartung selbst über eine Wartungsanlage zu produzieren.",
+                    "content": "Aktiviere diesen Schalter, um den Kauf von WartungsDienstleistungenn zu automatisieren. Deine Anlagen brauchen sie jeden Tag, um gesund zu bleiben. Wenn dein Unternehmen richtig groß wird, kann es sinnvoll sein, eine Grundmenge Wartung selbst über eine Wartungsanlage zu produzieren.",
                     "title": "🛒 Kauf für Wartung aktivieren"
                 },
                 "12": {
@@ -1041,7 +1041,7 @@
                     "title": "🏭 Produktionsanlagen"
                 },
                 "1": {
-                    "content": "Anlagen sind nach Stufe geordnet: Roh (Förderung), Veredelt (Verarbeitung), Gefertigt (Montage) und Dienste. Das Ölfeld ist eine Anlage zur Rohstoffförderung — die Zahl auf dem Badge zeigt, wie viele du von jedem Typ besitzt.",
+                    "content": "Anlagen sind nach Stufe geordnet: Roh (Förderung), Veredelt (Verarbeitung), Gefertigt (Montage) und Dienstleistungen. Das Ölfeld ist eine Anlage zur Rohstoffförderung — die Zahl auf dem Badge zeigt, wie viele du von jedem Typ besitzt.",
                     "title": "📂 Anlagenstufen"
                 },
                 "2": {
@@ -1109,11 +1109,11 @@
                     "title": "📁 Kapazität"
                 },
                 "2": {
-                    "content": "Die Lagerabteilung ist das Rückgrat deiner Logistik. Sie verbraucht Verwaltungs- und Logistikdienste und erzeugt den Lagerdurchsatz, der Güter in dein Lager hinein- und hinausbewegt. Die Anzeige zeigt deinen Lagerpuffer, und die Bilanzzeile zeigt Produktion − Bedarf → Puffer.",
+                    "content": "Die Lagerabteilung ist das Rückgrat deiner Logistik. Sie verbraucht Verwaltungs- und LogistikDienstleistungen und erzeugt den Lagerdurchsatz, der Güter in dein Lager hinein- und hinausbewegt. Die Anzeige zeigt deinen Lagerpuffer, und die Bilanzzeile zeigt Produktion − Bedarf → Puffer.",
                     "title": "🏢 Lagerabteilung"
                 },
                 "3": {
-                    "content": "Jede aktive Anlage hat eine Wartungszeile: Sie verbraucht Wartungsdienste, um ihren Zustand hoch zu halten. Wird zu wenig gewartet, sinkt der Zustand und die Anlage produziert weniger. Deshalb kaufen wir Wartung am Markt!",
+                    "content": "Jede aktive Anlage hat eine Wartungszeile: Sie verbraucht WartungsDienstleistungen, um ihren Zustand hoch zu halten. Wird zu wenig gewartet, sinkt der Zustand und die Anlage produziert weniger. Deshalb kaufen wir Wartung am Markt!",
                     "title": "🔧 Wartungszeile"
                 },
                 "4": {
@@ -1418,8 +1418,8 @@
         "statusStable": "Stabil",
         "statusStrained": "Angespannt",
         "statusCritical": "Kritisch",
-        "statusOptimalTooltip": "HR-Dienste laufen reibungslos ({percent}% Effizienz)",
-        "statusStableTooltip": "HR-Dienste vollständig abgedeckt ({percent}% Effizienz)",
+        "statusOptimalTooltip": "HR-Dienstleistungen laufen reibungslos ({percent}% Effizienz)",
+        "statusStableTooltip": "HR-Dienstleistungen vollständig abgedeckt ({percent}% Effizienz)",
         "statusStrainedTooltip": "HR-Defizit! Arbeitsproduktivität auf {percent}% reduziert",
         "statusCriticalTooltip": "Schwerer HR-Ausfall! Arbeitsproduktivität auf {percent}% gefallen",
         "target": "Ziel",

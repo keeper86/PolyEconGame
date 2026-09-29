@@ -8,6 +8,7 @@ import type { TickerEvent } from '@/server/controller/simulation';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Maximize, Minimize } from 'lucide-react';
 import { mapTickToDate } from '@/components/client/TickDisplay';
+import { PlanetIcon } from '@/components/client/PlanetIcon';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { useLocale, useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
@@ -15,6 +16,8 @@ import { useParams } from 'next/navigation';
 const MAX_LOCAL_EVENTS = 60;
 const GAP_PX = 48;
 const BASE_SPEED_PX_PER_SEC = 80;
+const PLANET_ICON_SIZE_PX = 32;
+const PLANET_ICON_ALLOWANCE_PX = PLANET_ICON_SIZE_PX + 6;
 
 const RENDER_LAG_ESTIMATE_MS = 16;
 const MAX_SPEED_PX_PER_SEC = 240;
@@ -138,14 +141,14 @@ export default function Footer() {
         return () => observer.disconnect();
     }, []);
 
-    const measureTextWidth = useCallback((dateStr: string, message: string) => {
+    const measureTextWidth = useCallback((dateStr: string, message: string, extraPx: number) => {
         const span = measureRef.current;
         if (!span) {
-            return 100;
+            return 100 + extraPx;
         }
         span.textContent = `${dateStr} ${message}`;
 
-        return span.offsetWidth + 6;
+        return span.offsetWidth + 6 + extraPx;
     }, []);
 
     const findNextEvent = useCallback((): TickerEvent | undefined => {
@@ -188,7 +191,7 @@ export default function Footer() {
 
         const dateStr = mapTickToDate(nextEvent.tick, false, locale);
         const message = renderTickerEventMessage(nextEvent.details, nextEvent.agentName ?? '', tEvents, locale);
-        const width = measureTextWidth(dateStr, message);
+        const width = measureTextWidth(dateStr, message, PLANET_ICON_ALLOWANCE_PX);
         const containerWidth = containerWidthRef.current;
         const speed = speedRef.current;
         const prevSpeed = lastSpawnSpeedRef.current;
@@ -284,11 +287,20 @@ export default function Footer() {
                             onAnimationEnd={() => setDisplayedEvents((prev) => prev.filter((e) => e.id !== id))}
                         >
                             <span className='inline-flex items-center gap-1.5 text-md select-none'>
-                                <span className={cn('text-muted-foreground text-xs', textColor(event.category))}>
-                                    {mapTickToDate(event.tick, false, locale)}
-                                </span>
-                                <span className='text-foreground/90'>
-                                    {renderTickerEventMessage(event.details, event.agentName ?? '', tEvents, locale)}
+                                <PlanetIcon planetId={event.planetId} size={PLANET_ICON_SIZE_PX} />
+                                <span className='flex flex-col flex-start'>
+                                    <span className={cn('text-muted-foreground text-xs', textColor(event.category))}>
+                                        {mapTickToDate(event.tick, false, locale)}
+                                    </span>
+
+                                    <span className='text-foreground/90'>
+                                        {renderTickerEventMessage(
+                                            event.details,
+                                            event.agentName ?? '',
+                                            tEvents,
+                                            locale,
+                                        )}
+                                    </span>
                                 </span>
                             </span>
                         </div>

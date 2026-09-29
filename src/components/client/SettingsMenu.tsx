@@ -1,7 +1,7 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import { Check, Globe, Monitor, Moon, Settings, Sun } from 'lucide-react';
+import { Check, Monitor, Moon, Settings, Sun } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { useTransition } from 'react';
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { setLocale } from '@/i18n/actions';
 import { locales, type Locale } from '@/i18n/config';
+import { LocaleFlag } from './LocaleFlag';
 
 type ThemeName = 'light' | 'dark' | 'system';
 
@@ -57,7 +58,7 @@ export function SettingsMenu() {
                 <DropdownMenuLabel>{t('language')}</DropdownMenuLabel>
                 {locales.map((locale) => (
                     <DropdownMenuItem key={locale} onClick={() => changeLocale(locale)}>
-                        <Globe />
+                        <LocaleFlag locale={locale} />
                         {t(locale)}
                         {locale === activeLocale ? <Check className='ml-auto' /> : null}
                     </DropdownMenuItem>
