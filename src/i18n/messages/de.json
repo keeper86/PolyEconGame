@@ -144,8 +144,8 @@
         "shipDispatched": "{agentName}s {shipName} startete von {from} nach {to} ({load})",
         "shipArrived": "{agentName}s {shipName} erreichte {to} von {from}",
         "companyDissolved": "{agentName} ist insolvent und aufgelöst",
-        "companyRefounded": "{agentName} ist insolvent und restrukturiert",
-        "companyRestructured": "{agentName} ist insolvent und unter Zwangsverwaltung gestellt",
+        "companyRefounded": "{agentName} ist insolvent und wurde als {successorName} neu gegründet",
+        "companyRestructured": "{agentName} ist insolvent und wurde als {successorName} unter Zwangsverwaltung neu aufgestellt",
         "load": {
             "empty": "leer",
             "cargo": "Ladung {quantity}",

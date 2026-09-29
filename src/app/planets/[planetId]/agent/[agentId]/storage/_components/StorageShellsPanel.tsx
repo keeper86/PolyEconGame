@@ -44,7 +44,7 @@ function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.Reac
     const held = Object.entries(shell.currentInStorage);
 
     return (
-        <div className='flex flex-col gap-2 py-2'>
+        <div className='flex flex-col gap-2 py-2' data-tour='storage-capacity'>
             <div className='space-y-1'>
                 <div className='flex flex-row items-center justify-between text-xs text-muted-foreground'>
                     <span>{tr('volumeUsed')}</span>

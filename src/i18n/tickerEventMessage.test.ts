@@ -75,7 +75,7 @@ describe('renderTickerEventMessage', () => {
             'de',
         );
 
-        expect(message).toBe('Acme stellte Eisenbergwerk fertig');
+        expect(message).toBe('Acme erweitert Eisenbergwerk');
     });
 
     it('formats the ship cargo with the active locale', () => {

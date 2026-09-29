@@ -114,7 +114,16 @@ export function TourJoyride() {
 
         const timeoutMs = (stepData.timeoutMs as number) ?? 30000;
         const timeoutId = setTimeout(() => {
-            setTargetsReady(true);
+            if (document.querySelector(targetSelector)) {
+                setTargetsReady(true);
+                return;
+            }
+            const nextIndex = currentStepIndex + 1;
+            if (nextIndex >= steps.length) {
+                completeTour();
+            } else {
+                setCurrentStepIndex(nextIndex);
+            }
         }, timeoutMs);
 
         const observer = new MutationObserver(() => {
@@ -131,7 +140,7 @@ export function TourJoyride() {
             observer.disconnect();
             clearTimeout(timeoutId);
         };
-    }, [isTourActive, steps, currentStepIndex, setCurrentStepIndex]);
+    }, [isTourActive, steps, currentStepIndex, setCurrentStepIndex, completeTour]);
 
     const handleGuardForceLeave = useCallback(() => {
         completeTour();

@@ -31,7 +31,7 @@ describe('useErrorMessage', () => {
     it('renders a domain error packet in German', () => {
         const { result } = renderHook(() => useErrorMessage(), { wrapper: wrapper('de') });
 
-        expect(result.current(domainError('notOwner'))).toBe('Diese Firma gehört dir nicht');
+        expect(result.current(domainError('notOwner'))).toBe('Diese Firma gehört Ihnen nicht');
     });
 
     it('interpolates domain error params', () => {

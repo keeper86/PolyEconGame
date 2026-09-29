@@ -258,7 +258,7 @@ export function ExpensesRevenueChart({
                         <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />
                         <Area
                             type='monotone'
-                            dataKey='wages'
+                            dataKey={t('wages')}
                             stroke='#ef4444'
                             strokeWidth={1.5}
                             fill='url(#gradWages)'
@@ -269,7 +269,7 @@ export function ExpensesRevenueChart({
                         />
                         <Area
                             type='monotone'
-                            dataKey='purchases'
+                            dataKey={t('purchases')}
                             stroke='#f59e0b'
                             strokeWidth={1.5}
                             fill='url(#gradPurchases)'
@@ -280,7 +280,7 @@ export function ExpensesRevenueChart({
                         />
                         <Area
                             type='monotone'
-                            dataKey='claims'
+                            dataKey={t('claims')}
                             stroke='#8b5cf6'
                             strokeWidth={1.5}
                             fill='url(#gradClaims)'
@@ -303,7 +303,7 @@ export function ExpensesRevenueChart({
                         />
                         <Area
                             type='monotone'
-                            dataKey='revenue'
+                            dataKey={t('revenue')}
                             stroke='#10b981'
                             strokeWidth={2}
                             fill='url(#gradRevenue)'
