@@ -9,6 +9,10 @@ export const LOCALE_COOKIE = 'locale';
 export const isLocale = (value: unknown): value is Locale =>
     typeof value === 'string' && (locales as readonly string[]).includes(value);
 
+export type LocaleSetting = Locale | 'system';
+
+export const isLocaleSetting = (value: unknown): value is LocaleSetting => value === 'system' || isLocale(value);
+
 const matchLocale = (tag: string): Locale | undefined => {
     const normalized = tag.trim().toLowerCase();
     return locales.find((locale) => normalized === locale || normalized.startsWith(`${locale}-`));
@@ -37,6 +41,8 @@ export const resolveLocale = (cookieValue: unknown, acceptLanguage: string | nul
     }
     return parseAcceptLanguage(acceptLanguage) ?? defaultLocale;
 };
+
+export const explicitLocale = (cookieValue: unknown): Locale | null => (isLocale(cookieValue) ? cookieValue : null);
 
 export const getDecimalSeparator = (locale: Locale): string =>
     new Intl.NumberFormat(locale).format(1.5).replace(/\d/g, '');

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { defaultLocale, getDecimalSeparator, isLocale, parseAcceptLanguage, resolveLocale } from './config';
+import {
+    defaultLocale,
+    explicitLocale,
+    getDecimalSeparator,
+    isLocale,
+    isLocaleSetting,
+    parseAcceptLanguage,
+    resolveLocale,
+} from './config';
 
 describe('getDecimalSeparator', () => {
     it('returns a comma for German', () => {
@@ -22,6 +30,32 @@ describe('isLocale', () => {
         expect(isLocale(undefined)).toBe(false);
         expect(isLocale(42)).toBe(false);
         expect(isLocale('EN')).toBe(false);
+    });
+});
+
+describe('isLocaleSetting', () => {
+    it('accepts the system setting and supported locales', () => {
+        expect(isLocaleSetting('system')).toBe(true);
+        expect(isLocaleSetting('en')).toBe(true);
+        expect(isLocaleSetting('de')).toBe(true);
+    });
+
+    it('rejects anything else', () => {
+        expect(isLocaleSetting('fr')).toBe(false);
+        expect(isLocaleSetting(undefined)).toBe(false);
+        expect(isLocaleSetting(42)).toBe(false);
+    });
+});
+
+describe('explicitLocale', () => {
+    it('returns the locale for a valid cookie value', () => {
+        expect(explicitLocale('de')).toBe('de');
+    });
+
+    it('returns null when no explicit locale is stored', () => {
+        expect(explicitLocale(undefined)).toBeNull();
+        expect(explicitLocale('system')).toBeNull();
+        expect(explicitLocale('fr')).toBeNull();
     });
 });
 
@@ -50,6 +84,10 @@ describe('resolveLocale', () => {
 
     it('ignores an invalid cookie value and falls back to the header', () => {
         expect(resolveLocale('fr', 'de-DE,de;q=0.9')).toBe('de');
+    });
+
+    it('treats the system setting as no preference and follows the header', () => {
+        expect(resolveLocale('system', 'de-DE,de;q=0.9')).toBe('de');
     });
 
     it('falls back to the default locale', () => {

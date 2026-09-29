@@ -10,7 +10,9 @@ import ThemeWrapper from '@/components/themeWrapper';
 import { TourJoyride } from '@/components/tour/TourJoyride';
 import BackToTopButton from '@/components/ui/BackToTopButton';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { explicitLocale, LOCALE_COOKIE } from '@/i18n/config';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { getServerSession } from 'next-auth';
@@ -48,6 +50,8 @@ export default async function RootLayout({
 }>) {
     const session = await getServerSession(authOptions);
     const locale = await getLocale();
+    const cookieStore = await cookies();
+    const preferredLocale = explicitLocale(cookieStore.get(LOCALE_COOKIE)?.value);
 
     return (
         <html lang={locale} suppressHydrationWarning>
@@ -70,7 +74,7 @@ export default async function RootLayout({
 
                                                 <TickDisplay />
 
-                                                <SettingsMenu />
+                                                <SettingsMenu explicitLocale={preferredLocale} />
                                             </div>
                                         </header>
                                         <main className='flex-1 p-2 sm:p-4 overflow-y-auto overflow-x-hidden break-words'>

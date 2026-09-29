@@ -2,7 +2,7 @@
 
 import type { LucideIcon } from 'lucide-react';
 import { Check, Monitor, Moon, Settings, Sun } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { useTransition } from 'react';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { setLocale } from '@/i18n/actions';
-import { locales, type Locale } from '@/i18n/config';
+import { locales, type Locale, type LocaleSetting } from '@/i18n/config';
 import { LocaleFlag } from './LocaleFlag';
 
 type ThemeName = 'light' | 'dark' | 'system';
@@ -26,13 +26,12 @@ const THEMES: { name: ThemeName; icon: LucideIcon }[] = [
     { name: 'system', icon: Monitor },
 ];
 
-export function SettingsMenu() {
+export function SettingsMenu({ explicitLocale }: { explicitLocale: Locale | null }) {
     const t = useTranslations('Settings');
     const { theme, setTheme } = useTheme();
-    const activeLocale = useLocale();
     const [isPending, startTransition] = useTransition();
 
-    const changeLocale = (locale: Locale) => {
+    const changeLocale = (locale: LocaleSetting) => {
         startTransition(async () => {
             await setLocale(locale);
         });
@@ -60,9 +59,14 @@ export function SettingsMenu() {
                     <DropdownMenuItem key={locale} onClick={() => changeLocale(locale)}>
                         <LocaleFlag locale={locale} />
                         {t(locale)}
-                        {locale === activeLocale ? <Check className='ml-auto' /> : null}
+                        {explicitLocale === locale ? <Check className='ml-auto' /> : null}
                     </DropdownMenuItem>
                 ))}
+                <DropdownMenuItem onClick={() => changeLocale('system')}>
+                    <Monitor />
+                    {t('system')}
+                    {explicitLocale === null ? <Check className='ml-auto' /> : null}
+                </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
     );
