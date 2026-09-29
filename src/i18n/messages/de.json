@@ -136,20 +136,20 @@
         "foundNewCompany": "Neues Unternehmen gründen"
     },
     "Events": {
-        "agentCreated": "{agentName} gegründet",
-        "licenseAcquired": "{agentName} erwarb eine Lizenz für {licenseType}",
-        "facilityCompleted": "{agentName} erweitert {facilityName}",
-        "facilityScrapped": "{agentName} verkleinerte {facilityName}",
-        "shipCompleted": "{agentName} stellte {shipName} ({shipType}) fertig",
-        "shipDispatched": "{agentName}s {shipName} startete von {from} nach {to} ({load})",
-        "shipArrived": "{agentName}s {shipName} erreichte {to} von {from}",
-        "companyDissolved": "{agentName} ist insolvent und aufgelöst",
-        "companyRefounded": "{agentName} ist insolvent und wurde als {successorName} neu gegründet",
-        "companyRestructured": "{agentName} ist insolvent und wurde als {successorName} unter Zwangsverwaltung neu aufgestellt",
+        "agentCreated": "<entity>{agentName}</entity> gegründet",
+        "licenseAcquired": "<entity>{agentName}</entity> erwarb eine Lizenz für <entity>{licenseType}</entity>",
+        "facilityCompleted": "<entity>{agentName}</entity> erweitert <entity>{facilityName}</entity>",
+        "facilityScrapped": "<entity>{agentName}</entity> verkleinerte <entity>{facilityName}</entity>",
+        "shipCompleted": "<entity>{agentName}</entity> stellte <entity>{shipName}</entity> (<entity>{shipType}</entity>) fertig",
+        "shipDispatched": "<entity>{agentName}</entity>s <entity>{shipName}</entity> startete von <entity>{from}</entity> nach <entity>{to}</entity> (<entity>{load}</entity>)",
+        "shipArrived": "<entity>{agentName}</entity>s <entity>{shipName}</entity> erreichte <entity>{to}</entity> von <entity>{from}</entity>",
+        "companyDissolved": "<entity>{agentName}</entity> ist insolvent und aufgelöst",
+        "companyRefounded": "<entity>{agentName}</entity> ist insolvent und wurde als <entity>{successorName}</entity> neu gegründet",
+        "companyRestructured": "<entity>{agentName}</entity> ist insolvent und wurde als <entity>{successorName}</entity> unter Zwangsverwaltung neu aufgestellt",
         "load": {
             "empty": "leer",
-            "cargo": "Ladung {quantity}",
-            "cargoRange": "Ladung {current}/{goal} {resourceName}",
+            "cargo": "Ladung <entity>{quantity}</entity>",
+            "cargoRange": "Ladung <entity>{current}</entity>/<entity>{goal}</entity> <entity>{resourceName}</entity>",
             "construction": "Bau",
             "passenger": "Passagiere"
         }

@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { renderTickerEventMessage } from '@/i18n/tickerEventMessage';
+import { renderTickerEvent, tickerEventText } from '@/i18n/tickerEventMessage';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { TickerEvent } from '@/server/controller/simulation';
@@ -190,7 +190,9 @@ export default function Footer() {
         }
 
         const dateStr = mapTickToDate(nextEvent.tick, false, locale);
-        const message = renderTickerEventMessage(nextEvent.details, nextEvent.agentName ?? '', tEvents, locale);
+        const message = tickerEventText(
+            renderTickerEvent(nextEvent.details, nextEvent.agentName ?? '', tEvents, locale),
+        );
         const width = measureTextWidth(dateStr, message, PLANET_ICON_ALLOWANCE_PX);
         const containerWidth = containerWidthRef.current;
         const speed = speedRef.current;
@@ -288,18 +290,11 @@ export default function Footer() {
                         >
                             <span className='inline-flex items-center gap-1.5 text-md select-none'>
                                 <PlanetIcon planetId={event.planetId} size={PLANET_ICON_SIZE_PX} />
-                                <span className='flex flex-col flex-start'>
-                                    <span className={cn('text-muted-foreground text-xs', textColor(event.category))}>
-                                        {mapTickToDate(event.tick, false, locale)}
-                                    </span>
+                                <span className='flex flex-col flex-start text-muted-foreground text-xs'>
+                                    <span>{mapTickToDate(event.tick, false, locale)}</span>
 
-                                    <span className='text-foreground/90'>
-                                        {renderTickerEventMessage(
-                                            event.details,
-                                            event.agentName ?? '',
-                                            tEvents,
-                                            locale,
-                                        )}
+                                    <span className={cn('text-sm', textColor(event.category))}>
+                                        {renderTickerEvent(event.details, event.agentName ?? '', tEvents, locale)}
                                     </span>
                                 </span>
                             </span>

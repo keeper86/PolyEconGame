@@ -136,20 +136,20 @@
         "foundNewCompany": "Found a new company"
     },
     "Events": {
-        "agentCreated": "{agentName} founded",
-        "licenseAcquired": "{agentName} acquired a {licenseType} license",
-        "facilityCompleted": "{agentName} completed {facilityName}",
-        "facilityScrapped": "{agentName} reduced {facilityName}",
-        "shipCompleted": "{agentName} completed {shipName} ({shipType})",
-        "shipDispatched": "{agentName}'s {shipName} departed {from} → {to} ({load})",
-        "shipArrived": "{agentName}'s {shipName} arrived at {to} from {from}",
-        "companyDissolved": "{agentName} bankrupt; company dissolved",
-        "companyRefounded": "{agentName} bankrupt; refounded as {successorName}",
-        "companyRestructured": "{agentName} bankrupt; restructured as {successorName} under automated administration",
+        "agentCreated": "<entity>{agentName}</entity> founded",
+        "licenseAcquired": "<entity>{agentName}</entity> acquired a <entity>{licenseType}</entity> license",
+        "facilityCompleted": "<entity>{agentName}</entity> completed <entity>{facilityName}</entity>",
+        "facilityScrapped": "<entity>{agentName}</entity> reduced <entity>{facilityName}</entity>",
+        "shipCompleted": "<entity>{agentName}</entity> completed <entity>{shipName}</entity> (<entity>{shipType}</entity>)",
+        "shipDispatched": "<entity>{agentName}</entity>'s <entity>{shipName}</entity> departed <entity>{from}</entity> → <entity>{to}</entity> (<entity>{load}</entity>)",
+        "shipArrived": "<entity>{agentName}</entity>'s <entity>{shipName}</entity> arrived at <entity>{to}</entity> from <entity>{from}</entity>",
+        "companyDissolved": "<entity>{agentName}</entity> bankrupt; company dissolved",
+        "companyRefounded": "<entity>{agentName}</entity> bankrupt; refounded as <entity>{successorName}</entity>",
+        "companyRestructured": "<entity>{agentName}</entity> bankrupt; restructured as <entity>{successorName}</entity> under automated administration",
         "load": {
             "empty": "empty",
-            "cargo": "cargo {quantity}",
-            "cargoRange": "cargo {current}/{goal} {resourceName}",
+            "cargo": "cargo <entity>{quantity}</entity>",
+            "cargoRange": "cargo <entity>{current}</entity>/<entity>{goal}</entity> <entity>{resourceName}</entity>",
             "construction": "construction",
             "passenger": "passenger"
         }
