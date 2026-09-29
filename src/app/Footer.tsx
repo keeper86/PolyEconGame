@@ -5,10 +5,11 @@ import { renderTickerEvent, tickerEventText } from '@/i18n/tickerEventMessage';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { TickerEvent } from '@/server/controller/simulation';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Maximize, Minimize } from 'lucide-react';
 import { mapTickToDate } from '@/components/client/TickDisplay';
 import { PlanetIcon } from '@/components/client/PlanetIcon';
+import { CompanyLogo } from '@/components/client/CompanyLogo';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { useLocale, useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
@@ -18,6 +19,8 @@ const GAP_PX = 48;
 const BASE_SPEED_PX_PER_SEC = 80;
 const PLANET_ICON_SIZE_PX = 32;
 const PLANET_ICON_ALLOWANCE_PX = PLANET_ICON_SIZE_PX + 6;
+const COMPANY_LOGO_SIZE_PX = 32;
+const COMPANY_LOGO_ALLOWANCE_PX = COMPANY_LOGO_SIZE_PX + 4;
 
 const RENDER_LAG_ESTIMATE_MS = 16;
 const MAX_SPEED_PX_PER_SEC = 240;
@@ -86,6 +89,12 @@ export default function Footer() {
     const { data } = useSimulationQuery({
         ...trpc.simulation.getTickerEvents.queryOptions({ lastSeenId }),
     });
+
+    const { data: logoData } = useSimulationQuery({
+        ...trpc.simulation.getAgentLogos.queryOptions(),
+    });
+
+    const companyLogos = useMemo(() => new Map(Object.entries(logoData?.logos ?? {})), [logoData]);
 
     useEffect(() => {
         const newEvents =
@@ -193,7 +202,7 @@ export default function Footer() {
         const message = tickerEventText(
             renderTickerEvent(nextEvent.details, nextEvent.agentName ?? '', tEvents, locale),
         );
-        const width = measureTextWidth(dateStr, message, PLANET_ICON_ALLOWANCE_PX);
+        const width = measureTextWidth(dateStr, message, PLANET_ICON_ALLOWANCE_PX + COMPANY_LOGO_ALLOWANCE_PX);
         const containerWidth = containerWidthRef.current;
         const speed = speedRef.current;
         const prevSpeed = lastSpawnSpeedRef.current;
@@ -290,6 +299,15 @@ export default function Footer() {
                         >
                             <span className='inline-flex items-center gap-1.5 text-md select-none'>
                                 <PlanetIcon planetId={event.planetId} size={PLANET_ICON_SIZE_PX} />
+                                <CompanyLogo
+                                    logoKey={
+                                        event.agentId && companyLogos.has(event.agentId)
+                                            ? companyLogos.get(event.agentId)!
+                                            : ''
+                                    }
+                                    size={COMPANY_LOGO_SIZE_PX}
+                                    className='align-middle mr-1'
+                                />
                                 <span className='flex flex-col flex-start text-muted-foreground text-xs'>
                                     <span>{mapTickToDate(event.tick, false, locale)}</span>
 

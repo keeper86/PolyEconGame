@@ -31,4 +31,15 @@ describe('simulation tRPC controller', () => {
 
         expect(result).toEqual({ hrProductivityMultiplier: 1, storageStarvation: 1 });
     });
+
+    it('getAgentLogos returns an agent id to logo map', async () => {
+        const caller = getCaller();
+        const result = await caller.simulation.getAgentLogos();
+
+        expect(result).toBeDefined();
+        expect(typeof result.logos).toBe('object');
+        for (const logo of Object.values(result.logos)) {
+            expect(typeof logo).toBe('string');
+        }
+    });
 });

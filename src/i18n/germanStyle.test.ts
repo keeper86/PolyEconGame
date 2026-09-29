@@ -26,7 +26,7 @@ const INFORMAL_IMPERATIVE =
     /\b(Sende|Klicke|Wähle|Nutze|Behalte|Verfolge|Erweitere|Lass|Sieh|Schau|Aktiviere|Starte|Baue|Gib|Klappe|Verbessere|Erhöhe|Senke|Steigere|Hab|Sorge|Plane|Arbeite|Beginne|Experimentiere|Erforsche|Kaufe|Verkaufe|Reinvestiere|Verwalte|Zahle|Warte|Öffne|Sortiere|Kopiere|Bestätige|Deaktiviere|Vergleiche|Prüfe|Melde|Setze|Lade|Registriere|Entferne)\b/;
 
 const RETIRED_TERMS =
-    /\bSkalierung\b|\bEinsätze\b|\bListung\b|gelistet|\bNettoeinkommen\b|\bKassenbestand\b|\bKassabestand\b|\bNettoposition\b|\bZwangsverwaltung\b|\bbankrott\b|\bAnhaltung\b|\bProduktauflösung\b|\bUmpositionierung\b|\bLeerlauf\b|\bAusgaben\b|\bLandansprüche?\b|\bAnspruch\b|\bBankkapital\b|Dienstleistungenn|VerwaltungsDienst|LogistikDienst|WartungsDienst/;
+    /\bSkalierung\b|\bEinsätze\b|\bListung\b|gelistet|\bNettoeinkommen\b|\bKassenbestand\b|\bKassabestand\b|\bNettofinanzposition\b|\bBetriebsgröße\b|\bZwangsverwaltung\b|\bbankrott\b|\bAnhaltung\b|\bProduktauflösung\b|\bUmpositionierung\b|\bLeerlauf\b|\bAusgaben\b|\bLandansprüche?\b|\bAnspruch\b|\bBankkapital\b|Dienstleistungenn|VerwaltungsDienst|LogistikDienst|WartungsDienst/;
 
 describe('German message style', () => {
     it('addresses the player formally with Sie', () => {

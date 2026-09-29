@@ -2,7 +2,7 @@
     "Errors": {
         "notLoggedIn": "Sie müssen angemeldet sein oder ein gültiges PAT angeben, um auf diese Ressource zuzugreifen.",
         "notOwner": "Dieses Unternehmen gehört Ihnen nicht",
-        "workforceLicenseRequired": "Für Arbeitskräfteziele auf diesem Planeten ist eine aktive Arbeitskräfte-Lizenz erforderlich",
+        "workforceLicenseRequired": "Für Personalziele auf diesem Planeten ist eine aktive Personal-Lizenz erforderlich",
         "commercialLicenseRequired": "Für Verkaufsangebote auf diesem Planeten ist eine aktive Gewerbelizenz erforderlich",
         "unknownResource": "Unbekannte Ressource: {resourceName}",
         "unexpected": "Ein unerwarteter Fehler ist aufgetreten",
@@ -24,8 +24,8 @@
         "noBankruptcyRecord": "Kein Insolvenzdatensatz gefunden",
         "agentHasNoAssets": "Das Unternehmen hat keine Anlagen auf diesem Planeten",
         "commercialBuyLicenseRequired": "Für Kaufgebote auf diesem Planeten ist eine aktive Gewerbelizenz erforderlich",
-        "workforceBuildLicenseRequired": "Für den Bau von Anlagen auf diesem Planeten ist eine aktive Arbeitskräfte-Lizenz erforderlich",
-        "workforceExpandLicenseRequired": "Für den Ausbau von Anlagen auf diesem Planeten ist eine aktive Arbeitskräfte-Lizenz erforderlich",
+        "workforceBuildLicenseRequired": "Für den Bau von Anlagen auf diesem Planeten ist eine aktive Personal-Lizenz erforderlich",
+        "workforceExpandLicenseRequired": "Für den Ausbau von Anlagen auf diesem Planeten ist eine aktive Personal-Lizenz erforderlich",
         "invalidResourceName": "Ungültiger Ressourcenname",
         "invalidResourceNameInCargoGoal": "Ungültiger Ressourcenname im Frachtziel",
         "avatarPngFile": "Bitte laden Sie eine PNG-Bilddatei hoch",
@@ -178,7 +178,7 @@
         "Simulation Model": "Simulationsmodell",
         "Supply Chain Simulator": "Lieferketten-Simulator",
         "Finances": "Finanzen",
-        "Workforce": "Arbeitskräfte",
+        "Workforce": "Personal",
         "Production": "Produktion",
         "Storage": "Lager",
         "Market": "Markt",
@@ -246,14 +246,14 @@
         "constructionResumed": "Bau fortgesetzt.",
         "expansionOrdered": "Ausbau in Auftrag gegeben. Änderungen wirken beim nächsten Tick.",
         "capacityReductionOrdered": "Kapazitätsreduzierung in Auftrag gegeben. Änderungen wirken beim nächsten Tick.",
-        "scaleUpdated": "Betriebsgröße aktualisiert. Änderungen wirken beim nächsten Tick.",
+        "scaleUpdated": "Größe aktualisiert. Änderungen wirken beim nächsten Tick.",
         "shipyardOrdered": "Bau der Werft in Auftrag gegeben. Änderungen wirken am nächsten Tag.",
         "shipyardNameRequired": "Bitte geben Sie einen Werftnamen ein",
         "buildFailed": "Bau fehlgeschlagen",
         "cancelFailed": "Abbruch fehlgeschlagen",
         "suspensionChangeFailed": "Änderung der Pausierung fehlgeschlagen",
         "expandFailed": "Ausbau fehlgeschlagen",
-        "scaleChangeFailed": "Änderung der Betriebsgröße fehlgeschlagen",
+        "scaleChangeFailed": "Änderung der Größe fehlgeschlagen",
         "contractFailed": "Vertrag fehlgeschlagen",
         "shipyardBuildFailed": "Werftbau fehlgeschlagen",
         "loanRequested": "Kreditantrag erfolgreich: {amount} wird nach diesem Tick gutgeschrieben.",
@@ -657,11 +657,11 @@
             "preFabrication": "Vorfertigung",
             "reconstruction": "Wiederaufbau",
             "boarding": "An Bord gehen",
-            "provisioning": "Ausrüstung"
+            "provisioning": "Versorgung"
         }
     },
     "Financial": {
-        "balanceFlowTitle": "Bankguthaben & Nettofinanzposition",
+        "balanceFlowTitle": "Bankguthaben & Nettoposition",
         "expensesRevenueTitle": "Erlöse & Aufwendungen",
         "details": "Details",
         "monthlyFlow": "Monatlicher Fluss",
@@ -675,9 +675,9 @@
         "wealthTax": "Vermögenssteuer",
         "netCashFlow": "Netto-Cashflow",
         "positions": "Positionen",
-        "firmDeposits": "Firmeneinlagen",
+        "firmDeposits": "Guthaben",
         "outstandingLoans": "Ausstehende Kredite",
-        "netPositionLabel": "Nettofinanzposition (Guthaben − Kredite)",
+        "netPositionLabel": "Nettoposition (Guthaben − Kredite)",
         "facilitiesValue": "Wert der Anlagen",
         "shipsValue": "Wert der Schiffe",
         "storageValue": "Wert des Lagers",
@@ -722,7 +722,7 @@
         "awaitingNextDay": "Warten auf den nächsten Tag…",
         "takeInitialLoan": "Startkredit aufnehmen {amount}",
         "cashBalance": "Bankguthaben",
-        "netPosition": "Nettofinanzposition",
+        "netPosition": "Nettoposition",
         "netIncome": "Nettogewinn",
         "interestAndTax": "Zinsen & Steuern"
     },
@@ -735,13 +735,13 @@
         "expanding": "Wird erweitert…",
         "reducing": "Wird reduziert…",
         "confirmReduce": "Reduzierung bestätigen",
-        "expandToScale": "Betriebsgröße erhöhen",
+        "expandToScale": "Größe erhöhen",
         "confirmExpand": "Erweiterung bestätigen",
         "reduceCapacityToScale": "Kapazität reduzieren",
         "reducedCapacity": "Reduzierte Kapazität",
         "estimatedPrice": "Geschätzter Preis",
         "efficiency": "Effizienz",
-        "deposits": "Einlagen",
+        "deposits": "Guthaben",
         "monthlyCashFlow": "Monatlicher Cashflow",
         "loans": "Kredite",
         "expandFacility": "Anlage erweitern",
@@ -778,7 +778,7 @@
         "suspensionPending": "Pausierung ausstehend…",
         "resumePending": "Fortsetzung ausstehend…",
         "revenue": "Erlös",
-        "inputs": "Vorleistungen",
+        "inputs": "Inputs",
         "wages": "Löhne",
         "netPerDay": "netto/Tag",
         "condition": "Zustand",
@@ -800,7 +800,7 @@
         "toggleSidebar": "Seitenleiste umschalten",
         "sidebar": "Seitenleiste",
         "sidebarDescription": "Zeigt die mobile Seitenleiste an.",
-        "deposits": "Einlagen",
+        "deposits": "Guthaben",
         "previous": "Zurück",
         "next": "Weiter",
         "all": "Alle",
@@ -819,7 +819,7 @@
         "sell": "Verkaufen",
         "buy": "Kaufen",
         "accept": "Annehmen",
-        "buildAtScale": "In voller Betriebsgröße bauen",
+        "buildAtScale": "In voller Größe bauen",
         "retry": "Erneut versuchen",
         "simulationOffline": "Simulationsdaten nicht verfügbar — {count, plural, one {# Abfrage} other {# Abfragen}} haben das Abrufen eingestellt.",
         "resetToNoExperience": "Auf keine Erfahrung zurücksetzen",
@@ -849,7 +849,7 @@
         "productionValue": "Produktionswert",
         "consumptionValue": "Verbrauchswert",
         "wages": "Löhne",
-        "totalWorkers": "Arbeitskräfte gesamt",
+        "totalWorkers": "Personal gesamt",
         "endOfMonth": "Ende {month} {year}",
         "yearLabel": "Jahr {year}",
         "yearShort": "J{year}"
@@ -875,7 +875,7 @@
                     "title": "🌍 Willkommen bei Enterprise Engine!"
                 },
                 "1": {
-                    "content": "Klicken Sie oben auf den Button, um Ihren Startkredit aufzunehmen. Er liefert Startkapital, um die Infrastruktur Ihres Unternehmens aufzubauen und Arbeitskräfte einzustellen. Der Kredit wird gutgeschrieben, sobald der aktuelle Tag abgeschlossen ist.",
+                    "content": "Klicken Sie oben auf den Button, um Ihren Startkredit aufzunehmen. Er liefert Startkapital, um die Infrastruktur Ihres Unternehmens aufzubauen und Personal einzustellen. Der Kredit wird gutgeschrieben, sobald der aktuelle Tag abgeschlossen ist.",
                     "title": "🏦 Nehmen Sie Ihren Startkredit auf"
                 },
                 "2": {
@@ -883,7 +883,7 @@
                     "title": "✅ Kredit erfolgreich aufgenommen!"
                 },
                 "3": {
-                    "content": "Das ist Ihre Finanzübersicht. Die linke Spalte zeigt Ihren monatlichen Cashflow: Erlös, Löhne, Einkäufe und Zahlungen für Nutzungsrechte. Die rechte Spalte zeigt Ihre Positionen: Einlagen, Kredite und Nettofinanzposition. Der Netto-Cashflow ist Ihre wichtigste Kennzahl — positiv bedeutet, dass Geld zufließt, negativ bedeutet, dass Sie Geld verbrennen.",
+                    "content": "Das ist Ihre Finanzübersicht. Die linke Spalte zeigt Ihren monatlichen Cashflow: Erlös, Löhne, Einkäufe und Zahlungen für Nutzungsrechte. Die rechte Spalte zeigt Ihre Positionen: Guthaben, Kredite und Nettoposition. Der Netto-Cashflow ist Ihre wichtigste Kennzahl — positiv bedeutet, dass Geld zufließt, negativ bedeutet, dass Sie Geld verbrennen.",
                     "title": "📈 Finanzübersicht"
                 },
                 "4": {
@@ -907,14 +907,14 @@
                     "title": "🏦 Kreditverwaltung & Konditionen"
                 },
                 "9": {
-                    "content": "Jetzt schauen wir uns die Einstellung von Arbeitskräften an. Ihr Unternehmen braucht Arbeitskräfte, um Anlagen zu betreiben. Wir wechseln nun zur Seite für Arbeitskräfte. Das kann ein paar Sekunden dauern.",
-                    "title": "➡️ Weiter: Arbeitskräfte"
+                    "content": "Jetzt schauen wir uns die Einstellung von Personaln an. Ihr Unternehmen braucht Personal, um Anlagen zu betreiben. Wir wechseln nun zur Seite für Personal. Das kann ein paar Sekunden dauern.",
+                    "title": "➡️ Weiter: Personal"
                 }
             },
             "workforce": {
                 "0": {
                     "content": "Arbeitskräfte betreiben Ihre Anlagen. Sie werden aus dem Bevölkerungsreservoir des Planeten eingestellt. Dieses Panel zeigt Ihre aktuellen Löhne je Bildungsstufe im Vergleich zum Planetendurchschnitt (in Klammern). Löhne werden automatisch von der KI verwaltet.",
-                    "title": "👷 Arbeitskräfteverwaltung"
+                    "title": "👷 Personalverwaltung"
                 },
                 "1": {
                     "content": "Bildungsstufen: Ungelernt (einfache Arbeit), Primarstufe, Sekundarstufe (qualifiziert) und Tertiärbereich (Spezialisten). Unterschiedliche Anlagen brauchen unterschiedliche Bildungsanteile. Höhere Löhne ziehen qualifiziertere Mitarbeitende an, erhöhen aber Ihre Kosten.",
@@ -946,7 +946,7 @@
                 },
                 "8": {
                     "content": "Diese Diagramme verfolgen die Gesamtzahl der Arbeitskräfte und die Lohnkosten über die Zeit. Beobachten Sie das Wachstum Ihrer Belegschaft und sorgen Sie dafür, dass die Löhne wettbewerbsfähig bleiben.",
-                    "title": "📈 Arbeitskräfte-Diagramme"
+                    "title": "📈 Personal-Diagramme"
                 },
                 "9": {
                     "content": "Änderungen bei den Arbeitskräften werden jeden Tag verarbeitet, aber Übergänge brauchen Zeit. Neu eingestellte Arbeitskräfte kommen in eine Einarbeitungswarteschlange, und ausscheidende Arbeitskräfte (entlassen, in Rente oder freiwillig) haben jeweils ihre eigene dreimonatige Abgangswarteschlange. Haben Sie Geduld — Änderungen der Belegschaft erfolgen schrittweise!",
@@ -1061,8 +1061,8 @@
                     "title": "⚙️ Aktive Anlage"
                 },
                 "6": {
-                    "content": "Sie können die Betriebsgröße jedes Anlagentyps erhöhen. Das erhöht den Vorleistungs-, Produkt- und Arbeitskräftebedarf der Anlage. Nutzen Sie den Regler für die Auslastung, um die Kapazität vorübergehend zwischen 0 % und 100 % einzustellen.",
-                    "title": "📡 Betriebsgröße erhöhen"
+                    "content": "Sie können die Größe jedes Anlagentyps erhöhen. Das erhöht den Vorleistungs-, Produkt- und Arbeitskräftebedarf der Anlage. Nutzen Sie den Regler für die Auslastung, um die Kapazität vorübergehend zwischen 0 % und 100 % einzustellen.",
+                    "title": "📡 Größe erhöhen"
                 },
                 "7": {
                     "content": "Das Ölfeld braucht ein Nutzungsrecht an einem Ölreservoir, um Rohöl zu fördern. Lassen Sie uns eines pachten, um es zu versorgen. Wir wechseln nun zur Seite für Nutzungsrechte. Das kann ein paar Sekunden dauern.",
@@ -1328,7 +1328,7 @@
         "licenseNotAcquired": "Nicht erworben",
         "licenseCost": "Kosten:",
         "commercialLicense": "Handelslizenz",
-        "workforceLicense": "Arbeitskräftelizenz",
+        "workforceLicense": "Personallizenz",
         "commercialLicenseDesc": "Erforderlich für Bankkonto, Lagerzugriff und Marktteilnahme.",
         "workforceLicenseDesc": "Erforderlich, um Mitarbeiter einzustellen und Produktionsanlagen zu betreiben.",
         "initialLoan": "(Anfangskredit)",
@@ -1338,12 +1338,12 @@
         "noClearance": "Sie sind nicht berechtigt, die internen Vorgänge dieses Unternehmens einzusehen. Nur der Eigentümer des Unternehmens kann auf diese Anlagen zugreifen.",
         "noPresenceOn": "Keine Präsenz auf {planetId}",
         "acquireCommercialLicense": "Erwerben Sie eine Handelslizenz, um ein Bankkonto einzurichten und auf diesem Planeten zu handeln.",
-        "workerEfficiencyTooltip": "{name}-Arbeitskräfte: {percent} Effizienz",
+        "workerEfficiencyTooltip": "{name}-Personal: {percent} Effizienz",
         "chooseCompanyLogoAria": "Firmenlogo wählen",
         "chooseCompanyLogo": "Firmenlogo wählen",
         "alreadyTaken": "Bereits von einem anderen Unternehmen belegt",
         "facilityWorkerEfficiency": "Arbeitseffizienz",
-        "facilityWorkerRequirement": "Arbeitskräftebedarf"
+        "facilityWorkerRequirement": "Personalbedarf"
     },
     "Storage": {
         "volumeUsed": "Volumen belegt",
@@ -1402,13 +1402,13 @@
         "productivity": "Produktivität",
         "total": "Gesamt",
         "uneducated": "Ungelernt",
-        "uneducatedDesc": "Arbeitskräfte ohne formale Bildung",
+        "uneducatedDesc": "Personal ohne formale Bildung",
         "primary": "Primarstufe",
-        "primaryDesc": "Arbeitskräfte mit Grundschulbildung",
+        "primaryDesc": "Personal mit Grundschulbildung",
         "secondary": "Sekundarstufe",
-        "secondaryDesc": "Arbeitskräfte mit weiterführender Schulbildung",
+        "secondaryDesc": "Personal mit weiterführender Schulbildung",
         "tertiary": "Tertiärbereich",
-        "tertiaryDesc": "Arbeitskräfte mit Hochschulabschluss",
+        "tertiaryDesc": "Personal mit Hochschulabschluss",
         "aiManaged": "KI-verwaltet",
         "autoEnabled": "Automatische Personalplanung ist aktiviert.",
         "setHeadcount": "Legen Sie die Zielzahl je Bildungsstufe fest.",
@@ -1424,7 +1424,7 @@
         "statusCriticalTooltip": "Schwerer HR-Ausfall! Arbeitsproduktivität auf {percent}% gefallen",
         "target": "Ziel",
         "currentTotalLabel": "Aktuell gesamt",
-        "workerShortage": "Arbeitskräftemangel",
+        "workerShortage": "Personalmangel",
         "unusedWorker": "Ungenutzte Arbeitskräfte",
         "activeLabel": "Aktiv",
         "overqualifiedNote": "{count, plural, one {Anlagen mit # Stelle} other {Anlagen mit # Stellen}} wurden mit höher qualifizierten Arbeitskräften besetzt, weil geringer qualifizierte nicht verfügbar waren.",
@@ -1451,7 +1451,7 @@
         "productionLabel": "Produktion",
         "demandLabel": "Bedarf",
         "bufferLabel": "Puffer",
-        "workers": "Arbeitskräfte",
+        "workers": "Personal",
         "workerDays": "Arbeitstage",
         "canManageUpTo": "Kann bis zu {count} Arbeitskräfte verwalten.",
         "daysLabel": "{count, plural, one {# Tag} other {# Tage}}",
@@ -1460,7 +1460,7 @@
         "hrProductivity": "HR-Produktivität",
         "hrProductivityTooltip": "HR-Produktivität:",
         "starvationTooltip": "Unterversorgung:",
-        "hrCantKeepUp": "Ihre HR-Abteilung kann mit dem Arbeitskräftebedarf nicht Schritt halten. Erweitern Sie sie, um die Produktivität wiederherzustellen.",
+        "hrCantKeepUp": "Ihre HR-Abteilung kann mit dem Personalbedarf nicht Schritt halten. Erweitern Sie sie, um die Produktivität wiederherzustellen.",
         "hrKeepingUp": "Ihre HR-Abteilung versorgt die Arbeitskräfte ausreichend.",
         "automaticWorkerAllocation": "Automatische Personalplanung",
         "autoOn": "Die KI berechnet jeden Tick optimale Personalziele auf Basis der Anlagenanforderungen.",
