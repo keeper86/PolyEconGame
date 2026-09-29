@@ -1,7 +1,7 @@
 {
     "Errors": {
-        "notLoggedIn": "Du musst angemeldet sein oder ein gültiges PAT angeben, um auf diese Ressource zuzugreifen.",
-        "notOwner": "Diese Firma gehört Ihnen nicht",
+        "notLoggedIn": "Sie müssen angemeldet sein oder ein gültiges PAT angeben, um auf diese Ressource zuzugreifen.",
+        "notOwner": "Dieses Unternehmen gehört Ihnen nicht",
         "workforceLicenseRequired": "Für Arbeitskräfteziele auf diesem Planeten ist eine aktive Arbeitskräfte-Lizenz erforderlich",
         "commercialLicenseRequired": "Für Verkaufsangebote auf diesem Planeten ist eine aktive Gewerbelizenz erforderlich",
         "unknownResource": "Unbekannte Ressource: {resourceName}",
@@ -11,7 +11,7 @@
         "messageNotFound": "Nachricht nicht gefunden",
         "recipientNotFound": "Empfänger nicht gefunden",
         "cannotMessageSelf": "Sie können sich nicht selbst eine Nachricht senden",
-        "messageRateLimited": "Zu viele Nachrichten gesendet. Bitte warten Sie einen Moment und versuche es erneut.",
+        "messageRateLimited": "Zu viele Nachrichten gesendet. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
         "userAlreadyHasAgent": "Sie haben bereits ein Unternehmen",
         "agentNameEmpty": "Der Firmenname darf nicht leer sein",
         "agentNameTooLong": "Der Firmenname darf höchstens 64 Zeichen lang sein",
@@ -28,7 +28,7 @@
         "workforceExpandLicenseRequired": "Für den Ausbau von Anlagen auf diesem Planeten ist eine aktive Arbeitskräfte-Lizenz erforderlich",
         "invalidResourceName": "Ungültiger Ressourcenname",
         "invalidResourceNameInCargoGoal": "Ungültiger Ressourcenname im Frachtziel",
-        "avatarPngFile": "Bitte lade eine PNG-Bilddatei hoch",
+        "avatarPngFile": "Bitte laden Sie eine PNG-Bilddatei hoch",
         "avatarFileTooLarge": "Die Dateigröße muss unter 1 MB liegen",
         "operationFailed": "Vorgang fehlgeschlagen",
         "invalidBuyBid": "Ungültiges Kaufgebot für {resourceName}: {detail}",
@@ -41,23 +41,23 @@
         "quantityNegative": "Die Menge darf nicht negativ sein",
         "quantityBelowMinimum": "Die Menge muss mindestens {minimum} betragen",
         "quantityExceedsStorage": "Die Menge überschreitet die verfügbare Lagerkapazität ({available})",
-        "insufficientDeposits": "Nicht genügend Einlagen (benötigt {required}, verfügbar {available})",
-        "sellThroughAboveLimit": "Die angestrebte Absatzquote darf für Dienstleistungen 100 % nicht überschreiten",
+        "insufficientDeposits": "Nicht genügend Guthaben (benötigt {required}, verfügbar {available})",
+        "sellThroughAboveLimit": "Die angestrebte Abverkaufsquote darf für Dienstleistungen 100 % nicht überschreiten",
         "fillRateAboveLimit": "Die angestrebte Erfüllungsquote darf für Dienstleistungen 100 % nicht überschreiten",
-        "noAccountOnIssuingPlanet": "Kein Konto auf dem ausgebenden Planeten. Besuche diesen Planeten zuerst, um ein Konto zu eröffnen.",
+        "noAccountOnIssuingPlanet": "Kein Konto auf dem ausgebenden Planeten. Besuchen Sie diesen Planeten zuerst, um ein Konto zu eröffnen.",
         "planetNotFound": "Planet nicht gefunden: {planetId}",
         "shipNotFound": "Schiff nicht gefunden: {shipId}",
         "shipGone": "Schiff existiert nicht mehr",
-        "shipNotIdle": "Schiff ist nicht im Leerlauf",
+        "shipNotIdle": "Schiff ist nicht frei",
         "shipNotOnPlanet": "Schiff ist nicht auf Planet: {planetId}",
         "shipNotOnDeparturePlanet": "Schiff ist nicht auf dem Abflugplaneten: {planetId}",
         "shipNotOnOfferPlanet": "Schiff ist nicht auf dem Angebotsplaneten: {planetId}",
-        "shipMustBeIdleToList": "Schiff muss im Leerlauf sein, um gelistet zu werden",
-        "shipAlreadyListed": "Schiff ist bereits zum Verkauf gelistet",
-        "shipListingNotFound": "Listung nicht gefunden",
-        "shipListingGone": "Schiff ist nicht mehr gelistet",
-        "shipListingNotOwned": "Diese Listung gehört dir nicht",
-        "shipDerelictNotListable": "Ein Wrack kann nicht gelistet werden",
+        "shipMustBeIdleToList": "Schiff muss frei sein, um zum Verkauf angeboten zu werden",
+        "shipAlreadyListed": "Schiff wird bereits zum Verkauf angeboten",
+        "shipListingNotFound": "Angebot nicht gefunden",
+        "shipListingGone": "Schiff wird nicht mehr zum Verkauf angeboten",
+        "shipListingNotOwned": "Dieses Angebot gehört Ihnen nicht",
+        "shipDerelictNotListable": "Ein Wrack kann nicht zum Verkauf angeboten werden",
         "shipTypeMismatch": "Schiffstyp {shipType} stimmt nicht mit dem Angebotstyp {offerShipType} überein",
         "unknownShipType": "Unbekannter Schiffstyp: {shipType}",
         "unknownFacility": "Unbekannte Anlage: {facilityName}",
@@ -84,8 +84,8 @@
         "onlyPassengerShips": "Nur Passagierschiffe können Passagiere befördern",
         "onlyConstructionShipsForConstruction": "Nur Bauschiffe können für den Bau entsandt werden",
         "insufficientCargoInStorage": "Nicht genügend Frachtmenge im Lager",
-        "insufficientDepositsToEscrowPrice": "Nicht genügend Einlagen für die Treuhand des Preises",
-        "insufficientDepositsToEscrowReward": "Nicht genügend Einlagen für die Treuhand der Belohnung",
+        "insufficientDepositsToEscrowPrice": "Nicht genügend Guthaben für die treuhänderische Hinterlegung des Preises",
+        "insufficientDepositsToEscrowReward": "Nicht genügend Guthaben für die treuhänderische Hinterlegung der Vergütung",
         "noCommercialLicenseOnDestination": "Keine Handelslizenz auf dem Zielplaneten",
         "noWorkforceLicenseOnDestination": "Keine Arbeitskraftlizenz auf dem Zielplaneten",
         "noStorageOnDeparturePlanet": "Keine Lagereinrichtung auf dem Abflugplaneten",
@@ -99,9 +99,9 @@
         "agentAssetRecordMissingForPlanet": "Unternehmen hat keinen Vermögensdatensatz für Planet ''{planetId}''",
         "licensePrerequisiteMissing": "Eine Gewerbelizenz muss vor einer Arbeitslizenz auf Planet ''{planetId}'' erworben werden",
         "licenseAlreadyHeld": "Unternehmen besitzt bereits eine Lizenz des Typs ''{licenseType}'' auf Planet ''{planetId}''",
-        "claimNotFound": "Kein Anspruch ''{claimId}'' für das Unternehmen gefunden",
-        "claimNotFoundForAgent": "Anspruch ''{claimId}'' für das Unternehmen nicht gefunden",
-        "claimReductionExceedsCapacity": "Anspruch umfasst nur {available} Einheiten, kann nicht um {requested} reduziert werden",
+        "claimNotFound": "Kein Nutzungsrecht ''{claimId}'' für das Unternehmen gefunden",
+        "claimNotFoundForAgent": "Nutzungsrecht ''{claimId}'' für das Unternehmen nicht gefunden",
+        "claimReductionExceedsCapacity": "Nutzungsrecht umfasst nur {available} Einheiten, kann nicht um {requested} reduziert werden",
         "claimCapacityExceeded": "Nicht genügend unverpachtete {resourceName} — angefordert {requested}, verfügbar {available}",
         "quantityNotPositive": "Die Menge muss positiv sein",
         "resourceNotFoundOnPlanet": "Ressource ''{resourceName}'' auf dem Planeten nicht gefunden",
@@ -112,9 +112,9 @@
         "facilityNotUnderConstruction": "Anlage befindet sich nicht im Bau",
         "shipConstructionFacilityNotFound": "Schiffbauanlage ''{facilityId}'' nicht gefunden",
         "shipConstructionFacilityAlreadyExists": "Schiffbauanlage ''{facilityName}'' existiert bereits auf Planet ''{planetId}''",
-        "targetScaleNotAboveCurrent": "Zielgröße {targetScale} muss größer als die aktuelle Maximalgröße {maxScale} sein",
-        "targetScaleNotBelowCurrent": "Zielgröße {targetScale} muss kleiner als die aktuelle Maximalgröße {maxScale} sein",
-        "scaleFractionOutOfRange": "Skalenanteil muss zwischen 0 und 1 liegen",
+        "targetScaleNotAboveCurrent": "Zielgröße {targetScale} muss größer als die aktuelle max. Größe {maxScale} sein",
+        "targetScaleNotBelowCurrent": "Zielgröße {targetScale} muss kleiner als die aktuelle max. Größe {maxScale} sein",
+        "scaleFractionOutOfRange": "Größenanteil muss zwischen 0 und 1 liegen",
         "fractionOutOfRange": "Anteil muss eine Zahl in (0, 1] sein",
         "recyclerDeclinedContraction": "Recycler hat die Verkleinerung abgelehnt",
         "loanNotFound": "Kredit ''{loanId}'' nicht gefunden",
@@ -123,16 +123,16 @@
         "loanAmountExceedsLimit": "Angeforderter Betrag {amount} übersteigt das genehmigte Limit {limit}",
         "earlyRepaymentNotAllowed": "Vorzeitige Rückzahlung ist für diesen Kredit nicht erlaubt",
         "repaymentAmountZero": "Rückzahlungsbetrag ist null",
-        "insufficientDepositsForLease": "Nicht genügend Einlagen — {required} im Voraus erforderlich, {available} verfügbar",
-        "insufficientDepositsForLicense": "Nicht genügend Einlagen. Erforderlich: {required}, verfügbar: {available}"
+        "insufficientDepositsForLease": "Nicht genügend Guthaben — {required} im Voraus erforderlich, {available} verfügbar",
+        "insufficientDepositsForLicense": "Nicht genügend Guthaben. Erforderlich: {required}, verfügbar: {available}"
     },
     "Bankruptcy": {
         "liquidated": "{agentName} ist insolvent; das Unternehmen wurde aufgelöst und das Vermögen verwertet",
-        "restructured": "{agentName} ist insolvent; als {successorName} unter Zwangsverwaltung umstrukturiert",
-        "title": "Du bist bankrott",
+        "restructured": "{agentName} ist insolvent; als {successorName} unter Insolvenzverwaltung umstrukturiert",
+        "title": "Ihr Unternehmen ist insolvent",
         "yearLabel": "{planet} · Jahr {year}",
-        "insolventRestructured": "Dein Unternehmen wurde für zahlungsunfähig erklärt und dem Verwalter übergeben. Ausstehende Schulden wurden abgeschrieben und das verbleibende Vermögen wurde unter automatischer Verwaltung saniert.",
-        "insolventLiquidated": "Dein Unternehmen wurde für zahlungsunfähig erklärt und dem Verwalter übergeben. Ausstehende Schulden wurden abgeschrieben und das verbleibende Vermögen wurde zur Deckung der Kosten liquidiert.",
+        "insolventRestructured": "Ihr Unternehmen wurde für zahlungsunfähig erklärt und dem Insolvenzverwalter übergeben. Ausstehende Schulden wurden abgeschrieben und das verbleibende Vermögen wurde unter Insolvenzverwaltung saniert.",
+        "insolventLiquidated": "Ihr Unternehmen wurde für zahlungsunfähig erklärt und dem Insolvenzverwalter übergeben. Ausstehende Schulden wurden abgeschrieben und das verbleibende Vermögen wurde zur Deckung der Kosten liquidiert.",
         "foundNewCompany": "Neues Unternehmen gründen"
     },
     "Events": {
@@ -145,7 +145,7 @@
         "shipArrived": "<entity>{agentName}</entity>s <entity>{shipName}</entity> erreichte <entity>{to}</entity> von <entity>{from}</entity>",
         "companyDissolved": "<entity>{agentName}</entity> ist insolvent und aufgelöst",
         "companyRefounded": "<entity>{agentName}</entity> ist insolvent und wurde als <entity>{successorName}</entity> neu gegründet",
-        "companyRestructured": "<entity>{agentName}</entity> ist insolvent und wurde als <entity>{successorName}</entity> unter Zwangsverwaltung neu aufgestellt",
+        "companyRestructured": "<entity>{agentName}</entity> ist insolvent und wurde als <entity>{successorName}</entity> unter Insolvenzverwaltung neu aufgestellt",
         "load": {
             "empty": "leer",
             "cargo": "Ladung <entity>{quantity}</entity>",
@@ -230,8 +230,8 @@
     },
     "Toasts": {
         "companyRegistered": "Unternehmen registriert",
-        "selectLogo": "Bitte wähle ein Firmenlogo aus",
-        "bankruptcyDissolved": "Dein Unternehmen wurde aufgelöst. Viel Glück bei deinem nächsten Vorhaben!",
+        "selectLogo": "Bitte wählen Sie ein Firmenlogo aus",
+        "bankruptcyDissolved": "Ihr Unternehmen wurde aufgelöst. Viel Glück bei Ihrem nächsten Vorhaben!",
         "messageSent": "Nachricht gesendet",
         "messageSendFailed": "Nachricht konnte nicht gesendet werden",
         "messageMarkReadFailed": "Nachricht konnte nicht als gelesen markiert werden",
@@ -247,11 +247,11 @@
         "expansionOrdered": "Ausbau in Auftrag gegeben. Änderungen wirken beim nächsten Tick.",
         "capacityReductionOrdered": "Kapazitätsreduzierung in Auftrag gegeben. Änderungen wirken beim nächsten Tick.",
         "scaleUpdated": "Betriebsgröße aktualisiert. Änderungen wirken beim nächsten Tick.",
-        "shipyardOrdered": "Schiffswerft-Bau in Auftrag gegeben. Änderungen wirken am nächsten Tag.",
-        "shipyardNameRequired": "Bitte gib einen Werftnamen ein",
+        "shipyardOrdered": "Bau der Werft in Auftrag gegeben. Änderungen wirken am nächsten Tag.",
+        "shipyardNameRequired": "Bitte geben Sie einen Werftnamen ein",
         "buildFailed": "Bau fehlgeschlagen",
         "cancelFailed": "Abbruch fehlgeschlagen",
-        "suspensionChangeFailed": "Änderung der Anhaltung fehlgeschlagen",
+        "suspensionChangeFailed": "Änderung der Pausierung fehlgeschlagen",
         "expandFailed": "Ausbau fehlgeschlagen",
         "scaleChangeFailed": "Änderung der Betriebsgröße fehlgeschlagen",
         "contractFailed": "Vertrag fehlgeschlagen",
@@ -270,10 +270,10 @@
         "sellValidationFailedPrefix": "Verkaufsprüfung fehlgeschlagen: ",
         "invalidBidPrice": "Kaufprüfung fehlgeschlagen: Ungültiger Gebotspreis.",
         "invalidOfferPrice": "Verkaufsprüfung fehlgeschlagen: Ungültiger Angebotspreis.",
-        "depositBorrowPrefix": "Du kannst Geld aufnehmen auf der ",
+        "depositBorrowPrefix": "Sie können Geld aufnehmen auf der ",
         "depositBorrowLink": "Finanzseite",
         "saving": "Speichern…",
-        "awaitingNextDay": "Warte auf nächsten Tag…"
+        "awaitingNextDay": "Warten auf nächsten Tag…"
     },
     "Messages": {
         "title": "Nachrichten",
@@ -307,16 +307,16 @@
         },
         "confirm": {
             "messageTitle": "Nachricht löschen?",
-            "messageDescription": "Dadurch wird die Nachricht aus deiner Ansicht entfernt. Dies kann nicht rückgängig gemacht werden.",
+            "messageDescription": "Dadurch wird die Nachricht aus Ihrer Ansicht entfernt. Dies kann nicht rückgängig gemacht werden.",
             "readTitle": "Alle gelesenen Nachrichten löschen?",
-            "readDescription": "Dadurch werden alle gelesenen Nachrichten aus deinem Posteingang entfernt. Dies kann nicht rückgängig gemacht werden.",
+            "readDescription": "Dadurch werden alle gelesenen Nachrichten aus Ihrem Posteingang entfernt. Dies kann nicht rückgängig gemacht werden.",
             "sentTitle": "Alle gesendeten Nachrichten löschen?",
-            "sentDescription": "Dadurch werden alle Nachrichten aus deinem Ordner „Gesendet“ entfernt. Dies kann nicht rückgängig gemacht werden."
+            "sentDescription": "Dadurch werden alle Nachrichten aus Ihrem Ordner „Gesendet“ entfernt. Dies kann nicht rückgängig gemacht werden."
         },
         "compose": {
             "button": "Neue Nachricht",
             "title": "Neue Nachricht",
-            "description": "Sende eine Direktnachricht an einen anderen Spieler.",
+            "description": "Senden Sie eine Direktnachricht an einen anderen Spieler.",
             "recipient": "Empfänger",
             "subject": "Betreff",
             "message": "Nachricht",
@@ -330,7 +330,7 @@
     "Market": {
         "saveConfig": "Konfiguration speichern",
         "saving": "Speichern…",
-        "setting": "Setze…",
+        "setting": "Wird gesetzt…",
         "set": "Setzen",
         "orderBooks": "Orderbücher",
         "resource": "Ressource",
@@ -344,8 +344,8 @@
         "lastBought": "Zuletzt gekauft",
         "lastOffered": "Zuletzt angeboten",
         "lastSold": "Zuletzt verkauft",
-        "smoothedFillRate": "Gegl. Erfüllungsrate",
-        "smoothedSellThrough": "Gegl. Absatzrate",
+        "smoothedFillRate": "Erfüllungsquote",
+        "smoothedSellThrough": "Abverkaufsquote",
         "lastSpent": "Zuletzt ausgegeben",
         "lastRevenue": "Zuletzt erzielter Erlös",
         "production": "Produktion",
@@ -356,8 +356,8 @@
         "softMinAsk": "Weiches Mindestangebot (in gesch. Kosten)",
         "ceilingSpringStrength": "Stärke der Obergrenzen-Feder",
         "costSpringStrength": "Stärke der Kostenfeder",
-        "targetFillRate": "Ziel-Erfüllungsrate",
-        "targetSellThrough": "Ziel-Absatzrate",
+        "targetFillRate": "Ziel-Erfüllungsquote",
+        "targetSellThrough": "Ziel-Abverkaufsquote",
         "setPrice": "Preis setzen",
         "priceLabel": "Preis:",
         "consumption": "Verbrauch",
@@ -369,10 +369,10 @@
         "freeBuyFillDays": "Tage bis freie Kaufmenge gefüllt",
         "retainment": "Einbehalt",
         "freeRetainmentTotal": "Freier Einbehalt (gesamt)",
-        "sellOffSmoothingDays": "Abverkauf-Glättung (Tage)",
-        "bidCostWarning": "Gebotskosten ({bidCost}) übersteigen verfügbare Einlagen ({deposits}).",
-        "noDepositsBidNotPlaced": "Keine Einlagen verfügbar — Gebot wurde im letzten Tick nicht platziert.",
-        "bidScaledDown": "Gebot wurde wegen unzureichender Einlagen proportional reduziert.",
+        "sellOffSmoothingDays": "Abverkaufs-Glättung (Tage)",
+        "bidCostWarning": "Gebotskosten ({bidCost}) übersteigen das verfügbare Guthaben ({deposits}).",
+        "noDepositsBidNotPlaced": "Kein Guthaben verfügbar — Gebot wurde im letzten Tick nicht platziert.",
+        "bidScaledDown": "Gebot wurde wegen unzureichenden Guthabens proportional reduziert.",
         "priceOverCostLabel": "Preis/Kosten:",
         "savedPush": "Gespeicherter Impuls:",
         "draftPush": "Entwurf-Impuls:",
@@ -383,11 +383,11 @@
         "softMax": "Weiches Max.",
         "hardCap": "Harte Obergrenze",
         "population": "Bevölkerung",
-        "youMarker": "← Du",
-        "fullyCleared": "✓ Vollständig geräumt",
-        "partiallyCleared": "⏳ Teilweise geräumt",
-        "notCleared": "✗ Nicht geräumt",
-        "clearedLabel": "Geräumt: {quantity}",
+        "youMarker": "← Sie",
+        "fullyCleared": "✓ Vollständig ausgeführt",
+        "partiallyCleared": "⏳ Teilweise ausgeführt",
+        "notCleared": "✗ Nicht ausgeführt",
+        "clearedLabel": "Ausgeführt: {quantity}",
         "volumeLabel": "Volumen:",
         "priceComparison": "Preisvergleich",
         "price": "Preis",
@@ -505,9 +505,9 @@
         }
     },
     "Levels": {
-        "resourceRaw": "Roh",
-        "resourceRefined": "Veredelt",
-        "resourceManufactured": "Gefertigt",
+        "resourceRaw": "Rohstoffe",
+        "resourceRefined": "Veredelte Güter",
+        "resourceManufactured": "Fertigwaren",
         "resourceServices": "Dienstleistungen",
         "resourceCurrency": "Währung",
         "facilityRaw": "Rohstoffförderung",
@@ -531,12 +531,12 @@
         },
         "market": {
             "title": "Schiffsmarkt",
-            "transportContracts": "Transportverträge",
+            "transportContracts": "Transportaufträge",
             "postContract": "Vertrag ausschreiben",
             "posting": "Wird ausgeschrieben…",
             "loadingContracts": "Verträge werden geladen…",
-            "noContracts": "Keine offenen Transportverträge auf diesem Planeten.",
-            "reward": "Belohnung",
+            "noContracts": "Keine offenen Transportaufträge auf diesem Planeten.",
+            "reward": "Vergütung",
             "maxDays": "Max. {days} Tage",
             "accept": "Annehmen",
             "acceptContract": "Vertrag annehmen",
@@ -545,11 +545,11 @@
             "noIdleShipType": "Kein freies {shipType}-Schiff auf diesem Planeten verfügbar",
             "noOffers": "Keine offenen Schiffsangebote auf diesem Planeten.",
             "forSale": "Zu verkaufen",
-            "yourListing": "Dein Angebot",
+            "yourListing": "Ihr Angebot",
             "ask": "Angebotspreis",
             "buy": "Kaufen",
             "buyOffers": "Kaufgesuche",
-            "yourOffer": "Dein Gesuch",
+            "yourOffer": "Ihr Gesuch",
             "offered": "Geboten",
             "sell": "Verkaufen",
             "cancelListing": "Angebot zurückziehen",
@@ -558,15 +558,15 @@
         "contract": {
             "cargo": "Fracht:",
             "destination": "Ziel:",
-            "reward": "Belohnung:",
+            "reward": "Vergütung:",
             "shipToAssign": "Zuzuweisendes Schiff",
             "selectShip": "Schiff auswählen…",
-            "postTitle": "Transportvertrag ausschreiben",
+            "postTitle": "Transportauftrag ausschreiben",
             "maxDuration": "Max. Dauer (Tage)",
             "expiresIn": "Läuft ab in (Tagen)",
-            "offeredReward": "Gebotene Belohnung",
-            "escrowNote": "Dieser Betrag wird von deinen Einlagen treuhänderisch einbehalten, bis der Vertrag erfüllt oder storniert wird.",
-            "acceptTitle": "Transportvertrag annehmen"
+            "offeredReward": "Gebotene Vergütung",
+            "escrowNote": "Dieser Betrag wird von Ihrem Guthaben treuhänderisch einbehalten, bis der Vertrag erfüllt oder storniert wird.",
+            "acceptTitle": "Transportauftrag annehmen"
         },
         "offer": {
             "postTitle": "Schiffs-Kaufgesuch ausschreiben",
@@ -583,7 +583,7 @@
         "dispatch": {
             "title": "{shipName} entsenden",
             "dispatching": "Wird entsendet…",
-            "cargoOptional": "Fracht (optional — leer lassen zum Umpositionieren)",
+            "cargoOptional": "Fracht (optional — leer lassen für Verlegung)",
             "selectResource": "Ressource auswählen…",
             "facilityToConstruct": "Zu errichtende Anlage",
             "passengersToBoard": "Einsteigende Passagiere",
@@ -608,20 +608,20 @@
             "newShipyard": "Neue Werft",
             "shipyardName": "Werftname",
             "shipyardNamePlaceholder": "Eindeutigen Namen eingeben, z. B. \"Werft Alpha\"",
-            "sendingBuild": "Bau wird gesendet…",
+            "sendingBuild": "Bauauftrag wird gesendet…",
             "buildShipyard": "Werft bauen",
             "expandShipyard": "Werft erweitern",
             "confirmExpand": "Erweiterung bestätigen",
             "orderingExpansion": "Erweiterung wird beauftragt…",
-            "scaleLine": "Skalierung {scale}",
+            "scaleLine": "Größe {scale}",
             "max": "max"
         },
         "status": {
             "building": "{name} wird gebaut",
             "loadingCargo": "Fracht wird geladen",
             "loading": "Wird geladen",
-            "repositioning": "Umpositionierung",
-            "repositioningEmpty": "Umpositionierung (leer)",
+            "repositioning": "Verlegung",
+            "repositioningEmpty": "Leerfahrt",
             "prefabrication": "Vorfertigung",
             "reconstruction": "Rekonstruktion",
             "boarding": "Einstieg:",
@@ -647,7 +647,7 @@
         "resource": "Ressource",
         "quantity": "Menge",
         "statusLabels": {
-            "idle": "Leerlauf",
+            "idle": "Frei",
             "listed": "Zum Verkauf angeboten",
             "derelict": "Wrack",
             "lost": "Verloren",
@@ -661,8 +661,8 @@
         }
     },
     "Financial": {
-        "balanceFlowTitle": "Kassabestand & Nettoposition",
-        "expensesRevenueTitle": "Ausgaben & Einnahmen",
+        "balanceFlowTitle": "Bankguthaben & Nettofinanzposition",
+        "expensesRevenueTitle": "Erlöse & Aufwendungen",
         "details": "Details",
         "monthlyFlow": "Monatlicher Fluss",
         "current": "aktuell",
@@ -670,23 +670,23 @@
         "revenue": "Erlös",
         "wages": "Löhne",
         "purchases": "Einkäufe",
-        "claims": "Ansprüche",
+        "claims": "Nutzungsrechte",
         "interest": "Zinsen",
         "wealthTax": "Vermögenssteuer",
         "netCashFlow": "Netto-Cashflow",
         "positions": "Positionen",
         "firmDeposits": "Firmeneinlagen",
         "outstandingLoans": "Ausstehende Kredite",
-        "netPositionLabel": "Nettoposition (Einlagen − Kredite)",
+        "netPositionLabel": "Nettofinanzposition (Guthaben − Kredite)",
         "facilitiesValue": "Wert der Anlagen",
         "shipsValue": "Wert der Schiffe",
         "storageValue": "Wert des Lagers",
-        "depreciation": "Abschreibung* (letzter Monat)",
+        "depreciation": "Verschleiß (letzter Monat)",
         "none": "Keine",
-        "noData": "Keine Produktauflösungsdaten verfügbar.",
+        "noData": "Keine Daten zur Produktaufschlüsselung verfügbar.",
         "purchasesLabel": "Einkäufe:",
         "revenueLabel": "Erlös:",
-        "depreciationLabel": "Abschreibung:",
+        "depreciationLabel": "Verschleiß",
         "currentMonth": "aktueller Monat",
         "lastMonth": "(letzter Monat)",
         "loanRate": "Kreditzins {rate} % p.a. · {monthly}/Monat",
@@ -699,8 +699,8 @@
         "interestOnNewLoans": "Zinsen auf neue Kredite:",
         "interestRateValue": "{rate} % p.a.",
         "noAdditionalCredit": "Kein weiterer Kredit verfügbar",
-        "improveCashFlow": "Verbessere deinen Cashflow (erhöhe den Erlös oder senke die Kosten) oder steigere deine Vermögensbewertung, um weitere Kredite freizuschalten.",
-        "fundsCredited": "Die Mittel werden deinem Konto gutgeschrieben, sobald der aktuelle Tick abgeschlossen ist.",
+        "improveCashFlow": "Verbessern Sie Ihren Cashflow (erhöhen Sie den Erlös oder senken Sie die Kosten) oder steigern Sie Ihre Vermögensbewertung, um weitere Kredite freizuschalten.",
+        "fundsCredited": "Die Mittel werden Ihrem Konto gutgeschrieben, sobald der aktuelle Tick abgeschlossen ist.",
         "outstandingLoansCount": "Ausstehende Kredite ({count})",
         "payBackEarly": "Vorzeitig zurückzahlen:",
         "loanTypes": {
@@ -719,25 +719,25 @@
             "consolidated": "Konsolidiert"
         },
         "sendingRequest": "Anfrage wird gesendet…",
-        "awaitingNextDay": "Warte auf den nächsten Tag…",
+        "awaitingNextDay": "Warten auf den nächsten Tag…",
         "takeInitialLoan": "Startkredit aufnehmen {amount}",
-        "cashBalance": "Kassenbestand",
-        "netPosition": "Nettoposition",
-        "netIncome": "Nettoeinkommen",
+        "cashBalance": "Bankguthaben",
+        "netPosition": "Nettofinanzposition",
+        "netIncome": "Nettogewinn",
         "interestAndTax": "Zinsen & Steuern"
     },
     "Production": {
-        "operatingScale": "Betriebsskalierung",
+        "operatingScale": "Auslastung",
         "pendingScale": "Ausstehend → {percent}%",
-        "scale": "Skalierung",
+        "scale": "Größe",
         "max": "max",
         "apply": "Anwenden",
         "expanding": "Wird erweitert…",
         "reducing": "Wird reduziert…",
         "confirmReduce": "Reduzierung bestätigen",
-        "expandToScale": "Auf Skalierung erweitern",
+        "expandToScale": "Betriebsgröße erhöhen",
         "confirmExpand": "Erweiterung bestätigen",
-        "reduceCapacityToScale": "Kapazität auf Skalierung reduzieren",
+        "reduceCapacityToScale": "Kapazität reduzieren",
         "reducedCapacity": "Reduzierte Kapazität",
         "estimatedPrice": "Geschätzter Preis",
         "efficiency": "Effizienz",
@@ -751,11 +751,11 @@
         "completion": "Fertigstellung",
         "netAfterCommitments": "Netto nach Verpflichtungen",
         "insufficientFunds": "Unzureichende Mittel",
-        "insufficientFundsBody": "Deine aktuellen Einlagen zusammen mit deinem geschätzten Cashflow ({cashflow}) decken die geschätzten Kosten von {costs} möglicherweise nicht.",
+        "insufficientFundsBody": "Ihr aktuelles Guthaben zusammen mit Ihrem geschätzten Cashflow ({cashflow}) deckt die geschätzten Kosten von {costs} möglicherweise nicht.",
         "shortfall": "Fehlbetrag",
         "proceedAnyway": "Trotzdem fortfahren",
         "facilityNotUnderConstruction": "Fehler: Anlage ist nicht im Bau",
-        "awaitingNextDay": "Warte auf nächsten Tag…",
+        "awaitingNextDay": "Warten auf nächsten Tag…",
         "suspended": "Pausiert",
         "suspendedShort": "Pausiert.",
         "suspendedLong": "Pausiert — fortsetzen, um den Bau weiterzuführen.",
@@ -773,12 +773,12 @@
         "cancelConstructionBody": "Der gesamte Baufortschritt geht dauerhaft verloren. Bereits investierte Bauleistungen werden nicht erstattet.",
         "keepBuilding": "Weiterbauen",
         "cancelConstruction": "Bau abbrechen",
-        "sendingBuild": "Bau wird gesendet…",
+        "sendingBuild": "Bauauftrag wird gesendet…",
         "cancellationPending": "Abbruch ausstehend…",
         "suspensionPending": "Pausierung ausstehend…",
         "resumePending": "Fortsetzung ausstehend…",
         "revenue": "Erlös",
-        "inputs": "Einsätze",
+        "inputs": "Vorleistungen",
         "wages": "Löhne",
         "netPerDay": "netto/Tag",
         "condition": "Zustand",
@@ -789,7 +789,7 @@
         "newBadge": "neu"
     },
     "Common": {
-        "waitingForData": "Warte auf Simulationsdaten…",
+        "waitingForData": "Warten auf Simulationsdaten…",
         "loading": "Lädt…",
         "loadingLabel": "Wird geladen",
         "duration": "Dauer",
@@ -809,24 +809,24 @@
         "reset": "Zurücksetzen",
         "set": "Setzen",
         "saving": "Speichert…",
-        "setting": "Setze…",
+        "setting": "Wird gesetzt…",
         "confirm": "Bestätigen",
         "empty": "Leer",
         "dispatch": "Entsenden",
         "build": "Bauen",
         "underConstruction": "Im Bau",
-        "scale": "Skalierung",
+        "scale": "Größe",
         "sell": "Verkaufen",
         "buy": "Kaufen",
         "accept": "Annehmen",
-        "buildAtScale": "In Skalierung bauen",
+        "buildAtScale": "In voller Betriebsgröße bauen",
         "retry": "Erneut versuchen",
         "simulationOffline": "Simulationsdaten nicht verfügbar — {count, plural, one {# Abfrage} other {# Abfragen}} haben das Abrufen eingestellt.",
         "resetToNoExperience": "Auf keine Erfahrung zurücksetzen",
         "setLevel": "Stufe auf {level} setzen",
         "userAvatarAlt": "Benutzeravatar",
         "errorTitle": "Laden fehlgeschlagen",
-        "errorDescription": "Etwas ist schiefgelaufen. Bitte versuche es später erneut.",
+        "errorDescription": "Etwas ist schiefgelaufen. Bitte versuchen Sie es später erneut.",
         "selectResource": "Ressource auswählen…",
         "logoCategories": {
             "raw": "Rohstoffe",
@@ -845,7 +845,7 @@
         "decadeShort": "Jahrzehnt",
         "lastYear": "Letztes Jahr:",
         "netBalance": "Netto-Saldo",
-        "monthlyNetIncome": "Monatliches Nettoeinkommen",
+        "monthlyNetIncome": "Monatlicher Nettogewinn",
         "productionValue": "Produktionswert",
         "consumptionValue": "Verbrauchswert",
         "wages": "Löhne",
@@ -855,7 +855,7 @@
         "yearShort": "J{year}"
     },
     "Guards": {
-        "unsavedChanges": "Du hast ungespeicherte Änderungen.",
+        "unsavedChanges": "Sie haben ungespeicherte Änderungen.",
         "leaveAnyway": "Trotzdem verlassen",
         "tourActive": "Die geführte Tour ist aktiv. Beim Verlassen wird das Tutorial beendet.",
         "endTourAndLeave": "Tutorial beenden & verlassen"
@@ -871,291 +871,291 @@
         "steps": {
             "financial": {
                 "0": {
-                    "content": "Willkommen bei Enterprise Engine (der Name ist vorläufig)! Dies ist eine lebendige, atmende makroökonomische Simulation. Du führst ein Unternehmen auf einem dynamischen Planeten. Jede Aktion — Kredite, Einstellungen, Produktion, Handel — wird in eine Warteschlange gestellt und jeden Tag abgearbeitet.",
+                    "content": "Willkommen bei Enterprise Engine (der Name ist vorläufig)! Dies ist eine lebendige, atmende makroökonomische Simulation. Sie führen ein Unternehmen auf einem dynamischen Planeten. Jede Aktion — Kredite, Einstellungen, Produktion, Handel — wird in eine Warteschlange gestellt und jeden Tag abgearbeitet.",
                     "title": "🌍 Willkommen bei Enterprise Engine!"
                 },
                 "1": {
-                    "content": "Klicke oben auf den Button, um deinen Startkredit aufzunehmen. Er liefert Startkapital, um die Infrastruktur deines Unternehmens aufzubauen und Arbeitskräfte einzustellen. Der Kredit wird gutgeschrieben, sobald der aktuelle Tag abgeschlossen ist.",
-                    "title": "🏦 Nimm deinen Startkredit auf"
+                    "content": "Klicken Sie oben auf den Button, um Ihren Startkredit aufzunehmen. Er liefert Startkapital, um die Infrastruktur Ihres Unternehmens aufzubauen und Arbeitskräfte einzustellen. Der Kredit wird gutgeschrieben, sobald der aktuelle Tag abgeschlossen ist.",
+                    "title": "🏦 Nehmen Sie Ihren Startkredit auf"
                 },
                 "2": {
-                    "content": "Deine Kreditanfrage wurde in die Warteschlange gestellt! Sie wird gutgeschrieben, sobald der aktuelle Tag abgeschlossen ist. Beachte das \"Pending\"-Overlay — Aktionen werden in die Warteschlange gestellt und am nächsten Tag verarbeitet. So funktioniert die Simulation: Du stellst Aktionen ein, sie werden aufgelöst, wenn die Zeit voranschreitet.",
+                    "content": "Ihre Kreditanfrage wurde in die Warteschlange gestellt! Sie wird gutgeschrieben, sobald der aktuelle Tag abgeschlossen ist. Beachten Sie das \"Pending\"-Overlay — Aktionen werden in die Warteschlange gestellt und am nächsten Tag verarbeitet. So funktioniert die Simulation: Sie stellen Aktionen ein, sie werden aufgelöst, wenn die Zeit voranschreitet.",
                     "title": "✅ Kredit erfolgreich aufgenommen!"
                 },
                 "3": {
-                    "content": "Das ist deine Finanzübersicht. Die linke Spalte zeigt deinen monatlichen Cashflow: Erlös, Löhne, Einkäufe und Anspruchszahlungen. Die rechte Spalte zeigt deine Positionen: Einlagen, Kredite und Nettoposition. Der Netto-Cashflow ist deine wichtigste Kennzahl — grün bedeutet Gewinn, rot bedeutet, du verbrennst Geld!",
+                    "content": "Das ist Ihre Finanzübersicht. Die linke Spalte zeigt Ihren monatlichen Cashflow: Erlös, Löhne, Einkäufe und Zahlungen für Nutzungsrechte. Die rechte Spalte zeigt Ihre Positionen: Einlagen, Kredite und Nettofinanzposition. Der Netto-Cashflow ist Ihre wichtigste Kennzahl — positiv bedeutet, dass Geld zufließt, negativ bedeutet, dass Sie Geld verbrennen.",
                     "title": "📈 Finanzübersicht"
                 },
                 "4": {
-                    "content": "Deine Anlagen, Schiffe und dein Lager haben einen Sicherheitenwert, der bestimmt, wie viel du leihen kannst. Je mehr Vermögenswerte du aufbaust, desto mehr Kredit schaltest du frei.",
+                    "content": "Ihre Anlagen, Schiffe und Ihr Lager haben einen Sicherheitenwert, der bestimmt, wie viel Sie leihen können. Je mehr Vermögenswerte Sie aufbauen, desto mehr Kredit schalten Sie frei.",
                     "title": "🏭 Sicherheiten"
                 },
                 "5": {
-                    "content": "Dieses Diagramm schlüsselt deine Ausgaben und Einnahmen über die Zeit auf. Verfolge, wie sich deine Betriebskosten zu den Einnahmen verhalten — der Erlös sollte mit wachsender Produktion steigen.",
-                    "title": "📈 Ausgaben- & Einnahmendiagramm"
+                    "content": "Dieses Diagramm schlüsselt Ihre Erlöse und Aufwendungen über die Zeit auf. Verfolgen Sie, wie sich Ihre Betriebskosten zu den Erlösen verhalten — der Erlös sollte mit wachsender Produktion steigen.",
+                    "title": "📈 Erlös- & Aufwandsdiagramm"
                 },
                 "6": {
-                    "content": "Das Kassabestandsdiagramm zeigt deine Netto-Kassaposition über die Zeit. Ein steigender Trend bedeutet, dass du Rücklagen aufbaust. Ein fallender Trend signalisiert, dass du deinen Betrieb anpassen oder einen Kredit aufnehmen musst.",
-                    "title": "📈 Kassabestandsdiagramm"
+                    "content": "Das Bankguthabendiagramm zeigt Ihre Netto-Bankguthabenposition über die Zeit. Ein steigender Trend bedeutet, dass Sie Rücklagen aufbauen. Ein fallender Trend signalisiert, dass Sie Ihren Betrieb anpassen oder einen Kredit aufnehmen müssen.",
+                    "title": "📈 Bankguthabendiagramm"
                 },
                 "7": {
-                    "content": "Das Panel zur Produktauflösung schlüsselt deinen monatlichen Gewinn und Verlust nach Produkt auf. Sieh, welche Produkte dir Geld bringen und welche dich Geld kosten.",
+                    "content": "Das Panel zur Produktaufschlüsselung schlüsselt Ihren monatlichen Gewinn und Verlust nach Produkt auf. Sehen Sie, welche Produkte Ihnen Geld bringen und welche Sie Geld kosten.",
                     "title": "📊 Produkt-Gewinn und -Verlust"
                 },
                 "8": {
-                    "content": "Im Panel zur Kreditverwaltung kannst du zusätzliche Kredite beantragen oder bestehende vorzeitig zurückzahlen. Kreditbeträge hängen von deinem Cashflow und deinen Sicherheiten ab. Verbessere deinen Erlös und deine Vermögenswerte, um größere Kredite zu besseren Konditionen freizuschalten.",
+                    "content": "Im Panel zur Kreditverwaltung können Sie zusätzliche Kredite beantragen oder bestehende vorzeitig zurückzahlen. Kreditbeträge hängen von Ihrem Cashflow und Ihren Sicherheiten ab. Verbessern Sie Ihren Erlös und Ihre Vermögenswerte, um größere Kredite zu besseren Konditionen freizuschalten.",
                     "title": "🏦 Kreditverwaltung & Konditionen"
                 },
                 "9": {
-                    "content": "Jetzt schauen wir uns die Einstellung von Arbeitskräften an. Dein Unternehmen braucht Arbeitskräfte, um Anlagen zu betreiben. Wir wechseln nun zur Seite für Arbeitskräfte. Das kann ein paar Sekunden dauern.",
+                    "content": "Jetzt schauen wir uns die Einstellung von Arbeitskräften an. Ihr Unternehmen braucht Arbeitskräfte, um Anlagen zu betreiben. Wir wechseln nun zur Seite für Arbeitskräfte. Das kann ein paar Sekunden dauern.",
                     "title": "➡️ Weiter: Arbeitskräfte"
                 }
             },
             "workforce": {
                 "0": {
-                    "content": "Arbeitskräfte betreiben deine Anlagen. Sie werden aus dem Bevölkerungsreservoir des Planeten eingestellt. Dieses Panel zeigt deine aktuellen Löhne je Bildungsstufe im Vergleich zum Planetendurchschnitt (in Klammern). Löhne werden automatisch von der KI verwaltet.",
+                    "content": "Arbeitskräfte betreiben Ihre Anlagen. Sie werden aus dem Bevölkerungsreservoir des Planeten eingestellt. Dieses Panel zeigt Ihre aktuellen Löhne je Bildungsstufe im Vergleich zum Planetendurchschnitt (in Klammern). Löhne werden automatisch von der KI verwaltet.",
                     "title": "👷 Arbeitskräfteverwaltung"
                 },
                 "1": {
-                    "content": "Bildungsstufen: Ungelernt (einfache Arbeit), Primar, Sekundar (qualifiziert) und Tertiär (Spezialisten). Unterschiedliche Anlagen brauchen unterschiedliche Bildungsanteile. Höhere Löhne ziehen qualifiziertere Mitarbeitende an, erhöhen aber deine Kosten.",
+                    "content": "Bildungsstufen: Ungelernt (einfache Arbeit), Primarstufe, Sekundarstufe (qualifiziert) und Tertiärbereich (Spezialisten). Unterschiedliche Anlagen brauchen unterschiedliche Bildungsanteile. Höhere Löhne ziehen qualifiziertere Mitarbeitende an, erhöhen aber Ihre Kosten.",
                     "title": "🏫 Bildungsstufen"
                 },
                 "2": {
-                    "content": "Klappe das Panel für die Automatisierungssteuerung auf und aktiviere \"Automatische Arbeitskräftezuweisung\". Die KI berechnet dann jeden Tag optimale Mitarbeiterziele auf Basis deiner Anlagenanforderungen. Das ist der empfohlene Weg — manuelle Zuweisung ist mühsam!",
+                    "content": "Klappen Sie das Panel für die Automatisierungssteuerung auf und aktivieren Sie \"Automatische Personalplanung\". Die KI berechnet dann jeden Tag optimale Personalziele auf Basis Ihrer Anlagenanforderungen. Das ist der empfohlene Weg — manuelle Planung ist mühsam!",
                     "title": "🤖 Automatisierung aktivieren"
                 },
                 "3": {
-                    "content": "Die Automatisierung ist jetzt aktiviert! Die KI berechnet jeden Tag optimale Mitarbeiterziele auf Basis deiner Anlagenanforderungen.",
+                    "content": "Die Automatisierung ist jetzt aktiviert! Die KI berechnet jeden Tag optimale Personalziele auf Basis Ihrer Anlagenanforderungen.",
                     "title": "✅ Automatisierung erfolgreich aktiviert!"
                 },
                 "4": {
-                    "content": "Dieses Panel zeigt die Ziele der Arbeitskräftezuweisung je Bildungsstufe. Mit aktivierter Automatisierung setzt die KI diese jeden Tag für dich. Ohne Automatisierung würdest du sie hier manuell festlegen.",
-                    "title": "🔄 Arbeitskräftezuweisung"
+                    "content": "Dieses Panel zeigt die Personalziele je Bildungsstufe. Mit aktivierter Automatisierung setzt die KI diese jeden Tag für Sie. Ohne Automatisierung legen Sie sie hier manuell fest.",
+                    "title": "🔄 Personalplanung"
                 },
                 "5": {
-                    "content": "Der Abschnitt zur Arbeitskräfte-Demografie zeigt die Zusammensetzung deiner Belegschaft: Mitarbeiterzahl nach Bildung, Altersverteilung und Betriebszugehörigkeit. Verfolge, wie sich deine Belegschaft entwickelt.",
+                    "content": "Der Abschnitt zur Arbeitskräfte-Demografie zeigt die Zusammensetzung Ihrer Belegschaft: Mitarbeiterzahl nach Bildung, Altersverteilung und Betriebszugehörigkeit. Verfolgen Sie, wie sich Ihre Belegschaft entwickelt.",
                     "title": "📊 Arbeitskräfte-Demografie"
                 },
                 "6": {
-                    "content": "Das Diagramm zur Altersverteilung schlüsselt deine Belegschaft nach Altersgruppen auf. Eine ausgewogene Alterspyramide spricht für eine gesunde Erneuerung der Belegschaft. Zu viele ältere Arbeitskräfte können auf künftige Rentenwellen hindeuten.",
+                    "content": "Das Diagramm zur Altersverteilung schlüsselt Ihre Belegschaft nach Altersgruppen auf. Eine ausgewogene Alterspyramide spricht für eine gesunde Erneuerung der Belegschaft. Zu viele ältere Arbeitskräfte können auf künftige Rentenwellen hindeuten.",
                     "title": "📈 Altersverteilung"
                 },
                 "7": {
-                    "content": "Das Diagramm zur Betriebszugehörigkeit zeigt, wie lange deine Arbeitskräfte schon beschäftigt sind. Hohe Zugehörigkeit bedeutet erfahrenes Personal, neue Einstellungen bringen frisches Know-how. Verfolge hier Trends bei Bindung und Einarbeitung.",
+                    "content": "Das Diagramm zur Betriebszugehörigkeit zeigt, wie lange Ihre Arbeitskräfte schon beschäftigt sind. Hohe Zugehörigkeit bedeutet erfahrenes Personal, neue Einstellungen bringen frisches Know-how. Verfolgen Sie hier Trends bei Bindung und Einarbeitung.",
                     "title": "📈 Betriebszugehörigkeit pro Kopf"
                 },
                 "8": {
-                    "content": "Diese Diagramme verfolgen die Gesamtzahl der Arbeitskräfte und die Lohnkosten über die Zeit. Beobachte das Wachstum deiner Belegschaft und sorge dafür, dass die Löhne wettbewerbsfähig bleiben.",
+                    "content": "Diese Diagramme verfolgen die Gesamtzahl der Arbeitskräfte und die Lohnkosten über die Zeit. Beobachten Sie das Wachstum Ihrer Belegschaft und sorgen Sie dafür, dass die Löhne wettbewerbsfähig bleiben.",
                     "title": "📈 Arbeitskräfte-Diagramme"
                 },
                 "9": {
-                    "content": "Änderungen bei den Arbeitskräften werden jeden Tag verarbeitet, aber Übergänge brauchen Zeit. Neu eingestellte Arbeitskräfte kommen in eine Einarbeitungswarteschlange, und ausscheidende Arbeitskräfte (entlassen, in Rente oder freiwillig) haben jeweils ihre eigene dreimonatige Abgangswarteschlange. Hab Geduld — Änderungen der Belegschaft erfolgen schrittweise!",
+                    "content": "Änderungen bei den Arbeitskräften werden jeden Tag verarbeitet, aber Übergänge brauchen Zeit. Neu eingestellte Arbeitskräfte kommen in eine Einarbeitungswarteschlange, und ausscheidende Arbeitskräfte (entlassen, in Rente oder freiwillig) haben jeweils ihre eigene dreimonatige Abgangswarteschlange. Haben Sie Geduld — Änderungen der Belegschaft erfolgen schrittweise!",
                     "title": "⏳ Geduld zahlt sich aus"
                 },
                 "10": {
-                    "content": "Dein Unternehmen braucht eine HR-Abteilung, um die Belegschaft zu verwalten. Die HR-Abteilung verbraucht VerwaltungsDienstleistungen und erzeugt Personalressourcen. Ohne sie sinkt die Produktivität deiner Arbeitskräfte drastisch. Klicke auf \"Bauen\", um den Bau zu beauftragen — das ist nötig, bevor du fortfahren kannst.",
+                    "content": "Ihr Unternehmen braucht eine HR-Abteilung, um die Belegschaft zu verwalten. Die HR-Abteilung verbraucht Verwaltungsdienstleistungen und erzeugt Personalressourcen. Ohne sie sinkt die Produktivität Ihrer Arbeitskräfte drastisch. Klicken Sie auf \"Bauen\", um den Bau zu beauftragen — das ist nötig, bevor Sie fortfahren können.",
                     "title": "🏢 HR-Abteilung bauen"
                 },
                 "11": {
-                    "content": "Der Bau deiner HR-Abteilung ist jetzt in der Warteschlange! Nach dem nächsten Tag erscheint sie als \"Im Bau\" und braucht ein paar Tage bis zur Fertigstellung. Die benötigten VerwaltungsDienstleistungen werden automatisch am Markt gekauft, sobald wir das eingerichtet haben.",
+                    "content": "Der Bau Ihrer HR-Abteilung ist jetzt in der Warteschlange! Nach dem nächsten Tag erscheint sie als \"Im Bau\" und braucht ein paar Tage bis zur Fertigstellung. Die benötigten Verwaltungsdienstleistungen werden automatisch am Markt gekauft, sobald wir das eingerichtet haben.",
                     "title": "✅ HR-Bau in der Warteschlange!"
                 },
                 "12": {
-                    "content": "Sobald sie aktiv ist, erzeugt die HR-Abteilung Personalressourcen aus VerwaltungsDienstleistungenn. Die Anzeige zeigt deinen HR-Puffer, und die Bilanzzeile zeigt Produktion − Bedarf → Puffer. Solange der Puffer deine Arbeitskräfte deckt, läuft die Produktivität bei 100 % — geht er zur Neige, sinkt die Produktivität und dein ganzes Unternehmen leidet.",
+                    "content": "Sobald sie aktiv ist, erzeugt die HR-Abteilung Personalressourcen aus Verwaltungsdienstleistungen. Die Anzeige zeigt Ihren HR-Puffer, und die Bilanzzeile zeigt Produktion − Bedarf → Puffer. Solange der Puffer Ihre Arbeitskräfte deckt, läuft die Produktivität bei 100 % — geht er zur Neige, sinkt die Produktivität und Ihr ganzes Unternehmen leidet.",
                     "title": "🏢 So funktioniert die HR-Abteilung"
                 },
                 "13": {
-                    "content": "Wir brauchen Bauleistungen, um Anlagen zu bauen. Lass uns zum Markt gehen und welche kaufen. Wir wechseln nun zur Marktseite. Das kann ein paar Sekunden dauern.",
+                    "content": "Wir brauchen Bauleistungen, um Anlagen zu bauen. Lassen Sie uns zum Markt gehen und welche kaufen. Wir wechseln nun zur Marktseite. Das kann ein paar Sekunden dauern.",
                     "title": "➡️ Weiter: Markt"
                 }
             },
             "market": {
                 "0": {
-                    "content": "Der Markt ist der Ort, an dem du Produktionseinsätze kaufst und Fertigwaren verkaufst. Preise entstehen aus Angebot und Nachfrage — wie in einer echten Wirtschaft! Wir sind hier, um Bauleistungen zu kaufen, die für den Bau von Anlagen benötigt werden.",
+                    "content": "Der Markt ist der Ort, an dem Sie Vorleistungen kaufen und Fertigwaren verkaufen. Preise entstehen aus Angebot und Nachfrage — wie in einer echten Wirtschaft! Wir sind hier, um Bauleistungen zu kaufen, die für den Bau von Anlagen benötigt werden.",
                     "title": "🏪 Marktübersicht"
                 },
                 "1": {
-                    "content": "Ressourcen sind nach Stufe gruppiert: Roh, Veredelt, Gefertigt, Dienstleistungen und Währung (Devisen). Bauleistungen findest du im Tab für Dienstleistungen. Klicke auf den Tab für Dienstleistungen, um sie zu finden.",
+                    "content": "Ressourcen sind nach Stufe gruppiert: Rohstoffe, Veredelte Güter, Fertigwaren, Dienstleistungen und Währung (Devisen). Bauleistungen finden Sie im Tab für Dienstleistungen. Klicken Sie auf den Tab für Dienstleistungen, um sie zu finden.",
                     "title": "📂 Ressourcenstufen"
                 },
                 "2": {
-                    "content": "Jede Ressourcenzeile zeigt wichtige Daten: Räumungspreis, Gesamtangebot, Gesamtnachfrage, Produktion und Verbrauch. Klicke auf Spaltenköpfe, um zu sortieren. Klicke auf die Zeile für Bauleistungen, um sie aufzuklappen und Kauf-/Verkaufsoptionen zu sehen.",
+                    "content": "Jede Ressourcenzeile zeigt wichtige Daten: Markträumungspreis, Gesamtangebot, Gesamtnachfrage, Produktion und Verbrauch. Klicken Sie auf Spaltenköpfe, um zu sortieren. Klicken Sie auf die Zeile für Bauleistungen, um sie aufzuklappen und Kauf-/Verkaufsoptionen zu sehen.",
                     "title": "📊 Marktdaten"
                 },
                 "3": {
-                    "content": "Klicke auf die Zeile für Bauleistungen, um sie aufzuklappen und Kauf-/Verkaufsoptionen zu sehen.",
+                    "content": "Klicken Sie auf die Zeile für Bauleistungen, um sie aufzuklappen und Kauf-/Verkaufsoptionen zu sehen.",
                     "title": "🔍 Bauleistungen aufklappen"
                 },
                 "4": {
-                    "content": "Aktiviere diesen Schalter, um automatische Käufe einzuschalten. Die KI kauft dann jeden Tag Bauleistungen, um deinen Bestand aufzufüllen, wenn du die Ressource benötigst. Preis- und Mengenstrategien kannst du unten konfigurieren.",
+                    "content": "Aktivieren Sie diesen Schalter, um automatische Käufe einzuschalten. Die KI kauft dann jeden Tag Bauleistungen, um Ihren Bestand aufzufüllen, wenn Sie die Ressource benötigen. Preis- und Mengenstrategien können Sie unten konfigurieren.",
                     "title": "🛒 Kauf für Bauleistungen aktivieren"
                 },
                 "5": {
-                    "content": "Automatische Käufe sind jetzt aktiviert! Die KI übernimmt die Einkäufe für dich. Deine Anlage hat immer die Bauleistungen, die sie braucht.",
+                    "content": "Automatische Käufe sind jetzt aktiviert! Die KI übernimmt die Einkäufe für Sie. Ihre Anlage hat immer die Bauleistungen, die sie braucht.",
                     "title": "✅ Kauf aktiviert!"
                 },
                 "6": {
-                    "content": "Verwaltung ist der bürokratische Aufwand für den Betrieb deines Unternehmens: Sowohl die HR-Abteilung als auch die Lagerabteilung verbrauchen sie jeden Tag. Klicke auf die Zeile für Verwaltung, um sie aufzuklappen.",
+                    "content": "Verwaltung ist der bürokratische Aufwand für den Betrieb Ihres Unternehmens: Sowohl die HR-Abteilung als auch die Lagerabteilung verbrauchen sie jeden Tag. Klicken Sie auf die Zeile für Verwaltung, um sie aufzuklappen.",
                     "title": "🔍 Verwaltung aufklappen"
                 },
                 "7": {
-                    "content": "Aktiviere diesen Schalter, um den Kauf von VerwaltungsDienstleistungenn zu automatisieren. Deine Abteilungen brauchen sie jeden Tag — geht sie aus, werden HR und Lager langsamer. Wenn dein Unternehmen richtig groß wird, kann es sinnvoll sein, eine Grundmenge Verwaltung selbst über ein Verwaltungszentrum zu produzieren.",
+                    "content": "Aktivieren Sie diesen Schalter, um den Kauf von Verwaltungsdienstleistungen zu automatisieren. Ihre Abteilungen brauchen sie jeden Tag — geht sie aus, werden HR und Lager langsamer. Wenn Ihr Unternehmen richtig groß wird, kann es sinnvoll sein, eine Grundmenge Verwaltung selbst über ein Verwaltungszentrum zu produzieren.",
                     "title": "🛒 Kauf für Verwaltung aktivieren"
                 },
                 "8": {
-                    "content": "Logistik ist die Transportkapazität, die Waren in dein Lager und wieder hinaus bewegt. Die Lagerabteilung verbraucht sie jeden Tag. Klicke auf die Zeile für Logistik, um sie aufzuklappen.",
+                    "content": "Logistik ist die Transportkapazität, die Waren in Ihr Lager und wieder hinaus bewegt. Die Lagerabteilung verbraucht sie jeden Tag. Klicken Sie auf die Zeile für Logistik, um sie aufzuklappen.",
                     "title": "🔍 Logistik aufklappen"
                 },
                 "9": {
-                    "content": "Aktiviere diesen Schalter, um den Kauf von LogistikDienstleistungenn zu automatisieren. Ohne ausreichend Logistik hungert dein Lagerdurchsatz aus und Waren gehen verloren. Wenn dein Unternehmen richtig groß wird, kann es sinnvoll sein, eine Grundmenge Logistik selbst über einen Logistikknoten zu produzieren.",
+                    "content": "Aktivieren Sie diesen Schalter, um den Kauf von Logistikdienstleistungen zu automatisieren. Ohne ausreichend Logistik hungert Ihr Lagerdurchsatz aus und Waren gehen verloren. Wenn Ihr Unternehmen richtig groß wird, kann es sinnvoll sein, eine Grundmenge Logistik selbst über einen Logistikknoten zu produzieren.",
                     "title": "🛒 Kauf für Logistik aktivieren"
                 },
                 "10": {
-                    "content": "Wartung hält deine Anlagen in gutem Zustand. Jede Anlage verbraucht jeden Tag WartungsDienstleistungen — ohne sie sinkt der Zustand und die Leistung fällt. Klicke auf die Zeile für Wartung, um sie aufzuklappen.",
+                    "content": "Wartung hält Ihre Anlagen in gutem Zustand. Jede Anlage verbraucht jeden Tag Wartungsdienstleistungen — ohne sie sinkt der Zustand und die Leistung fällt. Klicken Sie auf die Zeile für Wartung, um sie aufzuklappen.",
                     "title": "🔍 Wartung aufklappen"
                 },
                 "11": {
-                    "content": "Aktiviere diesen Schalter, um den Kauf von WartungsDienstleistungenn zu automatisieren. Deine Anlagen brauchen sie jeden Tag, um gesund zu bleiben. Wenn dein Unternehmen richtig groß wird, kann es sinnvoll sein, eine Grundmenge Wartung selbst über eine Wartungsanlage zu produzieren.",
+                    "content": "Aktivieren Sie diesen Schalter, um den Kauf von Wartungsdienstleistungen zu automatisieren. Ihre Anlagen brauchen sie jeden Tag, um gesund zu bleiben. Wenn Ihr Unternehmen richtig groß wird, kann es sinnvoll sein, eine Grundmenge Wartung selbst über eine Wartungsanlage zu produzieren.",
                     "title": "🛒 Kauf für Wartung aktivieren"
                 },
                 "12": {
-                    "content": "Im Verkaufsbereich kannst du Angebote zum Verkauf deiner Produkte einstellen. Vorerst konzentrieren wir uns auf den Einkauf — später verkaufst du hier deine veredelten Waren.",
+                    "content": "Im Verkaufsbereich können Sie Angebote zum Verkauf Ihrer Produkte einstellen. Vorerst konzentrieren wir uns auf den Einkauf — später verkaufen Sie hier Ihre veredelten Waren.",
                     "title": "📤 Verkauf & Auto-Verkauf"
                 },
                 "13": {
-                    "content": "Jede Ressource hat ein Preishistoriendiagramm. Nutze es, um Trends zu erkennen und deine Geschäfte zu timen. Die rote Linie sind die geschätzten Produktionskosten.",
+                    "content": "Jede Ressource hat ein Preishistoriendiagramm. Nutzen Sie es, um Trends zu erkennen und Ihre Geschäfte zu timen. Die rote Linie sind die geschätzten Produktionskosten.",
                     "title": "📈 Preishistorie"
                 },
                 "14": {
-                    "content": "Dieser Schalter filtert den Markt so, dass nur Ressourcen angezeigt werden, die du benötigst oder produzierst.",
+                    "content": "Dieser Schalter filtert den Markt so, dass nur Ressourcen angezeigt werden, die Sie benötigen oder produzieren.",
                     "title": "🔍 Relevante Ressourcen"
                 },
                 "15": {
-                    "content": "Jetzt, da Bauleistungen automatisch gekauft werden, lass uns eine Anlage bauen! Wir wechseln nun zur Produktionsseite. Das kann ein paar Sekunden dauern.",
+                    "content": "Jetzt, da Bauleistungen automatisch gekauft werden, lassen Sie uns eine Anlage bauen! Wir wechseln nun zur Produktionsseite. Das kann ein paar Sekunden dauern.",
                     "title": "➡️ Weiter: Produktion"
                 }
             },
             "production": {
                 "0": {
-                    "content": "Produktionsanlagen verwandeln Rohstoffe in veredelte Güter, gefertigte Produkte und Dienstleistungen. So entsteht Wert — und so machst du Gewinn! Wir haben Bauleistungen bereit, also bauen wir ein Ölfeld.",
+                    "content": "Produktionsanlagen verwandeln Rohstoffe in veredelte Güter, Fertigwaren und Dienstleistungen. So entsteht Wert — und so machen Sie Gewinn! Wir haben Bauleistungen bereit, also bauen wir ein Ölfeld.",
                     "title": "🏭 Produktionsanlagen"
                 },
                 "1": {
-                    "content": "Anlagen sind nach Stufe geordnet: Roh (Förderung), Veredelt (Verarbeitung), Gefertigt (Montage) und Dienstleistungen. Das Ölfeld ist eine Anlage zur Rohstoffförderung — die Zahl auf dem Badge zeigt, wie viele du von jedem Typ besitzt.",
+                    "content": "Anlagen sind nach Stufe geordnet: Rohstoffförderung, Veredelung, Fertigung und Dienstleistungen. Das Ölfeld ist eine Anlage zur Rohstoffförderung — die Zahl auf dem Badge zeigt, wie viele Sie von jedem Typ besitzen.",
                     "title": "📂 Anlagenstufen"
                 },
                 "2": {
-                    "content": "Klicke auf die Karte \"+ Anlage bauen\", um den Bau einer neuen Anlage zu starten. Wir bauen ein Ölfeld, um Rohöl zu fördern.",
+                    "content": "Klicken Sie auf die Karte \"+ Anlage bauen\", um den Bau einer neuen Anlage zu starten. Wir bauen ein Ölfeld, um Rohöl zu fördern.",
                     "title": "🛠️ Klicken, um zu bauen"
                 },
                 "3": {
-                    "content": "Das ist das Ölfeld. Es fördert Rohöl aus einem Landanspruch (Ölreservoir). Klicke auf \"Bauen\", um den Bau zu beauftragen. Der Bau nutzt Bauleistungen, die automatisch am Markt gekauft werden. Der Bau dauert ein paar Tage.",
+                    "content": "Das ist das Ölfeld. Es fördert Rohöl aus einem Nutzungsrecht (Ölreservoir). Klicken Sie auf \"Bauen\", um den Bau zu beauftragen. Der Bau nutzt Bauleistungen, die automatisch am Markt gekauft werden. Der Bau dauert ein paar Tage.",
                     "title": "🛠️ Ölfeld bauen"
                 },
                 "4": {
-                    "content": "Dein Bauantrag für das Ölfeld wurde gesendet! Nach einem Tag erscheint es als \"Im Bau\". Der Bau verbraucht jeden Tag Bauleistungen aus deinem Lager, bis er abgeschlossen ist. Den Fortschritt siehst du auf der Karte — der Balken füllt sich, während der Bau voranschreitet.",
+                    "content": "Ihr Bauantrag für das Ölfeld wurde gesendet! Nach einem Tag erscheint es als \"Im Bau\". Der Bau verbraucht jeden Tag Bauleistungen aus Ihrem Lager, bis er abgeschlossen ist. Den Fortschritt sehen Sie auf der Karte — der Balken füllt sich, während der Bau voranschreitet.",
                     "title": "⏳ Bau gestartet"
                 },
                 "5": {
-                    "content": "Sobald der Bau abgeschlossen ist, wird die Anlage aktiv. Die Karte zeigt: die verbrauchten Einsätze (links) und die erzeugten Ausgaben (rechts), Effizienzbalken für Arbeitskräfte und eine Ertragszeile mit Erlös, Einsatzkosten, Löhnen und Nettogewinn pro Tag. Behalte die Einsatzpuffer im Blick — gehen sie zur Neige, stoppt die Produktion!",
+                    "content": "Sobald der Bau abgeschlossen ist, wird die Anlage aktiv. Die Karte zeigt: die verbrauchten Vorleistungen (links) und die erzeugten Produkte (rechts), Effizienzbalken für Arbeitskräfte und eine Ertragszeile mit Erlös, Vorleistungskosten, Löhnen und Nettogewinn pro Tag. Behalten Sie die Vorleistungspuffer im Blick — gehen sie zur Neige, stoppt die Produktion!",
                     "title": "⚙️ Aktive Anlage"
                 },
                 "6": {
-                    "content": "Du kannst die Skalierung jedes Anlagentyps erhöhen. Das skaliert die Einsatz-, Ausgabe- und Arbeitskräfteanforderungen der Anlage. Nutze den Regler für die Betriebsskalierung, um die Kapazität vorübergehend zwischen 0 % und 100 % einzustellen.",
-                    "title": "📡 Hochskalieren"
+                    "content": "Sie können die Betriebsgröße jedes Anlagentyps erhöhen. Das erhöht den Vorleistungs-, Produkt- und Arbeitskräftebedarf der Anlage. Nutzen Sie den Regler für die Auslastung, um die Kapazität vorübergehend zwischen 0 % und 100 % einzustellen.",
+                    "title": "📡 Betriebsgröße erhöhen"
                 },
                 "7": {
-                    "content": "Das Ölfeld braucht einen Landanspruch auf ein Ölreservoir, um Rohöl zu fördern. Lass uns einen pachten, um es zu versorgen. Wir wechseln nun zur Seite für Landansprüche. Das kann ein paar Sekunden dauern.",
-                    "title": "➡️ Weiter: Landansprüche"
+                    "content": "Das Ölfeld braucht ein Nutzungsrecht an einem Ölreservoir, um Rohöl zu fördern. Lassen Sie uns eines pachten, um es zu versorgen. Wir wechseln nun zur Seite für Nutzungsrechte. Das kann ein paar Sekunden dauern.",
+                    "title": "➡️ Weiter: Nutzungsrechte"
                 }
             },
             "claims": {
                 "0": {
-                    "content": "Landansprüche geben dir Zugang zu natürlichen Ressourcen auf dem Planeten. Dein Ölfeld braucht Zugang zu einem Ölreservoir, um Rohöl zu fördern. Ohne Anspruch hat das Feld nichts zu fördern!",
-                    "title": "🌍 Landansprüche"
+                    "content": "Nutzungsrechte geben Ihnen Zugang zu natürlichen Ressourcen auf dem Planeten. Ihr Ölfeld braucht Zugang zu einem Ölreservoir, um Rohöl zu fördern. Ohne Nutzungsrecht hat das Feld nichts zu fördern!",
+                    "title": "🌍 Nutzungsrechte"
                 },
                 "1": {
-                    "content": "Klicke auf der Karte des Ölreservoirs auf \"Pachten\", um deinen ersten Ressourcenanspruch zu sichern. Wähle eine Kapazität und bestätige — je nach gewählter Stufe fällt eine einmalige Pauschalgebühr an. Dieses Reservoir versorgt dein Ölfeld!",
+                    "content": "Klicken Sie auf der Karte des Ölreservoirs auf \"Pachten\", um Ihr erstes Nutzungsrecht zu sichern. Wählen Sie eine Kapazität und bestätigen Sie — je nach gewählter Stufe fällt eine einmalige Pauschalgebühr an. Dieses Reservoir versorgt Ihr Ölfeld!",
                     "title": "🔑 Ölreservoir pachten"
                 },
                 "2": {
-                    "content": "Dein Ölanspruch ist gepachtet! Die Ressourcen werden jeden Tag automatisch gefördert. Die geförderte Ressource fließt zu deinem Ölfeld, das Rohöl zum Veredeln oder Verkauf produziert. Beachte, dass die Karte des aktiven Anspruchs nun Bestände, Förderrate und Erschöpfungsschätzung zeigt.",
-                    "title": "✅ Ölanspruch erfolgreich gepachtet!"
+                    "content": "Ihr Öl-Nutzungsrecht ist gepachtet! Die Ressourcen werden jeden Tag automatisch gefördert. Die geförderte Ressource fließt zu Ihrem Ölfeld, das Rohöl zum Veredeln oder Verkauf produziert. Beachten Sie, dass die Karte des aktiven Nutzungsrechts nun Bestände, Förderrate und Erschöpfungsschätzung zeigt.",
+                    "title": "✅ Öl-Nutzungsrecht erfolgreich gepachtet!"
                 },
                 "3": {
-                    "content": "Nach der Pacht hast du einen aktiven Anspruch. Die Ressourcen werden jeden Tag automatisch gefördert. Die Karte zeigt Bestände, Förderrate und Erschöpfungsschätzung. Erneuerbare Ressourcen (z. B. Farmen, Wasser) regenerieren sich mit der Zeit.",
-                    "title": "⚙️ Aktive Ansprüche"
+                    "content": "Nach der Pacht haben Sie ein aktives Nutzungsrecht. Die Ressourcen werden jeden Tag automatisch gefördert. Die Karte zeigt Bestände, Förderrate und Erschöpfungsschätzung. Erneuerbare Ressourcen (z. B. Farmen, Wasser) regenerieren sich mit der Zeit.",
+                    "title": "⚙️ Aktive Nutzungsrechte"
                 },
                 "4": {
-                    "content": "Du kannst einen Anspruch erweitern, um die Förderkapazität zu erhöhen. Nicht erneuerbare Ressourcen erschöpfen sich irgendwann, also plane entsprechend!",
-                    "title": "🔍 Ansprüche skalieren"
+                    "content": "Sie können ein Nutzungsrecht erweitern, um die Förderkapazität zu erhöhen. Nicht erneuerbare Ressourcen erschöpfen sich irgendwann, also planen Sie entsprechend!",
+                    "title": "🔍 Nutzungsrechte erweitern"
                 },
                 "5": {
-                    "content": "Ressourcen bilden eine Kette: Rohstoffe (Stufe 0) versorgen Raffinerien (Stufe 1), diese versorgen Hersteller (Stufe 2) und so weiter. Du hast jetzt: Ölreservoir (roh) ➡️ Ölfeld (Förderung) ➡️ Markt. Beginne mit einfachen Ressourcen und arbeite dich die Wertschöpfungskette hinauf!",
+                    "content": "Ressourcen bilden eine Kette: Rohstoffe (Stufe 0) versorgen Raffinerien (Stufe 1), diese versorgen Hersteller (Stufe 2) und so weiter. Sie haben jetzt: Ölreservoir (roh) ➡️ Ölfeld (Förderung) ➡️ Markt. Beginnen Sie mit einfachen Ressourcen und arbeiten Sie sich die Wertschöpfungskette hinauf!",
                     "title": "🔗 Ressourcenketten"
                 },
                 "6": {
-                    "content": "Deine Produkte lagern in deinem Lager. Lass uns deinen Bestand prüfen. Wir wechseln nun zur Lagerseite. Das kann ein paar Sekunden dauern.",
+                    "content": "Ihre Produkte lagern in Ihrem Lager. Lassen Sie uns Ihren Bestand prüfen. Wir wechseln nun zur Lagerseite. Das kann ein paar Sekunden dauern.",
                     "title": "➡️ Weiter: Lager"
                 }
             },
             "storage": {
                 "0": {
-                    "content": "Das ist deine Lageranlage — das Lagerhaus, in dem alle deine Güter liegen. Rohstoffe, Zwischenprodukte und Fertigwaren sind hier. Das Raster zeigt, was du hältst, was jeden Tick hinein- und herausfließt und was gekauft oder verkauft wird.",
+                    "content": "Das ist Ihre Lageranlage — das Lagerhaus, in dem alle Ihre Güter liegen. Rohstoffe, Zwischenprodukte und Fertigwaren sind hier. Das Raster zeigt, was Sie halten, was jeden Tick hinein- und herausfließt und was gekauft oder verkauft wird.",
                     "title": "📦 Lagerübersicht"
                 },
                 "1": {
-                    "content": "Das Lager hat begrenzte Kapazität, sowohl beim Volumen (m³) als auch bei der Masse (Tonnen). Wenn du es füllst, stellen deine Anlagen die Produktion ein! Verkaufe überschüssige Güter am Markt oder erweitere das Lager, um Platz zu schaffen.",
+                    "content": "Das Lager hat begrenzte Kapazität, sowohl beim Volumen (m³) als auch bei der Masse (Tonnen). Wenn Sie es füllen, stellen Ihre Anlagen die Produktion ein! Verkaufen Sie überschüssige Güter am Markt oder erweitern Sie das Lager, um Platz zu schaffen.",
                     "title": "📁 Kapazität"
                 },
                 "2": {
-                    "content": "Die Lagerabteilung ist das Rückgrat deiner Logistik. Sie verbraucht Verwaltungs- und LogistikDienstleistungen und erzeugt den Lagerdurchsatz, der Güter in dein Lager hinein- und hinausbewegt. Die Anzeige zeigt deinen Lagerpuffer, und die Bilanzzeile zeigt Produktion − Bedarf → Puffer.",
+                    "content": "Die Lagerabteilung ist das Rückgrat Ihrer Logistik. Sie verbraucht Verwaltungs- und Logistikdienstleistungen und erzeugt den Lagerdurchsatz, der Güter in Ihr Lager hinein- und hinausbewegt. Die Anzeige zeigt Ihren Lagerpuffer, und die Bilanzzeile zeigt Produktion − Bedarf → Puffer.",
                     "title": "🏢 Lagerabteilung"
                 },
                 "3": {
-                    "content": "Jede aktive Anlage hat eine Wartungszeile: Sie verbraucht WartungsDienstleistungen, um ihren Zustand hoch zu halten. Wird zu wenig gewartet, sinkt der Zustand und die Anlage produziert weniger. Deshalb kaufen wir Wartung am Markt!",
+                    "content": "Jede aktive Anlage hat eine Wartungszeile: Sie verbraucht Wartungsdienstleistungen, um ihren Zustand hoch zu halten. Wird zu wenig gewartet, sinkt der Zustand und die Anlage produziert weniger. Deshalb kaufen wir Wartung am Markt!",
                     "title": "🔧 Wartungszeile"
                 },
                 "4": {
-                    "content": "Wenn deine Lagerabteilung nicht hinterherkommt (Logistik-Unterversorgung), zahlst du einen echten Preis: Die Transporteffizienz sinkt — Güter gehen verloren, bevor sie überhaupt dein Lager erreichen — und der Lagerzustand verschlechtert sich. Bei voller Unterversorgung kann die Transporteffizienz auf etwa 50 % fallen. Erweitere die Lagerabteilung oder versorge sie mit mehr Logistik und Verwaltung, um Verluste zu vermeiden!",
+                    "content": "Wenn Ihre Lagerabteilung nicht hinterherkommt (Logistik-Unterversorgung), zahlen Sie einen echten Preis: Die Transporteffizienz sinkt — Güter gehen verloren, bevor sie überhaupt Ihr Lager erreichen — und der Lagerzustand verschlechtert sich. Bei voller Unterversorgung kann die Transporteffizienz auf etwa 50 % fallen. Erweitern Sie die Lagerabteilung oder versorgen Sie sie mit mehr Logistik und Verwaltung, um Verluste zu vermeiden!",
                     "title": "⚠️ Malus bei Logistik-Unterversorgung"
                 },
                 "5": {
-                    "content": "Jetzt schauen wir uns deine Flotte an. Wir wechseln nun zur Schiffsseite. Das kann ein paar Sekunden dauern.",
+                    "content": "Jetzt schauen wir uns Ihre Flotte an. Wir wechseln nun zur Schiffsseite. Das kann ein paar Sekunden dauern.",
                     "title": "➡️ Weiter: Schiffe"
                 }
             },
             "ships": {
                 "0": {
-                    "content": "Schiffe ermöglichen interplanetaren Handel. Mit einer Flotte kannst du Güter zwischen Planeten transportieren, auf ausländische Märkte zugreifen und eine wirklich galaktische Lieferkette aufbauen!",
+                    "content": "Schiffe ermöglichen interplanetaren Handel. Mit einer Flotte können Sie Güter zwischen Planeten transportieren, auf ausländische Märkte zugreifen und eine wirklich galaktische Lieferkette aufbauen!",
                     "title": "🚀 Schiffsverwaltung"
                 },
                 "1": {
-                    "content": "Im Tab für Werften baust du neue Schiffe. Wähle einen Schiffstyp, zahle die Baukosten und warte, bis das Schiff gebaut ist — genau wie beim Bau von Anlagen.",
+                    "content": "Im Tab für Werften bauen Sie neue Schiffe. Wählen Sie einen Schiffstyp, zahlen Sie die Baukosten und warten Sie, bis das Schiff gebaut ist — genau wie beim Bau von Anlagen.",
                     "title": "🛠️ Werften"
                 },
                 "2": {
-                    "content": "Meine Schiffe zeigt deine Flotte. Schiffe können untätig sein, unterwegs sein oder aktiv handeln. Verwalte Routen, sieh dir die Fracht an und verfolge die Einnahmen.",
+                    "content": "Meine Schiffe zeigt Ihre Flotte. Schiffe können untätig sein, unterwegs sein oder aktiv handeln. Verwalten Sie Routen, sehen Sie sich die Fracht an und verfolgen Sie die Einnahmen.",
                     "title": "🚢 Meine Schiffe"
                 },
                 "3": {
-                    "content": "Der Schiffsmarktplatz lässt dich Schiffe mit anderen Unternehmen kaufen und verkaufen. Ein großartiger Weg, um loszulegen, ohne von Grund auf zu bauen!",
+                    "content": "Der Schiffsmarktplatz lässt Sie Schiffe mit anderen Unternehmen kaufen und verkaufen. Ein großartiger Weg, um loszulegen, ohne von Grund auf zu bauen!",
                     "title": "🛒 Schiffsmarktplatz"
                 },
                 "4": {
-                    "content": "Schiffe erwirtschaften Erlös, indem sie Transportverträge zwischen Planeten erfüllen. Je mehr Handelsrouten du aufbaust, desto mehr Einnahmen erzeugt deine Flotte.",
-                    "title": "📦 Transportverträge"
+                    "content": "Schiffe erwirtschaften Erlös, indem sie Transportaufträge zwischen Planeten erfüllen. Je mehr Handelsrouten Sie aufbauen, desto mehr Einnahmen erzeugt Ihre Flotte.",
+                    "title": "📦 Transportaufträge"
                 },
                 "5": {
-                    "content": "Das große Ziel: Produktion auf mehreren Planeten aufbauen, mit deiner Flotte zwischen ihnen handeln und eine interplanetare Lieferkette aufbauen. Kaufe auf einem Planeten billig ein und verkaufe auf einem anderen teuer!",
+                    "content": "Das große Ziel: Produktion auf mehreren Planeten aufbauen, mit Ihrer Flotte zwischen ihnen handeln und eine interplanetare Lieferkette aufbauen. Kaufen Sie auf einem Planeten billig ein und verkaufen Sie auf einem anderen teuer!",
                     "title": "🌍 Multi-Planeten-Strategie"
                 },
                 "6": {
-                    "content": "Hier ist der zentrale Spielkreislauf: 👍 Landansprüche pachten, um Ressourcen zu erhalten ➡️ Produktionsanlagen bauen ➡️ Arbeitskräfte einstellen (mit Automatisierung!) ➡️ Güter produzieren ➡️ Am Markt mit Gewinn verkaufen ➡️ Reinvestieren, um zu wachsen ➡️ Schiffe bauen und auf andere Planeten expandieren!",
+                    "content": "Hier ist der zentrale Spielkreislauf: 👍 Nutzungsrechte pachten, um Ressourcen zu erhalten ➡️ Produktionsanlagen bauen ➡️ Arbeitskräfte einstellen (mit Automatisierung!) ➡️ Güter produzieren ➡️ Am Markt mit Gewinn verkaufen ➡️ Reinvestieren, um zu wachsen ➡️ Schiffe bauen und auf andere Planeten expandieren!",
                     "title": "🔄 Der Spielkreislauf"
                 },
                 "7": {
-                    "content": "🎉 Herzlichen Glückwunsch! Du hast die geführte Tour abgeschlossen. Du kennst jetzt die zentralen Mechanismen von Enterprise Engine. Erforsche jeden Bereich im Detail, experimentiere mit Strategien und baue dein interplanetares Wirtschaftsimperium auf. Viel Erfolg, CEO!",
+                    "content": "🎉 Herzlichen Glückwunsch! Sie haben die geführte Tour abgeschlossen. Sie kennen jetzt die zentralen Mechanismen von Enterprise Engine. Erforschen Sie jeden Bereich im Detail, experimentieren Sie mit Strategien und bauen Sie Ihr interplanetares Wirtschaftsimperium auf. Viel Erfolg, CEO!",
                     "title": "✅ Tour abgeschlossen"
                 }
             }
@@ -1168,7 +1168,7 @@
         "population": "Bevölkerung",
         "gdp": "BIP",
         "moneySupply": "Geldmenge",
-        "bankEquity": "Bankkapital",
+        "bankEquity": "Bankeigenkapital",
         "interestRate": "Zinssatz",
         "costOfLiving": "Lebenshaltungskosten",
         "wages": "Löhne",
@@ -1176,11 +1176,11 @@
     },
     "Founding": {
         "title": "Unternehmen registrieren",
-        "companyNamePlaceholder": "Dein Firmenname",
-        "loadingPlanets": "Lade Planeten…",
+        "companyNamePlaceholder": "Ihr Firmenname",
+        "loadingPlanets": "Planeten werden geladen…",
         "selectPlanet": "{planetName} auswählen",
         "showGuidedTour": "Geführte Tour anzeigen",
-        "registering": "Registriere…",
+        "registering": "Wird registriert…",
         "register": "Neues Unternehmen registrieren",
         "loading": {
             "serious": [
@@ -1238,11 +1238,11 @@
                 "Einreichung der Unternehmenssatzung bei der planetaren Verwaltung."
             ],
             "lastSteps": [
-                "Warte auf die endgültige Genehmigung des planetaren Registers (dies kann eine Weile dauern)…",
+                "Warten auf die endgültige Genehmigung des planetaren Registers (dies kann eine Weile dauern)…",
                 "Aber normalerweise…",
                 "…nicht so lange.",
-                "Warte weiterhin auf die endgültige Genehmigung des planetaren Registers (dies kann eine Weile dauern)…",
-                "Vielleicht versuchst du, die Seite neu zu laden?",
+                "Warten weiterhin auf die endgültige Genehmigung des planetaren Registers (dies kann eine Weile dauern)…",
+                "Vielleicht versuchen Sie, die Seite neu zu laden?",
                 "An diesem Punkt kann ich nicht versprechen, dass etwas passieren wird.",
                 "Warten… Warten… Warten…"
             ]
@@ -1252,7 +1252,7 @@
         "intro": "Dies ist das Impressum für Enterprise Engine.",
         "responsible": "Verantwortlich für den Inhalt:",
         "email": "E-Mail:",
-        "placeholder": "Dies ist ein Platzhalter. Bitte aktualisiere ihn mit deinen tatsächlichen rechtlichen Angaben, wie es das Gesetz verlangt.",
+        "placeholder": "Dies ist ein Platzhalter. Bitte aktualisieren Sie ihn mit Ihren tatsächlichen rechtlichen Angaben, wie es das Gesetz verlangt.",
         "assets": "Assets erstellt mit gemini.",
         "backToHome": "Zurück zur Startseite",
         "responsibleName": "Tobias",
@@ -1263,14 +1263,14 @@
         "restartTutorial": "Tutorial neu starten",
         "uploadAvatar": "Profilbild hochladen",
         "profilePicture": "Profilbild",
-        "profilePictureDescription": "Lade ein Profilbild hoch, um dein Konto zu personalisieren",
+        "profilePictureDescription": "Laden Sie ein Profilbild hoch, um Ihr Konto zu personalisieren",
         "dropHere": "Bild hier ablegen oder",
         "browse": "durchsuchen",
         "pngOnly": "Nur PNG (max. 1 MB)",
         "uploadPhoto": "Foto hochladen",
         "uploading": "Lädt hoch…",
         "changePhoto": "Foto ändern",
-        "removing": "Entferne…",
+        "removing": "Wird entfernt…",
         "remove": "Entfernen",
         "avatarUploaded": "Profilbild erfolgreich hochgeladen",
         "avatarRemoved": "Profilbild erfolgreich entfernt"
@@ -1297,7 +1297,7 @@
         "firmDeposits": "Firmeneinlagen",
         "householdDeposits": "Haushaltseinlagen",
         "governmentBalance": "Regierungssaldo",
-        "bankEquity": "Bankkapital",
+        "bankEquity": "Bankeigenkapital",
         "writtenOffDebt": "Abgeschriebene Schulden (gesamt)",
         "loanRateNewLoans": "Kreditzins (neue Kredite, p.a.)",
         "interestCollected": "Vereinnahmte Zinsen",
@@ -1305,10 +1305,10 @@
         "costOfLivingSeries": "Lebenshaltungskosten",
         "gdpSeries": "BIP",
         "moneySupplySeries": "Geldmenge",
-        "wageNone": "Lohn Keine",
-        "wagePrimary": "Lohn Primär",
-        "wageSecondary": "Lohn Sekundär",
-        "wageTertiary": "Lohn Tertiär"
+        "wageNone": "Lohn – ohne Bildung",
+        "wagePrimary": "Lohn Primarstufe",
+        "wageSecondary": "Lohn Sekundarstufe",
+        "wageTertiary": "Lohn Tertiärbereich"
     },
     "Agent": {
         "facilities": "Anlagen",
@@ -1335,9 +1335,9 @@
         "acquiring": "Wird erworben…",
         "acquire": "Erwerben",
         "classifiedOperations": "Geheime Vorgänge",
-        "noClearance": "Du hast keine Berechtigung, die internen Vorgänge dieses Unternehmens einzusehen. Nur der Eigentümer des Unternehmens kann auf diese Anlagen zugreifen.",
+        "noClearance": "Sie sind nicht berechtigt, die internen Vorgänge dieses Unternehmens einzusehen. Nur der Eigentümer des Unternehmens kann auf diese Anlagen zugreifen.",
         "noPresenceOn": "Keine Präsenz auf {planetId}",
-        "acquireCommercialLicense": "Erwirb eine Handelslizenz, um ein Bankkonto einzurichten und auf diesem Planeten zu handeln.",
+        "acquireCommercialLicense": "Erwerben Sie eine Handelslizenz, um ein Bankkonto einzurichten und auf diesem Planeten zu handeln.",
         "workerEfficiencyTooltip": "{name}-Arbeitskräfte: {percent} Effizienz",
         "chooseCompanyLogoAria": "Firmenlogo wählen",
         "chooseCompanyLogo": "Firmenlogo wählen",
@@ -1346,8 +1346,8 @@
         "facilityWorkerRequirement": "Arbeitskräftebedarf"
     },
     "Storage": {
-        "volumeUsed": "Volumen genutzt",
-        "massUsed": "Masse genutzt",
+        "volumeUsed": "Volumen belegt",
+        "massUsed": "Masse belegt",
         "prevMo": "Vormon.",
         "mtd": "Lfd. M.",
         "last": "Letzter",
@@ -1368,17 +1368,17 @@
         "preservationTooltip": "Lagererhaltung:",
         "transportHealthTooltip": "Transportzustand:",
         "inflowTooltip": "Zuflusseffizienz:",
-        "overUtilised": "Diese Lageranlage ist überlastet. Erweitere sie, um Verfallsverluste zu reduzieren.",
+        "overUtilised": "Diese Lageranlage ist überlastet. Erweitern Sie sie, um Verfallsverluste zu reduzieren.",
         "stableStorage": "Diese Lageranlage hält ihren Inhalt stabil.",
-        "expandLogistics": "Erweitere deine Logistikabteilung, um Durchsatzverluste zu reduzieren.",
-        "flowStable": "Deine Logistikabteilung hält den Fluss stabil.",
+        "expandLogistics": "Erweitern Sie Ihre Logistikabteilung, um Durchsatzverluste zu reduzieren.",
+        "flowStable": "Ihre Logistikabteilung hält den Warenfluss aufrecht.",
         "inflow": "Zufluss",
         "outflow": "Abfluss",
-        "depreciationLabel": "Abschreibung",
+        "depreciationLabel": "Verschleiß",
         "empty": "-leer-",
-        "heldResources": "Gehaltene Ressourcen",
+        "heldResources": "Gelagerte Ressourcen",
         "newBadge": "neu",
-        "sendingBuild": "Bau wird gesendet…",
+        "sendingBuild": "Bauauftrag wird gesendet…",
         "noMatchingResources": "Keine passenden Ressourcen im Lager",
         "max": "max",
         "statusOptimal": "Optimal",
@@ -1394,7 +1394,7 @@
         "education": "Bildung",
         "wage": "Lohn",
         "globalAvg": "globaler Durchschn.",
-        "allocationTargets": "Ziele der Arbeitskräfteverteilung",
+        "allocationTargets": "Personalziele",
         "overqualified": "Überqualifizierte Arbeitskräfte",
         "onboarding": "Einarbeitung",
         "onNotice": "In Kündigungsfrist",
@@ -1403,15 +1403,15 @@
         "total": "Gesamt",
         "uneducated": "Ungelernt",
         "uneducatedDesc": "Arbeitskräfte ohne formale Bildung",
-        "primary": "Primar",
+        "primary": "Primarstufe",
         "primaryDesc": "Arbeitskräfte mit Grundschulbildung",
-        "secondary": "Sekundär",
+        "secondary": "Sekundarstufe",
         "secondaryDesc": "Arbeitskräfte mit weiterführender Schulbildung",
-        "tertiary": "Tertiär",
+        "tertiary": "Tertiärbereich",
         "tertiaryDesc": "Arbeitskräfte mit Hochschulabschluss",
         "aiManaged": "KI-verwaltet",
-        "autoEnabled": "Automatische Arbeitskräfteverteilung ist aktiviert.",
-        "setHeadcount": "Lege die gewünschte Anzahl pro Bildungsstufe fest.",
+        "autoEnabled": "Automatische Personalplanung ist aktiviert.",
+        "setHeadcount": "Legen Sie die Zielzahl je Bildungsstufe fest.",
         "totalTarget": "Gesamtziel:",
         "applyTargets": "Ziele anwenden",
         "statusOptimal": "Optimal",
@@ -1460,22 +1460,22 @@
         "hrProductivity": "HR-Produktivität",
         "hrProductivityTooltip": "HR-Produktivität:",
         "starvationTooltip": "Unterversorgung:",
-        "hrCantKeepUp": "Deine HR-Abteilung kann mit dem Arbeitskräftebedarf nicht Schritt halten. Erweitere sie, um die Produktivität wiederherzustellen.",
-        "hrKeepingUp": "Deine HR-Abteilung versorgt die Arbeitskräfte ausreichend.",
-        "automaticWorkerAllocation": "Automatische Arbeitskräftezuweisung",
-        "autoOn": "Die KI berechnet jeden Tick optimale Mitarbeiterziele basierend auf den Anlagenanforderungen.",
-        "autoOff": "Du steuerst die Ziele der Arbeitskräftezuweisung. Die KI ändert sie nicht.",
+        "hrCantKeepUp": "Ihre HR-Abteilung kann mit dem Arbeitskräftebedarf nicht Schritt halten. Erweitern Sie sie, um die Produktivität wiederherzustellen.",
+        "hrKeepingUp": "Ihre HR-Abteilung versorgt die Arbeitskräfte ausreichend.",
+        "automaticWorkerAllocation": "Automatische Personalplanung",
+        "autoOn": "Die KI berechnet jeden Tick optimale Personalziele auf Basis der Anlagenanforderungen.",
+        "autoOff": "Sie steuern die Personalplanung. Die KI ändert sie nicht.",
         "automationSaved": "Automatisierungseinstellungen gespeichert. Änderungen greifen beim nächsten Tick.",
         "automationFailed": "Aktualisierung der Automatisierungseinstellungen fehlgeschlagen",
         "targetsSaved": "Arbeitskraft-Ziele gespeichert. Änderungen greifen beim nächsten Einstellungs-Tick.",
         "targetsFailed": "Aktualisierung der Arbeitskraft-Ziele fehlgeschlagen",
         "newBadge": "neu",
-        "sendingBuild": "Bau wird gesendet…"
+        "sendingBuild": "Bauauftrag wird gesendet…"
     },
     "Claims": {
-        "title": "Landansprüche",
-        "loading": "Anspruchsdaten werden geladen…",
-        "none": "Keine landgebundenen Ansprüche auf diesem Planeten.",
+        "title": "Nutzungsrechte",
+        "loading": "Daten zu Nutzungsrechten werden geladen…",
+        "none": "Keine landgebundenen Nutzungsrechte auf diesem Planeten.",
         "renewable": "Erneuerbar",
         "available": "Verfügbar: {current} von {total}",
         "noCapacity": "Keine Kapazität zum Pachten verfügbar",
@@ -1491,7 +1491,7 @@
         "depletion": "Erschöpfung",
         "costPerTick": "Kosten / Tick",
         "regenPerTick": "Regeneration / Tick",
-        "billingContinues": "Die Abrechnung läuft weiter, bis der Anspruch freigegeben wird.",
+        "billingContinues": "Die Abrechnung läuft weiter, bis das Nutzungsrecht freigegeben wird.",
         "noRefund": "Es gibt keine Rückerstattung!",
         "takesEffectNextTick": "Wirkt beim nächsten Tick…",
         "confirmNotice": "Kündigung bestätigen",
@@ -1499,7 +1499,7 @@
         "cancel": "Abbrechen",
         "giveNotice": "Kündigen",
         "release": "Freigeben",
-        "claimEnds": "Anspruch endet: {date}",
+        "claimEnds": "Nutzungsrecht endet: {date}",
         "scale": "Skala",
         "scaleTooltip": "Misst die Menge an Ressourcen, die von der anspruchslosesten Anlage dieser Skala nachhaltig verbraucht werden könnte.",
         "scaleYears": "Skalenjahre",
@@ -1509,8 +1509,8 @@
         "upfront": "Vorauszahlung (1 Monat)",
         "costPerTickOngoing": "Kosten / Tick (laufend)",
         "costFlat": "Kosten (einmalig)",
-        "yourDeposits": "Deine Einlagen",
-        "yourCashFlow": "Dein Cashflow",
+        "yourDeposits": "Ihr Guthaben",
+        "yourCashFlow": "Ihr Cashflow",
         "runningCostExceeds": "Laufende Kosten übersteigen den aktuellen Cashflow"
     },
     "Demographics": {
@@ -1564,9 +1564,9 @@
         },
         "cohorts": {
             "none": "Keine",
-            "primary": "Primar",
-            "secondary": "Sekundär",
-            "tertiary": "Tertiär",
+            "primary": "Primarstufe",
+            "secondary": "Sekundarstufe",
+            "tertiary": "Tertiärbereich",
             "unoccupied": "Unbeschäftigt",
             "employed": "Beschäftigt",
             "education": "Ausbildung",
@@ -1589,9 +1589,9 @@
             "construction": "Wohnraum"
         },
         "eduNone": "Keine",
-        "eduPrimary": "Primär",
-        "eduSecondary": "Sekundär",
-        "eduTertiary": "Tertiär",
+        "eduPrimary": "Primarstufe",
+        "eduSecondary": "Sekundarstufe",
+        "eduTertiary": "Tertiärbereich",
         "occUnoccupied": "Nicht erwerbstätig",
         "occEmployed": "Erwerbstätig",
         "occEducation": "Bildung",

@@ -31,7 +31,7 @@ describe('useErrorMessage', () => {
     it('renders a domain error packet in German', () => {
         const { result } = renderHook(() => useErrorMessage(), { wrapper: wrapper('de') });
 
-        expect(result.current(domainError('notOwner'))).toBe('Diese Firma gehört Ihnen nicht');
+        expect(result.current(domainError('notOwner'))).toBe('Dieses Unternehmen gehört Ihnen nicht');
     });
 
     it('interpolates domain error params', () => {
@@ -49,7 +49,7 @@ describe('useErrorMessage', () => {
             result.current(domainError('invalidSellOffer', { resourceName: 'Crude Oil', detail: 'negative price' })),
         ).toBe('Ungültiges Verkaufsangebot für Rohöl: negative price');
         expect(result.current(domainError('noAccountOnIssuingPlanet'))).toBe(
-            'Kein Konto auf dem ausgebenden Planeten. Besuche diesen Planeten zuerst, um ein Konto zu eröffnen.',
+            'Kein Konto auf dem ausgebenden Planeten. Besuchen Sie diesen Planeten zuerst, um ein Konto zu eröffnen.',
         );
     });
 
@@ -78,7 +78,7 @@ describe('useErrorMessage', () => {
         const { result } = renderHook(() => useErrorMessage(), { wrapper: wrapper('de') });
 
         expect(result.current(domainError('insufficientDeposits', { required: 1200, available: 1000 }))).toBe(
-            'Nicht genügend Einlagen (benötigt 1200, verfügbar 1000)',
+            'Nicht genügend Guthaben (benötigt 1200, verfügbar 1000)',
         );
         expect(result.current(domainError('priceNotPositive'))).toBe('Der Preis muss größer als 0 sein');
     });
@@ -92,7 +92,7 @@ describe('useErrorMessage', () => {
         expect(result.current(domainError('unknownShipType', { shipType: 'Bulk Carrier 1' }))).toBe(
             'Unbekannter Schiffstyp: Massengutfrachter 1',
         );
-        expect(result.current(domainError('shipNotIdle'))).toBe('Schiff ist nicht im Leerlauf');
+        expect(result.current(domainError('shipNotIdle'))).toBe('Schiff ist nicht frei');
         expect(result.current(domainError('shipNotFound', { shipId: 'ship-1' }))).toBe('Schiff nicht gefunden: ship-1');
     });
 
