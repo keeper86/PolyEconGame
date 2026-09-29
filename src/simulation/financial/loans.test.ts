@@ -33,6 +33,9 @@ describe('loan consolidation', () => {
             writeOffs: 0,
             bankruptcies: 0,
             emergencyLoansGranted: 0,
+            policyRateEma: 0,
+            policyMonthInterest: 0,
+            policyMonthWriteOffs: 0,
         };
     });
 

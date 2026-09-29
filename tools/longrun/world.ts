@@ -69,6 +69,7 @@ export interface BenchmarkWorldConfig {
     bankruptcyWriteOffFraction?: number;
     costSpringStrength?: number;
     populationWealthTax?: boolean;
+    policyRateController?: boolean;
     refineryMinAskMultiplier?: number;
     refineryPriceAdjustMaxDown?: number;
     refineryTargetSellThrough?: number;
@@ -362,6 +363,9 @@ export function buildBenchmarkWorld(
             writeOffs: 0,
             bankruptcies: 0,
             emergencyLoansGranted: 0,
+            policyRateEma: 0,
+            policyMonthInterest: 0,
+            policyMonthWriteOffs: 0,
         },
         wagePerEdu: { none: 10.0, primary: 10.0, secondary: 10.0, tertiary: 10.0 } as Record<EducationLevelType, number>,
         marketPrices: { ...initialMarketPrices },

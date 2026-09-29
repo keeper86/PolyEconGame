@@ -36,6 +36,9 @@ function makeSeededState(loanRate = 0.001) {
             writeOffs: 0,
             bankruptcies: 0,
             emergencyLoansGranted: 0,
+            policyRateEma: 0,
+            policyMonthInterest: 0,
+            policyMonthWriteOffs: 0,
         },
     });
     const state = makeGameState([planet], [gov]);
@@ -61,6 +64,9 @@ function makeSeededStateMultiPlanet(rate1 = 0.001, rate2 = 0.002) {
             writeOffs: 0,
             bankruptcies: 0,
             emergencyLoansGranted: 0,
+            policyRateEma: 0,
+            policyMonthInterest: 0,
+            policyMonthWriteOffs: 0,
         },
     });
     const planet2 = makePlanet({
@@ -78,6 +84,9 @@ function makeSeededStateMultiPlanet(rate1 = 0.001, rate2 = 0.002) {
             writeOffs: 0,
             bankruptcies: 0,
             emergencyLoansGranted: 0,
+            policyRateEma: 0,
+            policyMonthInterest: 0,
+            policyMonthWriteOffs: 0,
         },
     });
     const state = makeGameState([planet1, planet2], [gov1, gov2]);
@@ -103,6 +112,9 @@ function makeThreePlanetState() {
                 writeOffs: 0,
                 bankruptcies: 0,
                 emergencyLoansGranted: 0,
+                policyRateEma: 0,
+                policyMonthInterest: 0,
+                policyMonthWriteOffs: 0,
             },
         }),
     );

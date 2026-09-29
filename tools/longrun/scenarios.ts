@@ -62,6 +62,22 @@ export const SCENARIOS: Scenario[] = [
         ],
     },
     {
+        name: 'policyRateController',
+        description:
+            'The policy rate is steered by the flow-balance controller: monthly steps of at most 0.25pp within 0.25%-5%, targeting smoothed (interest collected - debt written off) per loan at zero. Tests whether the bank equity drain and money-supply growth become stationary.',
+        seed: 1001,
+        years: 30,
+        world: { policyRateController: true },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 30, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
+            { metric: 'avgGroceryStarvation', horizonYears: 30, windowYears: 3, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 30, windowYears: 3, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 30, windowYears: 3, min: 0.5 },
+            { metric: 'policyRate', horizonYears: 30, windowYears: 3, min: 0.0025, max: 0.05 },
+        ],
+    },
+
+    {
         name: 'interest5-wo66',
         description:
             '5% loan rate with a 66% bankruptcy debt write-off; the remaining 33% of debt rolls over on the refounded company. Tests whether a two-thirds haircut at the new baseline rate keeps the banking system stable with less equity drain.',

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
 import { setPopulationWealthTaxEnabled, setSupportEmployed, setSupportFoodAffordabilityMultiplier, setSupportWealthCapDays, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
+import { setPolicyRateControllerEnabled } from '../../src/simulation/financial/policyRateController';
 import {
     setContractionIntegralThreshold,
     setExpansionIntegralThreshold,
@@ -433,6 +434,14 @@ async function main(): Promise<void> {
     const interestRateArg = arg('interestRate');
     if (interestRateArg !== undefined) {
         scenario.world = { ...scenario.world, loanRatePerYear: Number(interestRateArg) };
+    }
+    const policyRateControllerArg = arg('policyRateController');
+    if (policyRateControllerArg !== undefined) {
+        scenario.world = { ...scenario.world, policyRateController: policyRateControllerArg !== 'off' };
+    }
+    setPolicyRateControllerEnabled(scenario.world.policyRateController ?? false);
+    if (scenario.world.policyRateController) {
+        console.log('policy rate controller ENABLED');
     }
     const costSpringArg = arg('costSpringStrength');
     if (costSpringArg !== undefined) {
