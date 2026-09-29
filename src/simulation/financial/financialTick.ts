@@ -1,10 +1,4 @@
-import {
-    EMERGENCY_LOAN_WAGE_MONTHS,
-    INPUT_BUFFER_TARGET_TICKS,
-    MIN_WAGE,
-    TICKS_PER_MONTH,
-    TICKS_PER_YEAR,
-} from '../constants';
+import { EMERGENCY_LOAN_WAGE_MONTHS, MIN_WAGE, TICKS_PER_MONTH, TICKS_PER_YEAR } from '../constants';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
@@ -12,18 +6,22 @@ import type { Loan } from './loanTypes';
 import { hasOutstandingEmergencyLoan, repayLoansEmergencyFirst, totalOutstandingLoans } from './loanTypes';
 import { grantAutomaticLoan } from './loanConditions';
 import { creditWageIncome } from './wealthOps';
+import { isCurrencyResource } from '../market/currencyResources';
+import { validateAndPrepareBuyBid } from '../market/validation';
+import { queryStorageFacility } from '../planet/facility';
 
 export const DEFAULT_WAGE_PER_EDU = MIN_WAGE;
 
-function estimateInputBufferCost(assets: AgentPlanetAssets, planet: Planet): number {
+export function estimateWorkingCapitalCost(assets: AgentPlanetAssets): number {
     let cost = 0;
-    for (const facility of assets.productionFacilities) {
-        for (const { resource, quantity } of facility.needs) {
-            if (resource.form === 'landBoundResource') {
-                continue;
-            }
-            const price = planet.marketPrices[resource.name];
-            cost += quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS * price;
+    for (const [resourceName, bid] of Object.entries(assets.market.buy)) {
+        if (isCurrencyResource(bid.resource) || bid.resource.form === 'internal') {
+            continue;
+        }
+        const inventory = queryStorageFacility(assets.storage, resourceName);
+        const validated = validateAndPrepareBuyBid(bid, assets, inventory);
+        if (validated) {
+            cost += validated.maxCost;
         }
     }
     return cost;
@@ -116,9 +114,9 @@ export function preProductionFinancialTick(
         assets.deposits -= wageBill;
 
         if (agent.automated) {
-            const bufferCost = estimateInputBufferCost(assets, planet);
-            if (bufferCost > 0 && assets.deposits < bufferCost) {
-                const shortfall = bufferCost - assets.deposits;
+            const workingCapitalCost = estimateWorkingCapitalCost(assets);
+            if (workingCapitalCost > 0 && assets.deposits < workingCapitalCost) {
+                const shortfall = workingCapitalCost - assets.deposits;
                 const result = grantAutomaticLoan(gameState, agent, planet, shortfall, 'bufferCoverage', tick);
                 if (result.kind === 'bankrupt') {
                     continue;

@@ -778,7 +778,7 @@
         "suspensionPending": "Pausierung ausstehend…",
         "resumePending": "Fortsetzung ausstehend…",
         "revenue": "Erlös",
-        "inputs": "Vorleistungen",
+        "inputs": "Inputs",
         "wages": "Löhne",
         "netPerDay": "netto/Tag",
         "condition": "Zustand",
@@ -971,7 +971,7 @@
             },
             "market": {
                 "0": {
-                    "content": "Der Markt ist der Ort, an dem Sie Vorleistungen kaufen und Fertigwaren verkaufen. Preise entstehen aus Angebot und Nachfrage — wie in einer echten Wirtschaft! Wir sind hier, um Bauleistungen zu kaufen, die für den Bau von Anlagen benötigt werden.",
+                    "content": "Der Markt ist der Ort, an dem Sie Inputs kaufen und Fertigwaren verkaufen. Preise entstehen aus Angebot und Nachfrage — wie in einer echten Wirtschaft! Wir sind hier, um Bauleistungen zu kaufen, die für den Bau von Anlagen benötigt werden.",
                     "title": "🏪 Marktübersicht"
                 },
                 "1": {
@@ -1057,7 +1057,7 @@
                     "title": "⏳ Bau gestartet"
                 },
                 "5": {
-                    "content": "Sobald der Bau abgeschlossen ist, wird die Anlage aktiv. Die Karte zeigt: die verbrauchten Vorleistungen (links) und die erzeugten Produkte (rechts), Effizienzbalken für Personal und eine Ertragszeile mit Erlös, Vorleistungskosten, Löhnen und Nettogewinn pro Tag. Behalten Sie die Vorleistungspuffer im Blick — gehen sie zur Neige, stoppt die Produktion!",
+                    "content": "Sobald der Bau abgeschlossen ist, wird die Anlage aktiv. Die Karte zeigt: die verbrauchten Inputs (links) und die erzeugten Produkte (rechts), Effizienzbalken für Personal und eine Ertragszeile mit Erlös, Vorleistungskosten, Löhnen und Nettogewinn pro Tag. Behalten Sie die Vorleistungspuffer im Blick — gehen sie zur Neige, stoppt die Produktion!",
                     "title": "⚙️ Aktive Anlage"
                 },
                 "6": {

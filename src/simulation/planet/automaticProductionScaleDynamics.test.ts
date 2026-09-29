@@ -228,16 +228,22 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
 
     it('is positive when the storage is below the target and negative above', () => {
         const below = makeStorageFixture({ inventory: target / 2 });
-        expect(computeFacilityStorageSignal(below.facility, below.assets).maxError).toBeCloseTo(Math.tanh(0.5), 5);
+        expect(computeFacilityStorageSignal(below.facility, below.assets).maxError).toBeCloseTo(
+            Math.tanh(0.5 * STORAGE_TARGET_MONTHS),
+            5,
+        );
 
         const above = makeStorageFixture({ inventory: target * 2 });
-        expect(computeFacilityStorageSignal(above.facility, above.assets).maxError).toBeCloseTo(Math.tanh(-1), 5);
+        expect(computeFacilityStorageSignal(above.facility, above.assets).maxError).toBeCloseTo(
+            Math.tanh(-STORAGE_TARGET_MONTHS),
+            5,
+        );
     });
 
-    it('does not saturate for a 1-month deficit (stays in the linear band)', () => {
-        const oneMonthShort = makeStorageFixture({ inventory: target - 30 * 100 });
-        const signal = computeFacilityStorageSignal(oneMonthShort.facility, oneMonthShort.assets).maxError;
-        expect(signal).toBeCloseTo(Math.tanh(1 / STORAGE_TARGET_MONTHS), 5);
+    it('does not saturate for a sub-month deficit (stays in the linear band)', () => {
+        const tenthMonthShort = makeStorageFixture({ inventory: target - (30 * 100) / 10 });
+        const signal = computeFacilityStorageSignal(tenthMonthShort.facility, tenthMonthShort.assets).maxError;
+        expect(signal).toBeCloseTo(Math.tanh(0.1), 5);
         expect(signal).toBeLessThan(0.2);
     });
 
@@ -258,7 +264,7 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
         const fixture = makeStorageFixture({ producesTwoOutputs: true, inventory: target * 2 });
         setStorageResourceQuantity(fixture.assets.storage, constructionServiceResourceType, target / 4);
         const signal = computeFacilityStorageSignal(fixture.facility, fixture.assets);
-        expect(signal.maxError).toBeCloseTo(Math.tanh(0.75), 5);
+        expect(signal.maxError).toBeCloseTo(Math.tanh(0.75 * STORAGE_TARGET_MONTHS), 5);
     });
 
     it('maxError is negative only when every output is above the target', () => {
@@ -386,10 +392,7 @@ describe('forward-looking storage term', () => {
     it('leads by a month by default', () => {
         setStorageTrendHorizonMonths(null);
         const { facility, assets } = makeTrendFixture(100, 0);
-        expect(computeFacilityStorageSignal(facility, assets).maxError).toBeCloseTo(
-            Math.tanh(-1 / STORAGE_TARGET_MONTHS),
-            5,
-        );
+        expect(computeFacilityStorageSignal(facility, assets).maxError).toBeCloseTo(Math.tanh(-1), 5);
     });
 
     it('brakes at the target when production outruns sales', () => {
@@ -454,7 +457,7 @@ describe('PID utilization response', () => {
             const { facility, assets } = makeStorageSignalFixture(0);
             const state = getDefaultPidState();
             const error = computeFacilityStorageSignal(facility, assets).maxError;
-            expect(error).toBeCloseTo(Math.tanh(1), 5);
+            expect(error).toBeCloseTo(Math.tanh(STORAGE_TARGET_MONTHS), 5);
 
             const afterSettling = facility.scale;
             for (let tick = 0; tick < 2_000; tick++) {
