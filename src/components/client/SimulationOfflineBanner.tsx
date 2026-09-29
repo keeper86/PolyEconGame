@@ -5,9 +5,11 @@ import { WifiOff, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SIMULATION_MAX_RETRIES } from '@/hooks/useSimulationQuery';
 import { Button } from '@/components/ui/button';
+import { useTranslations } from 'next-intl';
 
 export function SimulationOfflineBanner() {
     const queryClient = useQueryClient();
+    const t = useTranslations('Common');
 
     const failedKeys = useRef(new Set<string>());
     const [failedCount, setFailedCount] = useState(0);
@@ -68,10 +70,7 @@ export function SimulationOfflineBanner() {
     return (
         <div className='fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2.5 text-sm text-destructive shadow-lg backdrop-blur'>
             <WifiOff className='h-4 w-4 shrink-0' />
-            <span>
-                Simulation data unavailable — {failedCount === 1 ? '1 query' : `${failedCount} queries`} stopped
-                polling.
-            </span>
+            <span>{t('simulationOffline', { count: failedCount })}</span>
             <Button
                 variant='outline'
                 size='sm'
@@ -79,7 +78,7 @@ export function SimulationOfflineBanner() {
                 onClick={handleRetry}
             >
                 <RotateCcw className='h-3.5 w-3.5' />
-                Retry
+                {t('retry')}
             </Button>
         </div>
     );

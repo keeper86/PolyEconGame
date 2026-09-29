@@ -20,6 +20,7 @@ import SellSection from './SellSection';
 import { getResourceByName, resourceNameToSlug } from './marketHelpers';
 import type { ResourceAccordionItemProps } from './marketTypes';
 import { BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST } from './marketTypes';
+import { useLocale, useTranslations } from 'next-intl';
 
 const TOUR_BUY_RESOURCES = new Set(['Construction', 'Administration', 'Logistics', 'Maintenance']);
 
@@ -35,6 +36,8 @@ export default function ResourceAccordionItem({
     allPlanetDeposits,
     ships,
 }: ResourceAccordionItemProps): React.ReactElement {
+    const locale = useLocale();
+    const t = useTranslations('Market');
     const bid = assets.market.buy[resourceName];
     const offer = assets.market.sell[resourceName];
     const inventoryQty = resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)
@@ -68,15 +71,22 @@ export default function ResourceAccordionItem({
         switch (columnId) {
             case 'currentStorage': {
                 const resource = getResourceByName(resourceName);
-                return formatNumberWithUnit(inventoryQty, resource ? resourceFormToUnit(resource.form) : 'units');
+                return formatNumberWithUnit(
+                    inventoryQty,
+                    resource ? resourceFormToUnit(resource.form) : 'units',
+                    undefined,
+                    locale,
+                );
             }
             case 'clearingPrice':
-                return formatNumberWithUnit(overviewRow?.clearingPrice, 'currency', planetId);
+                return formatNumberWithUnit(overviewRow?.clearingPrice, 'currency', planetId, locale);
             case 'totalProduction': {
                 const resource = getResourceByName(resourceName);
                 return formatNumberWithUnit(
                     overviewRow?.totalProduction,
                     resource ? resourceFormToUnit(resource.form) : 'units',
+                    undefined,
+                    locale,
                 );
             }
             case 'totalConsumption': {
@@ -84,6 +94,8 @@ export default function ResourceAccordionItem({
                 return formatNumberWithUnit(
                     overviewRow?.totalConsumption,
                     resource ? resourceFormToUnit(resource.form) : 'units',
+                    undefined,
+                    locale,
                 );
             }
             case 'totalSupply': {
@@ -91,6 +103,8 @@ export default function ResourceAccordionItem({
                 return formatNumberWithUnit(
                     overviewRow?.totalSupply,
                     resource ? resourceFormToUnit(resource.form) : 'units',
+                    undefined,
+                    locale,
                 );
             }
             case 'totalDemand': {
@@ -98,6 +112,8 @@ export default function ResourceAccordionItem({
                 return formatNumberWithUnit(
                     overviewRow?.totalDemand,
                     resource ? resourceFormToUnit(resource.form) : 'units',
+                    undefined,
+                    locale,
                 );
             }
             case 'totalSold': {
@@ -105,6 +121,8 @@ export default function ResourceAccordionItem({
                 return formatNumberWithUnit(
                     overviewRow?.totalSold,
                     resource ? resourceFormToUnit(resource.form) : 'units',
+                    undefined,
+                    locale,
                 );
             }
             case 'priceCostRatio': {
@@ -115,7 +133,7 @@ export default function ResourceAccordionItem({
                 const band = getPriceCostRatioBand(ratio);
                 return (
                     <Badge variant='outline' className={`text-[9px] px-1.5 py-0 h-5 ${band.className}`}>
-                        {band.label}
+                        {t(band.labelKey)}
                     </Badge>
                 );
             }
@@ -167,7 +185,7 @@ export default function ResourceAccordionItem({
                                     className='flex flex-col gap-0.5 rounded-md bg-muted/40 border border-border/40 px-2 py-1 min-w-[70px] items-end'
                                 >
                                     <span className='text-[9px] text-muted-foreground uppercase tracking-wide leading-none'>
-                                        {col.label}
+                                        {t(col.labelKey)}
                                     </span>
                                     <span className='text-xs font-medium leading-tight'>
                                         {getDroppedColumnValue(col.id)}
@@ -226,7 +244,7 @@ export default function ResourceAccordionItem({
 
                     <Separator />
                     <div className='flex flex-col gap-4'>
-                        <span className='text-xs font-medium text-muted-foreground'>Daily market clearance chart</span>
+                        <span className='text-xs font-medium text-muted-foreground'>{t('dailyClearanceChart')}</span>
 
                         <MarketStepChart
                             market={marketData?.market ?? undefined}

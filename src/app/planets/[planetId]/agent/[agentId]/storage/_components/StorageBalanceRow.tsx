@@ -1,7 +1,10 @@
+'use client';
+
 import { Separator } from '@/components/ui/separator';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { PRODUCED_STORAGE_QUANTITY } from '@/simulation/planet/specialFacilities';
 import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function StorageBalanceRow({
     demand,
@@ -14,6 +17,8 @@ export function StorageBalanceRow({
     production: number;
     children?: React.ReactNode;
 }): React.ReactElement {
+    const locale = useLocale();
+    const tr = useTranslations('Storage');
     if (demand === 0) {
         return (
             <Link href={'' as never}>
@@ -22,25 +27,25 @@ export function StorageBalanceRow({
                     <div className='py-1 flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground'>
                         <div className='flex flex-col items-center'>
                             {' '}
-                            production{' '}
+                            {tr('productionLabel')}{' '}
                             <span className='tabular-nums text-muted-foreground'>
-                                {formatNumberWithUnit(production, 'tonnes')}
+                                {formatNumberWithUnit(production, 'tonnes', undefined, locale)}
                             </span>
                         </div>
 
                         <span className='shrink-0'>−</span>
                         <div className='flex flex-col items-center'>
                             {' '}
-                            demand <span className='tabular-nums text-muted-foreground'>-</span>
+                            {tr('demandLabel')} <span className='tabular-nums text-muted-foreground'>-</span>
                         </div>
 
                         <span className='shrink-0'>{' → '}</span>
 
                         <div className='flex flex-col items-center text-foreground'>
                             {' '}
-                            buffer{' '}
+                            {tr('bufferLabel')}{' '}
                             <span className='tabular-nums text-md text-muted-foreground'>
-                                {formatNumberWithUnit(buffer, 'tonnes')}
+                                {formatNumberWithUnit(buffer, 'tonnes', undefined, locale)}
                             </span>
                         </div>
                     </div>
@@ -59,18 +64,18 @@ export function StorageBalanceRow({
                 <div className='py-1 flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground'>
                     <div className='flex flex-col items-center'>
                         {' '}
-                        production{' '}
+                        {tr('productionLabel')}{' '}
                         <span className='tabular-nums text-green-600 dark:text-green-400'>
-                            {formatNumberWithUnit(production, 'tonnes')}
+                            {formatNumberWithUnit(production, 'tonnes', undefined, locale)}
                         </span>
                     </div>
 
                     <span className='shrink-0'>−</span>
                     <div className='flex flex-col items-center'>
                         {' '}
-                        demand{' '}
+                        {tr('demandLabel')}{' '}
                         <span className='tabular-nums text-red-600 dark:text-red-400'>
-                            {formatNumberWithUnit(demand, 'tonnes')}
+                            {formatNumberWithUnit(demand, 'tonnes', undefined, locale)}
                         </span>
                     </div>
 
@@ -78,7 +83,7 @@ export function StorageBalanceRow({
 
                     <div className='flex flex-col items-center text-foreground'>
                         {' '}
-                        buffer{' '}
+                        {tr('bufferLabel')}{' '}
                         <span
                             className={`tabular-nums text-md ${
                                 bufferRatio >= 4
@@ -90,7 +95,7 @@ export function StorageBalanceRow({
                                         : 'text-red-600 dark:text-red-400'
                             }`}
                         >
-                            {formatNumberWithUnit(buffer, 'tonnes')}
+                            {formatNumberWithUnit(buffer, 'tonnes', undefined, locale)}
                         </span>
                     </div>
                 </div>
@@ -103,17 +108,17 @@ export function StorageBalanceRow({
 }
 
 export function StorageBuildRow({ scale }: { scale: number }): React.ReactElement {
+    const locale = useLocale();
+    const tr = useTranslations('Storage');
     return (
         <Link href={'' as never}>
             <Separator />
             <div className='py-1 flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground bg-muted/80 w-full h-12'>
                 <div className='flex flex-row items-center gap-1'>
                     {' '}
-                    Can transport up to{' '}
-                    <span className='tabular-nums text-green-600 dark:text-green-400'>
-                        {formatNumberWithUnit(scale * PRODUCED_STORAGE_QUANTITY, 'tonnes')}
-                    </span>{' '}
-                    per tick.
+                    {tr('canTransportUpTo', {
+                        count: formatNumberWithUnit(scale * PRODUCED_STORAGE_QUANTITY, 'tonnes', undefined, locale),
+                    })}
                 </div>
             </div>
             <Separator />

@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
@@ -74,7 +75,7 @@ describe('ConstructionCompactRow suspension', () => {
     });
 
     it('renders Suspend and Cancel for an active construction', () => {
-        render(<ConstructionCompactRow facility={makeFacility(false)} />);
+        renderWithIntl(<ConstructionCompactRow facility={makeFacility(false)} />);
 
         expect(screen.getByRole('button', { name: /suspend/i })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
@@ -83,7 +84,7 @@ describe('ConstructionCompactRow suspension', () => {
     it('requests a suspension when Suspend is clicked', async () => {
         const user = userEvent.setup();
         const facility = makeFacility(false);
-        render(<ConstructionCompactRow facility={facility} />);
+        renderWithIntl(<ConstructionCompactRow facility={facility} />);
 
         await user.click(screen.getByRole('button', { name: /suspend/i }));
 
@@ -96,34 +97,34 @@ describe('ConstructionCompactRow suspension', () => {
     });
 
     it('shows Resume and the Suspended badge when suspended', () => {
-        render(<ConstructionCompactRow facility={makeFacility(true)} />);
+        renderWithIntl(<ConstructionCompactRow facility={makeFacility(true)} />);
 
         expect(screen.getByRole('button', { name: /resume/i })).toBeInTheDocument();
         expect(screen.getByText('Suspended')).toBeInTheDocument();
     });
 
     it('keeps the Suspend button when hideCancel is set', () => {
-        render(<ConstructionCompactRow facility={makeFacility(false)} hideCancel />);
+        renderWithIntl(<ConstructionCompactRow facility={makeFacility(false)} hideCancel />);
 
         expect(screen.getByRole('button', { name: /suspend/i })).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /cancel/i })).not.toBeInTheDocument();
     });
 
     it('disables the Suspend button while a suspension is pending', () => {
-        render(<ConstructionCompactRow facility={makeFacility(false)} isPendingSuspension />);
+        renderWithIntl(<ConstructionCompactRow facility={makeFacility(false)} isPendingSuspension />);
 
         expect(screen.getByRole('button', { name: /suspending/i })).toBeDisabled();
     });
 
     it('disables the Suspend button while a cancellation is pending', () => {
-        render(<ConstructionCompactRow facility={makeFacility(false)} isPendingCancel />);
+        renderWithIntl(<ConstructionCompactRow facility={makeFacility(false)} isPendingCancel />);
 
         expect(screen.getByRole('button', { name: /suspend/i })).toBeDisabled();
     });
 
     it('disables the Suspend button while the mutation is in flight', () => {
         mutationPending = true;
-        render(<ConstructionCompactRow facility={makeFacility(false)} />);
+        renderWithIntl(<ConstructionCompactRow facility={makeFacility(false)} />);
 
         expect(screen.getByRole('button', { name: /suspending/i })).toBeDisabled();
     });

@@ -25,7 +25,7 @@ export function handlePostTransportContract(
         safePostMessage({
             type: 'transportContractPostFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -35,7 +35,7 @@ export function handlePostTransportContract(
         safePostMessage({
             type: 'transportContractPostFailed',
             requestId,
-            reason: 'No assets on planet',
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -44,7 +44,7 @@ export function handlePostTransportContract(
         safePostMessage({
             type: 'transportContractPostFailed',
             requestId,
-            reason: 'Insufficient deposits to escrow reward',
+            error: { code: 'insufficientDepositsToEscrowReward', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -54,7 +54,7 @@ export function handlePostTransportContract(
         safePostMessage({
             type: 'transportContractPostFailed',
             requestId,
-            reason: 'Contract expiry is in the past',
+            error: { code: 'contractExpiryInPast', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -67,7 +67,7 @@ export function handlePostTransportContract(
         safePostMessage({
             type: 'transportContractPostFailed',
             requestId,
-            reason: `Unknown resource '${cargo.resource.name}'`,
+            error: { code: 'unknownResource', params: { resourceName: cargo.resource.name } },
             processedAtTick: state.tick,
         });
         return;
@@ -78,7 +78,7 @@ export function handlePostTransportContract(
         safePostMessage({
             type: 'transportContractPostFailed',
             requestId,
-            reason: 'Insufficient cargo quantity in storage',
+            error: { code: 'insufficientCargoInStorage', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -118,7 +118,7 @@ export function handleAcceptTransportContract(
         safePostMessage({
             type: 'transportContractAcceptFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -129,7 +129,7 @@ export function handleAcceptTransportContract(
         safePostMessage({
             type: 'transportContractAcceptFailed',
             requestId,
-            reason: 'Poster agent not found',
+            error: { code: 'shipPosterNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -140,7 +140,7 @@ export function handleAcceptTransportContract(
         safePostMessage({
             type: 'transportContractAcceptFailed',
             requestId,
-            reason: 'Contract planet not found',
+            error: { code: 'contractPlanetNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -151,7 +151,7 @@ export function handleAcceptTransportContract(
         safePostMessage({
             type: 'transportContractAcceptFailed',
             requestId,
-            reason: 'Contract not found',
+            error: { code: 'contractNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -162,7 +162,7 @@ export function handleAcceptTransportContract(
         safePostMessage({
             type: 'transportContractAcceptFailed',
             requestId,
-            reason: 'Contract is not open',
+            error: { code: 'contractNotOpen', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -172,7 +172,7 @@ export function handleAcceptTransportContract(
         safePostMessage({
             type: 'transportContractAcceptFailed',
             requestId,
-            reason: 'Contract has expired',
+            error: { code: 'contractExpired', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -183,7 +183,7 @@ export function handleAcceptTransportContract(
         safePostMessage({
             type: 'transportContractAcceptFailed',
             requestId,
-            reason: `Ship '${shipId}' not found`,
+            error: { code: 'shipNotFound', params: { shipId: shipId } },
             processedAtTick: state.tick,
         });
         return;
@@ -192,7 +192,7 @@ export function handleAcceptTransportContract(
         safePostMessage({
             type: 'transportContractAcceptFailed',
             requestId,
-            reason: 'Only transport ships can accept transport contracts',
+            error: { code: 'onlyTransportShipsAcceptContracts', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -201,7 +201,7 @@ export function handleAcceptTransportContract(
         safePostMessage({
             type: 'transportContractAcceptFailed',
             requestId,
-            reason: 'Ship is not idle',
+            error: { code: 'shipNotIdle', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -210,7 +210,7 @@ export function handleAcceptTransportContract(
         safePostMessage({
             type: 'transportContractAcceptFailed',
             requestId,
-            reason: `Ship is not on the departure planet '${contract.fromPlanetId}'`,
+            error: { code: 'shipNotOnDeparturePlanet', params: { planetId: contract.fromPlanetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -252,7 +252,7 @@ export function handleCancelTransportContract(
         safePostMessage({
             type: 'transportContractCancelFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -263,7 +263,7 @@ export function handleCancelTransportContract(
         safePostMessage({
             type: 'transportContractCancelFailed',
             requestId,
-            reason: 'No assets on planet',
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -274,7 +274,7 @@ export function handleCancelTransportContract(
         safePostMessage({
             type: 'transportContractCancelFailed',
             requestId,
-            reason: 'Contract not found',
+            error: { code: 'contractNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -285,7 +285,7 @@ export function handleCancelTransportContract(
         safePostMessage({
             type: 'transportContractCancelFailed',
             requestId,
-            reason: 'Only open contracts can be cancelled',
+            error: { code: 'onlyOpenContractsCancellable', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -327,7 +327,7 @@ export function handlePostConstructionContract(
         safePostMessage({
             type: 'constructionContractPostFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -337,7 +337,7 @@ export function handlePostConstructionContract(
         safePostMessage({
             type: 'constructionContractPostFailed',
             requestId,
-            reason: 'No assets on planet',
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -346,7 +346,7 @@ export function handlePostConstructionContract(
         safePostMessage({
             type: 'constructionContractPostFailed',
             requestId,
-            reason: 'Insufficient deposits to escrow reward',
+            error: { code: 'insufficientDepositsToEscrowReward', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -355,7 +355,7 @@ export function handlePostConstructionContract(
         safePostMessage({
             type: 'constructionContractPostFailed',
             requestId,
-            reason: 'Contract expiry is in the past',
+            error: { code: 'contractExpiryInPast', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -364,7 +364,7 @@ export function handlePostConstructionContract(
         safePostMessage({
             type: 'constructionContractPostFailed',
             requestId,
-            reason: 'Commissioning agent not found',
+            error: { code: 'shipCommissioningAgentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -377,7 +377,7 @@ export function handlePostConstructionContract(
         safePostMessage({
             type: 'constructionContractPostFailed',
             requestId,
-            reason: `Unknown facility '${facilityName}'`,
+            error: { code: 'unknownFacility', params: { facilityName: facilityName } },
             processedAtTick: state.tick,
         });
         return;
@@ -421,7 +421,7 @@ export function handleAcceptConstructionContract(
         safePostMessage({
             type: 'constructionContractAcceptFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -431,7 +431,7 @@ export function handleAcceptConstructionContract(
         safePostMessage({
             type: 'constructionContractAcceptFailed',
             requestId,
-            reason: 'Poster agent not found',
+            error: { code: 'shipPosterNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -441,7 +441,7 @@ export function handleAcceptConstructionContract(
         safePostMessage({
             type: 'constructionContractAcceptFailed',
             requestId,
-            reason: 'Contract planet not found',
+            error: { code: 'contractPlanetNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -452,7 +452,7 @@ export function handleAcceptConstructionContract(
         safePostMessage({
             type: 'constructionContractAcceptFailed',
             requestId,
-            reason: 'Contract not found',
+            error: { code: 'contractNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -462,7 +462,7 @@ export function handleAcceptConstructionContract(
         safePostMessage({
             type: 'constructionContractAcceptFailed',
             requestId,
-            reason: 'Contract is not open',
+            error: { code: 'contractNotOpen', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -471,7 +471,7 @@ export function handleAcceptConstructionContract(
         safePostMessage({
             type: 'constructionContractAcceptFailed',
             requestId,
-            reason: 'Contract has expired',
+            error: { code: 'contractExpired', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -482,7 +482,7 @@ export function handleAcceptConstructionContract(
         safePostMessage({
             type: 'constructionContractAcceptFailed',
             requestId,
-            reason: `Construction ship '${shipId}' not found`,
+            error: { code: 'shipNotFound', params: { shipId: shipId } },
             processedAtTick: state.tick,
         });
         return;
@@ -491,7 +491,7 @@ export function handleAcceptConstructionContract(
         safePostMessage({
             type: 'constructionContractAcceptFailed',
             requestId,
-            reason: 'Ship is not idle',
+            error: { code: 'shipNotIdle', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -500,7 +500,7 @@ export function handleAcceptConstructionContract(
         safePostMessage({
             type: 'constructionContractAcceptFailed',
             requestId,
-            reason: `Ship is not on the departure planet '${contract.fromPlanetId}'`,
+            error: { code: 'shipNotOnDeparturePlanet', params: { planetId: contract.fromPlanetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -514,7 +514,7 @@ export function handleAcceptConstructionContract(
         safePostMessage({
             type: 'constructionContractAcceptFailed',
             requestId,
-            reason: `Unknown facility '${contract.facilityName}'`,
+            error: { code: 'unknownFacility', params: { facilityName: contract.facilityName } },
             processedAtTick: state.tick,
         });
         return;
@@ -573,7 +573,7 @@ export function handleCancelConstructionContract(
         safePostMessage({
             type: 'constructionContractCancelFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -583,7 +583,7 @@ export function handleCancelConstructionContract(
         safePostMessage({
             type: 'constructionContractCancelFailed',
             requestId,
-            reason: 'No assets on planet',
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -594,7 +594,7 @@ export function handleCancelConstructionContract(
         safePostMessage({
             type: 'constructionContractCancelFailed',
             requestId,
-            reason: 'Contract not found',
+            error: { code: 'contractNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -604,7 +604,7 @@ export function handleCancelConstructionContract(
         safePostMessage({
             type: 'constructionContractCancelFailed',
             requestId,
-            reason: 'Only open contracts can be cancelled',
+            error: { code: 'onlyOpenContractsCancellable', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -635,7 +635,7 @@ export function handlePostShipBuyingOffer(
         safePostMessage({
             type: 'shipBuyingOfferPostFailed',
             requestId,
-            reason: `Unknown ship type '${shipType}'`,
+            error: { code: 'unknownShipType', params: { shipType: shipType } },
             processedAtTick: state.tick,
         });
         return;
@@ -646,7 +646,7 @@ export function handlePostShipBuyingOffer(
         safePostMessage({
             type: 'shipBuyingOfferPostFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -657,7 +657,7 @@ export function handlePostShipBuyingOffer(
         safePostMessage({
             type: 'shipBuyingOfferPostFailed',
             requestId,
-            reason: 'No assets on planet',
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -667,7 +667,7 @@ export function handlePostShipBuyingOffer(
         safePostMessage({
             type: 'shipBuyingOfferPostFailed',
             requestId,
-            reason: 'Insufficient deposits to escrow price',
+            error: { code: 'insufficientDepositsToEscrowPrice', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -701,7 +701,7 @@ export function handleAcceptShipBuyingOffer(
         safePostMessage({
             type: 'shipBuyingOfferAcceptFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -712,7 +712,7 @@ export function handleAcceptShipBuyingOffer(
         safePostMessage({
             type: 'shipBuyingOfferAcceptFailed',
             requestId,
-            reason: 'Buyer agent not found',
+            error: { code: 'shipBuyerNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -723,7 +723,7 @@ export function handleAcceptShipBuyingOffer(
         safePostMessage({
             type: 'shipBuyingOfferAcceptFailed',
             requestId,
-            reason: 'Offer planet not found',
+            error: { code: 'shipOfferPlanetNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -734,7 +734,7 @@ export function handleAcceptShipBuyingOffer(
         safePostMessage({
             type: 'shipBuyingOfferAcceptFailed',
             requestId,
-            reason: 'Offer not found',
+            error: { code: 'shipOfferNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -745,7 +745,7 @@ export function handleAcceptShipBuyingOffer(
         safePostMessage({
             type: 'shipBuyingOfferAcceptFailed',
             requestId,
-            reason: 'Offer is not open',
+            error: { code: 'shipOfferNotOpen', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -756,7 +756,7 @@ export function handleAcceptShipBuyingOffer(
         safePostMessage({
             type: 'shipBuyingOfferAcceptFailed',
             requestId,
-            reason: `Ship '${shipId}' not found`,
+            error: { code: 'shipNotFound', params: { shipId: shipId } },
             processedAtTick: state.tick,
         });
         return;
@@ -766,7 +766,7 @@ export function handleAcceptShipBuyingOffer(
         safePostMessage({
             type: 'shipBuyingOfferAcceptFailed',
             requestId,
-            reason: 'Ship is not idle',
+            error: { code: 'shipNotIdle', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -775,7 +775,7 @@ export function handleAcceptShipBuyingOffer(
         safePostMessage({
             type: 'shipBuyingOfferAcceptFailed',
             requestId,
-            reason: 'Only transport ships can be sold via buy offers',
+            error: { code: 'onlyTransportShipsSellable', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -790,7 +790,7 @@ export function handleAcceptShipBuyingOffer(
         safePostMessage({
             type: 'shipBuyingOfferAcceptFailed',
             requestId,
-            reason: `Ship type '${ship.type.name}' does not match offer ship type '${offer.shipType}'`,
+            error: { code: 'shipTypeMismatch', params: { shipType: ship.type.name, offerShipType: offer.shipType } },
             processedAtTick: state.tick,
         });
         return;
@@ -799,7 +799,7 @@ export function handleAcceptShipBuyingOffer(
         safePostMessage({
             type: 'shipBuyingOfferAcceptFailed',
             requestId,
-            reason: `Ship is not on the offer planet '${planetId}'`,
+            error: { code: 'shipNotOnOfferPlanet', params: { planetId: planetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -810,7 +810,7 @@ export function handleAcceptShipBuyingOffer(
         safePostMessage({
             type: 'shipBuyingOfferAcceptFailed',
             requestId,
-            reason: 'Seller has no assets on the offer planet or their home planet',
+            error: { code: 'shipSellerNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -850,7 +850,7 @@ export function handlePostShipListing(
         safePostMessage({
             type: 'shipListingPostFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -861,7 +861,7 @@ export function handlePostShipListing(
         safePostMessage({
             type: 'shipListingPostFailed',
             requestId,
-            reason: 'No assets on planet',
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -872,7 +872,7 @@ export function handlePostShipListing(
         safePostMessage({
             type: 'shipListingPostFailed',
             requestId,
-            reason: `Ship '${shipId}' not found`,
+            error: { code: 'shipNotFound', params: { shipId: shipId } },
             processedAtTick: state.tick,
         });
         return;
@@ -881,7 +881,7 @@ export function handlePostShipListing(
         safePostMessage({
             type: 'shipListingPostFailed',
             requestId,
-            reason: 'Cannot list a derelict ship',
+            error: { code: 'shipDerelictNotListable', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -890,7 +890,7 @@ export function handlePostShipListing(
         safePostMessage({
             type: 'shipListingPostFailed',
             requestId,
-            reason: 'Ship must be idle to be listed',
+            error: { code: 'shipMustBeIdleToList', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -899,7 +899,7 @@ export function handlePostShipListing(
         safePostMessage({
             type: 'shipListingPostFailed',
             requestId,
-            reason: `Ship is not on planet '${planetId}'`,
+            error: { code: 'shipNotOnPlanet', params: { planetId: planetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -908,7 +908,7 @@ export function handlePostShipListing(
         safePostMessage({
             type: 'shipListingPostFailed',
             requestId,
-            reason: 'Ship is already listed for sale',
+            error: { code: 'shipAlreadyListed', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -942,7 +942,7 @@ export function handleCancelShipListing(
         safePostMessage({
             type: 'shipListingCancelFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -953,7 +953,7 @@ export function handleCancelShipListing(
         safePostMessage({
             type: 'shipListingCancelFailed',
             requestId,
-            reason: 'No assets on planet',
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -964,7 +964,7 @@ export function handleCancelShipListing(
         safePostMessage({
             type: 'shipListingCancelFailed',
             requestId,
-            reason: 'Listing not found',
+            error: { code: 'shipListingNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -975,7 +975,7 @@ export function handleCancelShipListing(
         safePostMessage({
             type: 'shipListingCancelFailed',
             requestId,
-            reason: 'You do not own this listing',
+            error: { code: 'shipListingNotOwned', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1002,7 +1002,7 @@ export function handleAcceptShipListing(
         safePostMessage({
             type: 'shipListingAcceptFailed',
             requestId,
-            reason: 'Buyer agent not found',
+            error: { code: 'shipBuyerNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1013,7 +1013,7 @@ export function handleAcceptShipListing(
         safePostMessage({
             type: 'shipListingAcceptFailed',
             requestId,
-            reason: 'Seller agent not found',
+            error: { code: 'shipSellerNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1024,7 +1024,7 @@ export function handleAcceptShipListing(
         safePostMessage({
             type: 'shipListingAcceptFailed',
             requestId,
-            reason: 'Buyer has no assets on specified planet',
+            error: { code: 'shipBuyerNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1045,7 +1045,7 @@ export function handleAcceptShipListing(
         safePostMessage({
             type: 'shipListingAcceptFailed',
             requestId,
-            reason: 'Listing not found',
+            error: { code: 'shipListingNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1054,7 +1054,7 @@ export function handleAcceptShipListing(
         safePostMessage({
             type: 'shipListingAcceptFailed',
             requestId,
-            reason: 'Seller agent mismatch',
+            error: { code: 'shipSellerMismatch', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1065,7 +1065,7 @@ export function handleAcceptShipListing(
         safePostMessage({
             type: 'shipListingAcceptFailed',
             requestId,
-            reason: 'Ship no longer exists',
+            error: { code: 'shipGone', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1075,7 +1075,7 @@ export function handleAcceptShipListing(
         safePostMessage({
             type: 'shipListingAcceptFailed',
             requestId,
-            reason: 'Ship is no longer listed',
+            error: { code: 'shipListingGone', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1084,7 +1084,7 @@ export function handleAcceptShipListing(
         safePostMessage({
             type: 'shipListingAcceptFailed',
             requestId,
-            reason: 'Insufficient deposits',
+            error: { code: 'insufficientDeposits', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1126,7 +1126,7 @@ export function handleDispatchShip(
         safePostMessage({
             type: 'shipDispatchFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1136,7 +1136,7 @@ export function handleDispatchShip(
         safePostMessage({
             type: 'shipDispatchFailed',
             requestId,
-            reason: `Destination planet '${toPlanetId}' not found`,
+            error: { code: 'planetNotFound', params: { planetId: toPlanetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -1147,7 +1147,7 @@ export function handleDispatchShip(
         safePostMessage({
             type: 'shipDispatchFailed',
             requestId,
-            reason: `Ship '${shipId}' not found`,
+            error: { code: 'shipNotFound', params: { shipId: shipId } },
             processedAtTick: state.tick,
         });
         return;
@@ -1156,7 +1156,7 @@ export function handleDispatchShip(
         safePostMessage({
             type: 'shipDispatchFailed',
             requestId,
-            reason: 'Ship is not idle',
+            error: { code: 'shipNotIdle', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1165,7 +1165,7 @@ export function handleDispatchShip(
         safePostMessage({
             type: 'shipDispatchFailed',
             requestId,
-            reason: `Ship is not on planet '${fromPlanetId}'`,
+            error: { code: 'shipNotOnPlanet', params: { planetId: fromPlanetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -1174,7 +1174,7 @@ export function handleDispatchShip(
         safePostMessage({
             type: 'shipDispatchFailed',
             requestId,
-            reason: 'Only transport ships can be self-dispatched',
+            error: { code: 'onlyTransportShipsSelfDispatch', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1186,7 +1186,7 @@ export function handleDispatchShip(
             safePostMessage({
                 type: 'shipDispatchFailed',
                 requestId,
-                reason: 'No storage facility on departure planet',
+                error: { code: 'noStorageOnDeparturePlanet', params: {} },
                 processedAtTick: state.tick,
             });
             return;
@@ -1197,7 +1197,7 @@ export function handleDispatchShip(
             safePostMessage({
                 type: 'shipDispatchFailed',
                 requestId,
-                reason: 'No storage facility on destination planet',
+                error: { code: 'noStorageOnDestinationPlanet', params: {} },
                 processedAtTick: state.tick,
             });
             return;
@@ -1210,7 +1210,7 @@ export function handleDispatchShip(
             safePostMessage({
                 type: 'shipDispatchFailed',
                 requestId,
-                reason: `Unknown resource '${cargoGoal.resource.name}'`,
+                error: { code: 'unknownResource', params: { resourceName: cargoGoal.resource.name } },
                 processedAtTick: state.tick,
             });
             return;
@@ -1241,7 +1241,7 @@ export function handleDispatchPassengerShip(
         safePostMessage({
             type: 'passengerShipDispatchFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1251,7 +1251,7 @@ export function handleDispatchPassengerShip(
         safePostMessage({
             type: 'passengerShipDispatchFailed',
             requestId,
-            reason: `Source planet '${fromPlanetId}' not found`,
+            error: { code: 'sourcePlanetNotFound', params: { planetId: fromPlanetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -1261,7 +1261,7 @@ export function handleDispatchPassengerShip(
         safePostMessage({
             type: 'passengerShipDispatchFailed',
             requestId,
-            reason: `Destination planet '${toPlanetId}' not found`,
+            error: { code: 'planetNotFound', params: { planetId: toPlanetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -1272,7 +1272,7 @@ export function handleDispatchPassengerShip(
         safePostMessage({
             type: 'passengerShipDispatchFailed',
             requestId,
-            reason: `Ship '${shipId}' not found`,
+            error: { code: 'shipNotFound', params: { shipId: shipId } },
             processedAtTick: state.tick,
         });
         return;
@@ -1281,7 +1281,7 @@ export function handleDispatchPassengerShip(
         safePostMessage({
             type: 'passengerShipDispatchFailed',
             requestId,
-            reason: 'Ship is not idle',
+            error: { code: 'shipNotIdle', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1290,7 +1290,7 @@ export function handleDispatchPassengerShip(
         safePostMessage({
             type: 'passengerShipDispatchFailed',
             requestId,
-            reason: `Ship is not on planet '${fromPlanetId}'`,
+            error: { code: 'shipNotOnPlanet', params: { planetId: fromPlanetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -1299,7 +1299,7 @@ export function handleDispatchPassengerShip(
         safePostMessage({
             type: 'passengerShipDispatchFailed',
             requestId,
-            reason: 'Only passenger ships can transport passengers',
+            error: { code: 'onlyPassengerShips', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1309,7 +1309,7 @@ export function handleDispatchPassengerShip(
         safePostMessage({
             type: 'passengerShipDispatchFailed',
             requestId,
-            reason: 'Passenger count must be finite',
+            error: { code: 'passengerCountInvalid', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1320,7 +1320,7 @@ export function handleDispatchPassengerShip(
         safePostMessage({
             type: 'passengerShipDispatchFailed',
             requestId,
-            reason: 'No commercial license on destination planet',
+            error: { code: 'noCommercialLicenseOnDestination', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1331,7 +1331,7 @@ export function handleDispatchPassengerShip(
         safePostMessage({
             type: 'passengerShipDispatchFailed',
             requestId,
-            reason: 'Passenger count must be >= 0',
+            error: { code: 'passengerCountNegative', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1372,7 +1372,7 @@ export function handleDispatchConstructionShip(
         safePostMessage({
             type: 'constructionShipDispatchFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1382,7 +1382,7 @@ export function handleDispatchConstructionShip(
         safePostMessage({
             type: 'constructionShipDispatchFailed',
             requestId,
-            reason: `Destination planet '${toPlanetId}' not found`,
+            error: { code: 'planetNotFound', params: { planetId: toPlanetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -1393,7 +1393,7 @@ export function handleDispatchConstructionShip(
         safePostMessage({
             type: 'constructionShipDispatchFailed',
             requestId,
-            reason: `Ship '${shipId}' not found`,
+            error: { code: 'shipNotFound', params: { shipId: shipId } },
             processedAtTick: state.tick,
         });
         return;
@@ -1402,7 +1402,7 @@ export function handleDispatchConstructionShip(
         safePostMessage({
             type: 'constructionShipDispatchFailed',
             requestId,
-            reason: 'Ship is not idle',
+            error: { code: 'shipNotIdle', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1411,7 +1411,7 @@ export function handleDispatchConstructionShip(
         safePostMessage({
             type: 'constructionShipDispatchFailed',
             requestId,
-            reason: `Ship is not on planet '${fromPlanetId}'`,
+            error: { code: 'shipNotOnPlanet', params: { planetId: fromPlanetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -1420,7 +1420,7 @@ export function handleDispatchConstructionShip(
         safePostMessage({
             type: 'constructionShipDispatchFailed',
             requestId,
-            reason: 'Only construction ships can be dispatched for construction',
+            error: { code: 'onlyConstructionShipsForConstruction', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1431,7 +1431,7 @@ export function handleDispatchConstructionShip(
         safePostMessage({
             type: 'constructionShipDispatchFailed',
             requestId,
-            reason: 'No workforce license on destination planet',
+            error: { code: 'noWorkforceLicenseOnDestination', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -1447,7 +1447,7 @@ export function handleDispatchConstructionShip(
         safePostMessage({
             type: 'constructionShipDispatchFailed',
             requestId,
-            reason: `Unknown facility '${facilityName}'`,
+            error: { code: 'unknownFacility', params: { facilityName: facilityName } },
             processedAtTick: state.tick,
         });
         return;

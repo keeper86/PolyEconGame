@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import { describe, expect, it } from 'vitest';
 import type { Facility } from '@/simulation/planet/facility';
 import type { ConstructionShipStatusLoading } from '@/simulation/ships/ships';
@@ -37,7 +38,7 @@ function stateWith(target: Facility | null, progress: number): ConstructionShipS
 
 describe('ShipPreFabricationRow', () => {
     it('shows build progress as the completed share of the construction service required', () => {
-        render(
+        renderWithIntl(
             <ShipPreFabricationRow
                 state={stateWith(makeBuildingTarget(100, 400), 100)}
                 planetSummaries={planetSummaries}
@@ -50,7 +51,7 @@ describe('ShipPreFabricationRow', () => {
     });
 
     it('does not render a progress bar without a construction target', () => {
-        render(<ShipPreFabricationRow state={stateWith(null, 0)} planetSummaries={planetSummaries} />);
+        renderWithIntl(<ShipPreFabricationRow state={stateWith(null, 0)} planetSummaries={planetSummaries} />);
 
         expect(screen.getByText('Repositioning')).toBeInTheDocument();
         expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();

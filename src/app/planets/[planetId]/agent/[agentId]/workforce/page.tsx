@@ -16,8 +16,13 @@ import { DEFAULT_WAGE_PER_EDU } from '@/simulation/financial/financialTick';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { Separator } from '@radix-ui/react-dropdown-menu';
+import { useLocale, useTranslations } from 'next-intl';
 
 export default function WorkforcePage() {
+    const locale = useLocale();
+    const tr = useTranslations('Workforce');
+    const tCohort = useTranslations('Demographics');
+    const tNav = useTranslations('Nav');
     const {
         agentId,
         planetId,
@@ -36,7 +41,7 @@ export default function WorkforcePage() {
     const planetWagePerEdu = economyData?.economy?.wagePerEdu ?? null;
 
     return (
-        <Page title={`Workforce Management`}>
+        <Page title={tNav('Workforce Management')}>
             <AgentAccessGuard
                 isLoading={myAgentId.isLoading}
                 isOwnAgent={isOwnAgent}
@@ -66,14 +71,16 @@ export default function WorkforcePage() {
                                     <CardContent className='px-3 py-3 space-y-3'>
                                         <div className='grid grid-cols-1 gap-x-4 gap-y-0.5' data-tour='workforce-wages'>
                                             <div className='flex items-baseline justify-between text-xs gap-2'>
-                                                <span className='text-muted-foreground capitalize'>Education</span>
+                                                <span className='text-muted-foreground capitalize'>
+                                                    {tr('education')}
+                                                </span>
                                                 <span className='tabular-nums'>
                                                     <span className='inline-block min-w-[7ch] text-right font-medium'>
-                                                        Wage
+                                                        {tr('wage')}
                                                     </span>
 
                                                     <span className='inline-block min-w-[9ch] text-right tabular-nums text-muted-foreground text-xs'>
-                                                        global avg.
+                                                        {tr('globalAvg')}
                                                     </span>
                                                 </span>
                                             </div>
@@ -88,10 +95,17 @@ export default function WorkforcePage() {
                                                         key={edu}
                                                         className='flex items-baseline justify-between text-xs gap-2'
                                                     >
-                                                        <span className='text-muted-foreground capitalize'>{edu}</span>
+                                                        <span className='text-muted-foreground'>
+                                                            {tCohort(`cohorts.${edu}`)}
+                                                        </span>
                                                         <span className='tabular-nums'>
                                                             <span className='inline-block min-w-[7ch] text-right font-medium'>
-                                                                {formatNumberWithUnit(wage, 'currency', planetId)}
+                                                                {formatNumberWithUnit(
+                                                                    wage,
+                                                                    'currency',
+                                                                    planetId,
+                                                                    locale,
+                                                                )}
                                                             </span>
 
                                                             <span className='inline-block min-w-[9ch] text-right tabular-nums text-muted-foreground text-xs'>
@@ -100,6 +114,7 @@ export default function WorkforcePage() {
                                                                     planetWagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU,
                                                                     'currency',
                                                                     planetId,
+                                                                    locale,
                                                                 )}
                                                                 )
                                                             </span>

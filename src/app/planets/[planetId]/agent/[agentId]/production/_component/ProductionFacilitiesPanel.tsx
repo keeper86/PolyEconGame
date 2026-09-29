@@ -7,7 +7,7 @@ import type { ResourceProcessLevel } from '@/simulation/planet/claims';
 import type { ProductionFacility } from '@/simulation/planet/facility';
 import { computeOtherConstructionCosts } from '@/simulation/planet/facilityMaintenance';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
-import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
+import { FACILITY_LEVELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { useQuery } from '@tanstack/react-query';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -17,9 +17,18 @@ import { LevelBuildSection, type Mode as BuildMode } from './LevelBuildSection';
 
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
 import { PRICE_FLOOR } from '@/simulation/constants';
+import { useTranslations } from 'next-intl';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
+
+const FACILITY_LEVEL_LABEL_KEYS = {
+    raw: 'facilityRaw',
+    refined: 'facilityRefined',
+    manufactured: 'facilityManufactured',
+    services: 'facilityServices',
+    internal: 'facilityInternal',
+} as const;
 
 export default function ProductionFacilitiesPanel({
     assets,
@@ -31,6 +40,7 @@ export default function ProductionFacilitiesPanel({
     planetId: string;
 }): React.ReactElement {
     const trpc = useTRPC();
+    const tl = useTranslations('Levels');
     const facilities = assets.productionFacilities;
 
     // TODO: Use light endpoint for this
@@ -117,7 +127,7 @@ export default function ProductionFacilitiesPanel({
                                 value={level}
                                 className='bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                             >
-                                {FACILITY_LEVEL_LABELS[level]}
+                                {tl(FACILITY_LEVEL_LABEL_KEYS[level])}
                                 {ownedTotal > 0 && (
                                     <Badge variant='secondary' className='ml-1.5 text-[10px] px-1 py-0'>
                                         {ownedActive}

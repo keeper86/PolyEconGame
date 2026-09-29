@@ -1,3 +1,5 @@
+'use client';
+
 import { Badge } from '@/components/ui/badge';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { computeFacilityConditionEfficiency, isFacilityOperating, type Facility } from '@/simulation/planet/facility';
@@ -7,10 +9,7 @@ import {
 } from '@/simulation/planet/facilityMaintenance';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { getAllFacilities } from '@/simulation/planet/planet';
-
-function fmt(n: number): string {
-    return formatNumberWithUnit(n, 'units');
-}
+import { useLocale } from 'next-intl';
 
 function conditionTone(status: number, max: number): string {
     const ratio = max > 0 ? status / max : 0;
@@ -43,7 +42,9 @@ function maintenanceState(facility: Facility): MaintenanceState {
 }
 
 export function FacilitiesMaintenanceDebug({ assets }: { assets: AgentPlanetAssets }): React.ReactElement {
+    const locale = useLocale();
     const facilities = getAllFacilities(assets);
+    const fmt = (n: number) => formatNumberWithUnit(n, 'units', undefined, locale);
 
     const entry = (label: string, value: string) => (
         <span>

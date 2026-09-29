@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+import { useMemo } from 'react';
 import type { EducationLevelType } from '@/simulation/population/education';
 import type { Occupation } from '@/simulation/population/population';
 
@@ -10,13 +12,6 @@ export const EDU_COLORS: Record<EducationLevelType, string> = {
     tertiary: '#f59e0b',
 };
 
-export const EDU_LABELS: Record<EducationLevelType, string> = {
-    none: 'None',
-    primary: 'Primary',
-    secondary: 'Secondary',
-    tertiary: 'Tertiary',
-};
-
 export const OCC_COLORS: Record<Occupation, string> = {
     unoccupied: '#60a5fa',
     employed: '#34d399',
@@ -24,9 +19,28 @@ export const OCC_COLORS: Record<Occupation, string> = {
     unableToWork: '#ef4444',
 };
 
-export const OCC_LABELS: Record<Occupation, string> = {
-    unoccupied: 'Unoccupied',
-    employed: 'Employed',
-    education: 'Education',
-    unableToWork: 'Unable to work',
+type CohortLabels = {
+    edu: Record<EducationLevelType, string>;
+    occ: Record<Occupation, string>;
+};
+
+export const useCohortLabels = (): CohortLabels => {
+    const t = useTranslations('Demographics');
+    return useMemo(
+        () => ({
+            edu: {
+                none: t('eduNone'),
+                primary: t('eduPrimary'),
+                secondary: t('eduSecondary'),
+                tertiary: t('eduTertiary'),
+            },
+            occ: {
+                unoccupied: t('occUnoccupied'),
+                employed: t('occEmployed'),
+                education: t('occEducation'),
+                unableToWork: t('occUnableToWork'),
+            },
+        }),
+        [t],
+    );
 };

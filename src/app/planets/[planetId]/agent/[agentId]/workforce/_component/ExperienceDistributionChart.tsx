@@ -9,6 +9,7 @@ import type { ViewMode } from './AgeDistributionChart';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useIsSmallScreen } from '@/hooks/useMobile';
+import { useLocale, useTranslations } from 'next-intl';
 
 type ChartRow = Record<string, number>;
 
@@ -34,12 +35,13 @@ function mergePairs(rows: ChartRow[]): ChartRow[] {
 }
 
 function EmptyChart({ height = 180 }: { height?: number }) {
+    const t = useTranslations('Workforce');
     return (
         <div
             className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
             style={{ height }}
         >
-            No experience data
+            {t('noExperienceData')}
         </div>
     );
 }
@@ -47,6 +49,8 @@ function EmptyChart({ height = 180 }: { height?: number }) {
 type PayloadEntry = NonNullable<TooltipProps<number, string>['payload']>[number];
 
 function XPStatusTooltip({ active, payload, label }: TooltipProps<number, string>) {
+    const locale = useLocale();
+    const t = useTranslations('Workforce');
     if (!active || !payload || payload.length === 0) {
         return null;
     }
@@ -56,36 +60,42 @@ function XPStatusTooltip({ active, payload, label }: TooltipProps<number, string
     const totalLeaving = (row?.Quitting ?? 0) + (row?.Fired ?? 0) + (row?.Retired ?? 0);
     return (
         <div className='rounded-lg border bg-card p-2 text-xs shadow-md'>
-            <div className='font-medium mb-1'>Age {label}</div>
+            <div className='font-medium mb-1'>{t('ageTooltip', { age: label ?? '' })}</div>
             {payload.map((entry: PayloadEntry) => (
                 <div key={entry.dataKey} style={{ color: entry.color }}>
-                    {entry.name}: {formatNumberWithUnit(entry.value as number, 'none')}
+                    {entry.name}: {formatNumberWithUnit(entry.value as number, 'none', undefined, locale)}
                 </div>
             ))}
             {totalLeaving > 0 && (
                 <div className='mt-1 border-t pt-1 text-muted-foreground'>
-                    Total leaving XP: {formatNumberWithUnit(totalLeaving, 'none')}
+                    {t('totalLeavingXp')} {formatNumberWithUnit(totalLeaving, 'none', undefined, locale)}
                 </div>
             )}
-            <div className='mt-1 border-t pt-1 text-muted-foreground'>Total: {formatNumberWithUnit(total, 'none')}</div>
+            <div className='mt-1 border-t pt-1 text-muted-foreground'>
+                {t('totalLabel')} {formatNumberWithUnit(total, 'none', undefined, locale)}
+            </div>
         </div>
     );
 }
 
 function XPEduTooltip({ active, payload, label }: TooltipProps<number, string>) {
+    const locale = useLocale();
+    const t = useTranslations('Workforce');
     if (!active || !payload || payload.length === 0) {
         return null;
     }
     const total = payload.reduce((sum: number, entry: PayloadEntry) => sum + ((entry.value as number) ?? 0), 0);
     return (
         <div className='rounded-lg border bg-card p-2 text-xs shadow-md'>
-            <div className='font-medium mb-1'>Age {label}</div>
+            <div className='font-medium mb-1'>{t('ageTooltip', { age: label ?? '' })}</div>
             {payload.map((entry: PayloadEntry) => (
                 <div key={entry.dataKey} style={{ color: entry.color }}>
-                    {entry.name}: {formatNumberWithUnit(entry.value as number, 'none')}
+                    {entry.name}: {formatNumberWithUnit(entry.value as number, 'none', undefined, locale)}
                 </div>
             ))}
-            <div className='mt-1 border-t pt-1 text-muted-foreground'>Total: {formatNumberWithUnit(total, 'none')}</div>
+            <div className='mt-1 border-t pt-1 text-muted-foreground'>
+                {t('totalLabel')} {formatNumberWithUnit(total, 'none', undefined, locale)}
+            </div>
         </div>
     );
 }
@@ -99,6 +109,8 @@ export function ExperienceDistributionChart({
     experienceChartByEdu: WorkforceSummary['experienceChartByEdu'];
     view: ViewMode;
 }): React.ReactElement {
+    const locale = useLocale();
+    const tr = useTranslations('Workforce');
     const isVerySmall = useIsSmallScreen();
 
     const statusData = useMemo(() => {
@@ -117,12 +129,12 @@ export function ExperienceDistributionChart({
         const raw: ChartRow[] = experienceChartByEdu.map((d) => {
             const row: ChartRow = { age: d.age };
             for (const edu of educationLevelKeys) {
-                row[eduLabel(edu)] = d.byEdu[edu] ?? 0;
+                row[eduLabel(tr, edu)] = d.byEdu[edu] ?? 0;
             }
             return row;
         });
         return isVerySmall ? mergePairs(raw) : raw;
-    }, [experienceChartByEdu, isVerySmall]);
+    }, [experienceChartByEdu, isVerySmall, tr]);
 
     const statusTooltip = useMemo(() => XPStatusTooltip, []);
     const eduTooltip = useMemo(() => XPEduTooltip, []);
@@ -140,7 +152,7 @@ export function ExperienceDistributionChart({
                         <YAxis
                             width={40}
                             tick={{ fontSize: 10 }}
-                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'none')}
+                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'none', undefined, locale)}
                         />
                         {isVerySmall ? null : <Tooltip content={statusTooltip} />}
                         <Legend verticalAlign='top' height={18} wrapperStyle={{ fontSize: 10 }} />
@@ -186,14 +198,14 @@ export function ExperienceDistributionChart({
                         <YAxis
                             width={40}
                             tick={{ fontSize: 10 }}
-                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'none')}
+                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'none', undefined, locale)}
                         />
                         {isVerySmall ? null : <Tooltip content={eduTooltip} />}
                         <Legend verticalAlign='top' height={18} wrapperStyle={{ fontSize: 10 }} />
                         {educationLevelKeys.map((edu, idx) => (
                             <Bar
                                 key={edu}
-                                dataKey={eduLabel(edu)}
+                                dataKey={eduLabel(tr, edu)}
                                 stackId='a'
                                 fill={EDU_COLORS[edu].chart}
                                 isAnimationActive={false}

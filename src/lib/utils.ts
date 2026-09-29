@@ -1,13 +1,22 @@
+import { defaultLocale, getDecimalSeparator, type Locale } from '@/i18n/config';
 import { currencyMapping } from '@/simulation/market/currencyResources';
 import type { ResourceType } from '@/simulation/planet/claims';
+import { formatNumbers } from '@/simulation/utils/numberFormat';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import de from '../i18n/messages/de.json';
+import en from '../i18n/messages/en.json';
+
+const catalogs = { en, de } as const;
+
+const dayWord = (locale: Locale, count: number | null | undefined): string => {
+    const units = catalogs[locale].Units;
+    return count === 1 ? units.day : units.days;
+};
 
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
-
-import { formatNumbers } from '@/simulation/utils/numberFormat';
 
 export type Units = 'currency' | 'tonnes' | 'litres' | 'units' | 'persons' | 'percent' | 'm3' | 'days' | 'none';
 
@@ -25,8 +34,13 @@ export function resourceFormToUnit(form: ResourceType | undefined): Exclude<Unit
     }
 }
 
-export const formatNumberWithUnit = (n: number | null | undefined, unit: Units, planetId?: string): string => {
-    const formattedNumber = formatNumbers(n);
+export const formatNumberWithUnit = (
+    n: number | null | undefined,
+    unit: Units,
+    planetId: string | undefined,
+    locale: Locale,
+): string => {
+    const formattedNumber = formatNumbers(n, getDecimalSeparator(locale));
     if (formattedNumber === '—') {
         return formattedNumber;
     }
@@ -49,17 +63,16 @@ export const formatNumberWithUnit = (n: number | null | undefined, unit: Units, 
         return `${formattedNumber}%`;
     }
     if (unit === 'days') {
-        if (formattedNumber === '1') {
-            return '1 day';
-        }
-        return `${formattedNumber} days`;
+        return `${formattedNumber} ${dayWord(locale, n)}`;
     }
 
     return formattedNumber;
 };
-export function formatWallTime(ms: number, short = false): string {
+export function formatWallTime(ms: number, short = false, locale: Locale = defaultLocale): string {
+    const units = catalogs[locale].Units;
+    const decimalSeparator = getDecimalSeparator(locale);
     if (ms < 1000) {
-        return '<1s';
+        return units.lessThanOneSecond;
     }
     const totalSeconds = Math.round(ms / 1000);
     const days = Math.floor(totalSeconds / 86400);
@@ -69,25 +82,25 @@ export function formatWallTime(ms: number, short = false): string {
 
     let result = '';
     if (days > 0) {
-        result += `${days}d `;
+        result += `${days}${units.daysShort} `;
         if (short) {
-            return `${(totalSeconds / 86400).toFixed(1)}d`;
+            return `${(totalSeconds / 86400).toFixed(1).replace('.', decimalSeparator)}${units.daysShort}`;
         }
     }
     if (hours > 0) {
-        result += `${hours}h `;
+        result += `${hours}${units.hoursShort} `;
         if (short) {
-            return `${(totalSeconds / 3600).toFixed(1)}h`;
+            return `${(totalSeconds / 3600).toFixed(1).replace('.', decimalSeparator)}${units.hoursShort}`;
         }
     }
     if (minutes > 0) {
-        result += `${minutes}m `;
+        result += `${minutes}${units.minutesShort} `;
         if (short) {
-            return `${(totalSeconds / 60).toFixed(1)}m`;
+            return `${(totalSeconds / 60).toFixed(1).replace('.', decimalSeparator)}${units.minutesShort}`;
         }
     }
     if (seconds > 0) {
-        result += `${seconds}s `;
+        result += `${seconds}${units.secondsShort} `;
     }
     return result.slice(0, -1);
 }

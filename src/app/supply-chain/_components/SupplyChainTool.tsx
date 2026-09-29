@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,8 @@ import { solveSupplyChain, type SolverResult, type SolverObjective } from './sol
 import { computeBottlenecks } from './bottleneck';
 import { LiveStateTab } from './LiveStateTab';
 import PricingLab from './pricingLab/PricingLab';
+import { useLocale } from 'next-intl';
+import { termFor } from '@/i18n/terms';
 function fmt(n: number): string {
     if (Math.abs(n) >= 1_000_000) {
         return `${(n / 1_000_000).toFixed(1)}M`;
@@ -53,6 +56,7 @@ interface FacilityCardProps {
 }
 
 function FacilityCard({ facility, scale, onScale, balanceByName }: FacilityCardProps) {
+    const locale = useLocale();
     const isPowerProducer = facility.powerConsumptionPerTick < 0;
     const powerUnits = Math.abs(facility.powerConsumptionPerTick) * (scale || 1);
 
@@ -60,7 +64,9 @@ function FacilityCard({ facility, scale, onScale, balanceByName }: FacilityCardP
         <Card className={scale > 0 ? 'border-primary/40 shadow-sm' : 'opacity-80'}>
             <CardHeader className='pb-2 pt-3 px-4'>
                 <div className='flex items-start justify-between gap-2'>
-                    <CardTitle className='text-sm font-semibold leading-snug'>{facility.name}</CardTitle>
+                    <CardTitle className='text-sm font-semibold leading-snug'>
+                        {termFor(locale, facility.name)}
+                    </CardTitle>
                     <div className='flex items-center gap-1.5 shrink-0'>
                         {isPowerProducer ? (
                             <Badge
@@ -123,7 +129,7 @@ function FacilityCard({ facility, scale, onScale, balanceByName }: FacilityCardP
                                         key={n.resourceName}
                                         className={`flex justify-between ${inDeficit ? 'text-red-600 font-medium' : 'text-foreground'}`}
                                     >
-                                        <span className='truncate mr-1'>{n.resourceName}</span>
+                                        <span className='truncate mr-1'>{termFor(locale, n.resourceName)}</span>
                                         <span className='shrink-0'>{fmt(n.quantity * (scale || 1))}</span>
                                     </div>
                                 );
@@ -141,7 +147,7 @@ function FacilityCard({ facility, scale, onScale, balanceByName }: FacilityCardP
                                         key={p.resourceName}
                                         className={`flex justify-between ${inSurplus ? 'text-green-700' : 'text-foreground'}`}
                                     >
-                                        <span className='truncate mr-1'>{p.resourceName}</span>
+                                        <span className='truncate mr-1'>{termFor(locale, p.resourceName)}</span>
                                         <span className='shrink-0'>{fmt(p.quantity * (scale || 1))}</span>
                                     </div>
                                 );
@@ -185,6 +191,7 @@ function BottleneckPanel({
     scales: Record<string, number>;
     population: number;
 }) {
+    const locale = useLocale();
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const reports = useMemo(() => computeBottlenecks(balance, scales, population), [balance, scales, population]);
 
@@ -245,7 +252,7 @@ function BottleneckPanel({
                                                 idx === 0 && inp.coverageRatio < 1 ? 'font-semibold text-red-600' : ''
                                             }`}
                                         >
-                                            {inp.resourceName}
+                                            {termFor(locale, inp.resourceName)}
                                         </span>
                                         <div className='flex-1'>
                                             <CoverageBar
@@ -656,6 +663,7 @@ function SolverTab({
 }
 
 export default function SupplyChainTool() {
+    const locale = useLocale();
     const [scales, setScales] = useState<Record<string, number>>({});
     const [population, setPopulation] = useState<number>(100_000);
     const [levelFilter, setLevelFilter] = useState<string>('all');
@@ -733,7 +741,8 @@ export default function SupplyChainTool() {
                     />
                 </div>
                 <span className='text-sm text-muted-foreground'>
-                    Service demand: {population.toLocaleString()} units/tick per service
+                    Service demand: {formatNumberWithUnit(population, 'units', undefined, locale)} units/tick per
+                    service
                 </span>
                 <div className='ml-auto flex items-center gap-2'>
                     <Button variant='outline' size='sm' onClick={incrementAllScales}>
@@ -844,7 +853,7 @@ export default function SupplyChainTool() {
                                             key={r.resourceName}
                                             className='flex items-center gap-1.5 bg-red-50 border border-red-200 rounded-md px-2 py-1 text-sm'
                                         >
-                                            <span className='font-medium'>{r.resourceName}</span>
+                                            <span className='font-medium'>{termFor(locale, r.resourceName)}</span>
                                             <span className='text-red-600 font-mono text-xs'>{fmt(r.balance)}/t</span>
                                         </div>
                                     ))}
@@ -905,7 +914,9 @@ export default function SupplyChainTool() {
                                                 >
                                                     {r.resourceLevel}
                                                 </span>
-                                                <span className='font-medium text-sm'>{r.resourceName}</span>
+                                                <span className='font-medium text-sm'>
+                                                    {termFor(locale, r.resourceName)}
+                                                </span>
                                             </div>
                                         </TableCell>
                                         <TableCell className='text-right font-mono text-sm'>

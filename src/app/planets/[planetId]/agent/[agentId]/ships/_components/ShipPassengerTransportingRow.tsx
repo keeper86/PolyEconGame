@@ -1,11 +1,13 @@
 'use client';
 
+import { formatNumberWithUnit } from '@/lib/utils';
 import type { PassengerShipStatusTransporting } from '@/simulation/ships/ships';
 import { ArrowRight } from 'lucide-react';
 import React from 'react';
 import { countManifestPassengers } from './PassengerManifestDialog';
 import { PassengerManifestButton } from './PassengerManifestButton';
 import { planetName, ShipEta, type PlanetSummary } from './shipFormatting';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function ShipPassengerTransportingRow({
     state,
@@ -16,13 +18,18 @@ export function ShipPassengerTransportingRow({
     planetSummaries: PlanetSummary[];
     tick: number;
 }): React.ReactElement {
+    const locale = useLocale();
+    const tu = useTranslations('Units');
     const total = countManifestPassengers(state.manifest);
     const destination = planetName(planetSummaries, state.to);
 
     return (
         <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
             <span>
-                <span className='tabular-nums text-foreground'>{total.toLocaleString()}</span> passengers
+                <span className='tabular-nums text-foreground'>
+                    {formatNumberWithUnit(total, 'persons', undefined, locale)}
+                </span>{' '}
+                {tu('passengers')}
             </span>
             <ArrowRight className='h-3 w-3' />
             <span>{destination}</span>

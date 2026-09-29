@@ -25,8 +25,12 @@ import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { StorageBalanceRow } from './StorageBalanceRow';
 import { StorageBufferGauge } from './StorageBufferGauge';
 import { StorageStarvationBar } from './StorageStarvationBar';
+import { termFor } from '@/i18n/terms';
+import { useLocale, useTranslations } from 'next-intl';
 
 function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.ReactElement {
+    const locale = useLocale();
+    const tr = useTranslations('Storage');
     const used = usageOfShell(shell);
     const capacity = { volume: shell.capacity.volume * shell.maxScale, mass: shell.capacity.mass * shell.maxScale };
     const volumePct = capacity.volume > 0 ? Math.min(1, used.volume / capacity.volume) : 0;
@@ -40,21 +44,23 @@ function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.Reac
     const held = Object.entries(shell.currentInStorage);
 
     return (
-        <div className='flex flex-col gap-2 py-2'>
+        <div className='flex flex-col gap-2 py-2' data-tour='storage-capacity'>
             <div className='space-y-1'>
                 <div className='flex flex-row items-center justify-between text-xs text-muted-foreground'>
-                    <span>Volume used</span>
+                    <span>{tr('volumeUsed')}</span>
                     <span className='tabular-nums'>
-                        {formatNumberWithUnit(used.volume, 'm3')} / {formatNumberWithUnit(capacity.volume, 'm3')}
+                        {formatNumberWithUnit(used.volume, 'm3', undefined, locale)} /{' '}
+                        {formatNumberWithUnit(capacity.volume, 'm3', undefined, locale)}
                     </span>
                 </div>
                 <Progress value={volumePct * 100} className={`h-2 ${volumeTone}`} />
             </div>
             <div className='space-y-1'>
                 <div className='flex flex-row items-center justify-between text-xs text-muted-foreground'>
-                    <span>Mass used</span>
+                    <span>{tr('massUsed')}</span>
                     <span className='tabular-nums'>
-                        {formatNumberWithUnit(used.mass, 'tonnes')} / {formatNumberWithUnit(capacity.mass, 'tonnes')}
+                        {formatNumberWithUnit(used.mass, 'tonnes', undefined, locale)} /{' '}
+                        {formatNumberWithUnit(capacity.mass, 'tonnes', undefined, locale)}
                     </span>
                 </div>
                 <Progress value={massPct * 100} className={`h-2 ${massTone}`} />
@@ -62,13 +68,13 @@ function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.Reac
             {held.length > 0 && (
                 <div className='flex flex-col gap-0.5 pt-1'>
                     <div className='text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60'>
-                        Held resources
+                        {tr('heldResources')}
                     </div>
                     {held.map(([name, entry]) => (
                         <div key={name} className='flex flex-row items-center justify-between text-xs'>
-                            <span>{name}</span>
+                            <span>{termFor(locale, name)}</span>
                             <span className='tabular-nums text-muted-foreground'>
-                                {formatNumberWithUnit(entry.quantity, 'units')}
+                                {formatNumberWithUnit(entry.quantity, 'units', undefined, locale)}
                             </span>
                         </div>
                     ))}
@@ -143,6 +149,7 @@ export default function StorageShellsPanel({
     planetId: string;
 }): React.ReactElement {
     const trpc = useTRPC();
+    const locale = useLocale();
     const { data: constructionMarket } = useSimulationQuery(
         trpc.simulation.getPlanetMarket.queryOptions({ planetId, resourceName: constructionServiceResourceType.name }),
     );
@@ -170,7 +177,7 @@ export default function StorageShellsPanel({
                         otherConstructionCosts={otherConstructionCosts}
                         headerBadge={
                             <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
-                                {STORAGE_SHELL_FORM_NAMES[form]}
+                                {termFor(locale, STORAGE_SHELL_FORM_NAMES[form])}
                             </Badge>
                         }
                         dataTour={`storage-shell-${form}`}

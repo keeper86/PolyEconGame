@@ -9,6 +9,7 @@ import { TICKS_PER_MONTH } from '@/simulation/constants';
 import { AlertTriangle, InfoIcon, Loader2 } from 'lucide-react';
 import React from 'react';
 import { SY_TIERS, calcClaimCost, calcClaimQuantity } from './claimCalculations';
+import { useLocale, useTranslations } from 'next-intl';
 
 interface ClaimSizeFormProps {
     planetId: string;
@@ -37,6 +38,8 @@ export function ClaimSizeForm({
     submitLabel,
     errorMessage,
 }: ClaimSizeFormProps): React.ReactElement {
+    const locale = useLocale();
+    const t = useTranslations('Claims');
     const quantity = calcClaimQuantity(summary.resourceName, tierIndex, summary.renewable);
     const cost = calcClaimCost(summary.resourceName, quantity);
     const upfrontCost = summary.renewable ? cost * TICKS_PER_MONTH : cost;
@@ -56,27 +59,22 @@ export function ClaimSizeForm({
                 <div className='flex gap-2 text-xs text-muted-foreground pb-1'>
                     {summary.renewable ? (
                         <span className='flex gap-1'>
-                            Scale
+                            {t('scale')}
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <InfoIcon className='h-4' />
                                 </TooltipTrigger>
-                                <TooltipContent>
-                                    Measures the quantity of resource claimed by what the least-demanding facility of
-                                    this scale would sustainably be able to consume.
-                                </TooltipContent>
+                                <TooltipContent>{t('scaleTooltip')}</TooltipContent>
                             </Tooltip>
                         </span>
                     ) : (
                         <span className='flex gap-1'>
-                            Scale-years{' '}
+                            {t('scaleYears')}{' '}
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <InfoIcon className='h-4' />
                                 </TooltipTrigger>
-                                <TooltipContent>
-                                    1 Scale year can satisfy the annual consumption of one facility at scale 1.
-                                </TooltipContent>
+                                <TooltipContent>{t('scaleYearsTooltip')}</TooltipContent>
                             </Tooltip>
                         </span>
                     )}
@@ -86,72 +84,72 @@ export function ClaimSizeForm({
                     value={tierIndex}
                     onValueChange={onTierChange}
                     disabled={isPending || isSubmitted}
-                    formatLabel={(v) => formatNumberWithUnit(v, 'units')}
+                    formatLabel={(v) => formatNumberWithUnit(v, 'units', undefined, locale)}
                     className='pt-2'
                 />
             </div>
 
             <div className='space-y-0.5 text-xs'>
                 <div className='flex justify-between'>
-                    <span className='text-muted-foreground'>Quantity</span>
+                    <span className='text-muted-foreground'>{t('quantity')}</span>
                     <span className={`font-medium ${exceedsCapacity ? 'text-destructive' : ''}`}>
-                        {formatNumberWithUnit(quantity, 'units')}
-                        {exceedsCapacity && ' — exceeds available'}
+                        {formatNumberWithUnit(quantity, 'units', undefined, locale)}
+                        {exceedsCapacity && t('exceedsAvailable')}
                     </span>
                 </div>
                 {summary.renewable && (
                     <>
                         <div className='flex justify-between'>
-                            <span className='text-muted-foreground'>Upfront (1 month)</span>
+                            <span className='text-muted-foreground'>{t('upfront')}</span>
                             <span
                                 className={`font-medium ${cannotAfford ? 'text-destructive' : 'text-amber-600 dark:text-amber-400'}`}
                             >
-                                {formatNumberWithUnit(upfrontCost, 'currency', planetId)}
+                                {formatNumberWithUnit(upfrontCost, 'currency', planetId, locale)}
                             </span>
                         </div>
                         <div className='flex justify-between'>
-                            <span className='text-muted-foreground'>Your deposits</span>
+                            <span className='text-muted-foreground'>{t('yourDeposits')}</span>
                             <span className={`font-medium ${cannotAfford ? 'text-destructive' : ''}`}>
-                                {formatNumberWithUnit(deposits, 'currency', planetId)}
+                                {formatNumberWithUnit(deposits, 'currency', planetId, locale)}
                             </span>
                         </div>
                     </>
                 )}
                 <div className='flex justify-between'>
                     <span className='text-muted-foreground'>
-                        {summary.renewable ? 'Cost / tick (ongoing)' : 'Cost (flat)'}
+                        {summary.renewable ? t('costPerTickOngoing') : t('costFlat')}
                     </span>
                     <span className='font-medium text-amber-600 dark:text-amber-400'>
-                        {formatNumberWithUnit(cost, 'currency', planetId)}
+                        {formatNumberWithUnit(cost, 'currency', planetId, locale)}
                     </span>
                 </div>
                 {!summary.renewable ? (
                     <div className='flex justify-between'>
-                        <span className='text-muted-foreground'>Your deposits</span>
+                        <span className='text-muted-foreground'>{t('yourDeposits')}</span>
                         <span className={`font-medium ${cannotAfford ? 'text-destructive' : ''}`}>
-                            {formatNumberWithUnit(deposits, 'currency', planetId)}
+                            {formatNumberWithUnit(deposits, 'currency', planetId, locale)}
                         </span>
                     </div>
                 ) : (
                     <div className='flex justify-between'>
-                        <span className='text-muted-foreground'>Your cash flow</span>
+                        <span className='text-muted-foreground'>{t('yourCashFlow')}</span>
                         {cashFlowWarning ? (
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <span className='font-medium text-amber-600 dark:text-amber-400'>
-                                        {formatNumberWithUnit(perTickCashFlow, 'currency', planetId)}
+                                        {formatNumberWithUnit(perTickCashFlow, 'currency', planetId, locale)}
                                     </span>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                     <span className='flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400'>
                                         <AlertTriangle className='h-3 w-3 shrink-0' />
-                                        Running cost exceeds current cash flow
+                                        {t('runningCostExceeds')}
                                     </span>
                                 </TooltipContent>
                             </Tooltip>
                         ) : (
                             <span className='font-medium'>
-                                {formatNumberWithUnit(perTickCashFlow, 'currency', planetId)}
+                                {formatNumberWithUnit(perTickCashFlow, 'currency', planetId, locale)}
                             </span>
                         )}
                     </div>
@@ -168,7 +166,7 @@ export function ClaimSizeForm({
                     {isPending || isSubmitted ? (
                         <>
                             <Loader2 className='h-3 w-3 animate-spin mr-1' />
-                            Takes effect next tick…
+                            {t('takesEffectNextTick')}
                         </>
                     ) : (
                         submitLabel
@@ -176,7 +174,7 @@ export function ClaimSizeForm({
                 </Button>
                 {onCancel && (
                     <Button size='sm' variant='destructive' disabled={isPending || isSubmitted} onClick={onCancel}>
-                        Cancel
+                        {t('cancel')}
                     </Button>
                 )}
             </div>

@@ -4,11 +4,13 @@ import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/Agen
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { Page } from '@/components/client/Page';
 import { TRADABLE_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
 import MarketPanel from './_components/MarketPanel';
 import MultiProductPriceChart, { MultiProductPriceChartTrigger } from './_components/MultiProductPriceChart';
 
 export default function MarketPage() {
+    const t = useTranslations('Nav');
     const {
         agentId,
         planetId,
@@ -30,7 +32,7 @@ export default function MarketPage() {
 
     return (
         <Page
-            title={`Market`}
+            title={t('Market')}
             headerComponent={
                 <MultiProductPriceChartTrigger isOpen={isChartOpen} onToggle={() => setIsChartOpen((prev) => !prev)} />
             }

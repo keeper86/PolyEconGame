@@ -1,6 +1,7 @@
 'use client';
 
 import { Star, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface StarRatingProps {
     level?: number;
@@ -38,6 +39,7 @@ function StarIcon({
     level: number | undefined;
     onChange: ((level: number) => void) | undefined;
 }) {
+    const t = useTranslations('Common');
     if (onChange) {
         return (
             <button
@@ -45,7 +47,7 @@ function StarIcon({
                 type='button'
                 onClick={() => onChange(star)}
                 className={getStarButtonClass(onChange)}
-                aria-label={`Set level to ${star}`}
+                aria-label={t('setLevel', { level: star })}
             >
                 <Star className={`w-6 h-6 ${getStarClass(level, star)}`} />
             </button>
@@ -60,6 +62,7 @@ function StarIcon({
 }
 
 export function StarRating({ level, maxStars = 3, onChange, onDelete }: StarRatingProps) {
+    const t = useTranslations('Common');
     return (
         <div className='flex gap-1 items-center'>
             {Array.from({ length: maxStars }, (_, i) => i + 1).map((star) => (
@@ -71,7 +74,7 @@ export function StarRating({ level, maxStars = 3, onChange, onDelete }: StarRati
                     onClick={onDelete}
                     disabled={level === 0}
                     className={getDeleteButtonClass(level)}
-                    aria-label='Reset to no experience'
+                    aria-label={t('resetToNoExperience')}
                 >
                     <Trash2 className={`w-4 h-4${level && level !== 0 ? ' text-red-500' : ''}`} />
                 </button>

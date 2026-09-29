@@ -3,6 +3,7 @@
 import { useTour } from '@/components/tour/TourContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useErrorMessage } from '@/i18n/errors';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { ClaimResourceSummary } from '@/server/controller/planet';
@@ -12,6 +13,7 @@ import { ClaimCardHeader } from './ClaimCardHeader';
 import { ClaimSizeForm } from './ClaimSizeForm';
 import { resourceNameToSlug } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
 import { oilReservoirResourceType } from '@/simulation/planet/landBoundResources';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function LeaseClaimCard({
     summary,
@@ -22,6 +24,9 @@ export function LeaseClaimCard({
     agentId: string;
     planetId: string;
 }): React.ReactElement {
+    const locale = useLocale();
+    const t = useTranslations('Claims');
+    const showError = useErrorMessage();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const [tierIndex, setTierIndex] = useState(0);
@@ -61,8 +66,10 @@ export function LeaseClaimCard({
             <ClaimCardHeader resourceName={summary.resourceName} renewable={summary.renewable} />
             <CardContent className='flex flex-col gap-3 flex-1'>
                 <p className='text-xs text-muted-foreground'>
-                    Available: {formatNumberWithUnit(summary.availableCapacity, 'units')} of{' '}
-                    {formatNumberWithUnit(summary.totalCapacity, 'units')}
+                    {t('available', {
+                        current: formatNumberWithUnit(summary.availableCapacity, 'units', undefined, locale),
+                        total: formatNumberWithUnit(summary.totalCapacity, 'units', undefined, locale),
+                    })}
                 </p>
                 <div className='space-y-3'>
                     <ClaimSizeForm
@@ -76,8 +83,8 @@ export function LeaseClaimCard({
                         onSubmit={(quantity) =>
                             leaseMutation.mutate({ agentId, planetId, resourceName: summary.resourceName, quantity })
                         }
-                        submitLabel='Lease'
-                        errorMessage={leaseMutation.error?.message}
+                        submitLabel={t('lease')}
+                        errorMessage={leaseMutation.error ? showError(leaseMutation.error) : undefined}
                     />
                 </div>
             </CardContent>

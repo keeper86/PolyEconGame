@@ -9,6 +9,7 @@ import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuer
 import { useTRPC } from '@/lib/trpc';
 import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import { LayoutGroup, motion } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Label } from '@/components/ui/label';
@@ -18,7 +19,6 @@ import { useOnlyRelevantResourcesPreference } from '@/hooks/uiPreferences';
 import type { MarketOverviewRow } from '@/server/controller/planet';
 import { queryStorageFacility } from '@/simulation/planet/facility';
 import { CURRENCY_RESOURCE_PREFIX, getCurrencyResourceName } from '@/simulation/market/currencyResources';
-import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
 import { getHeaderColumnClasses, LABEL_COLUMN_WIDTH } from './columnConfig';
 import {
     buildInitialState,
@@ -52,11 +52,13 @@ function groupResourcesByLevel(resources: { name: string }[]): Map<string, { nam
 
 const LEVEL_ORDER = ['raw', 'refined', 'manufactured', 'services', 'currency'] as const;
 
-const MARKET_LEVEL_LABELS: Record<string, string> = {
-    ...RESOURCE_LEVEL_LABELS,
-    currency: 'Currency',
-    all: 'All',
-};
+const LEVEL_LABEL_KEYS = {
+    raw: 'resourceRaw',
+    refined: 'resourceRefined',
+    manufactured: 'resourceManufactured',
+    services: 'resourceServices',
+    currency: 'resourceCurrency',
+} as const;
 
 function getLevelForResource(resourceName: string): string {
     if (resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
@@ -73,6 +75,9 @@ export default function MarketPanel({
     ships,
     dataTick,
 }: MarketPanelProps): React.ReactElement {
+    const t = useTranslations('Market');
+    const tl = useTranslations('Levels');
+    const tc = useTranslations('Common');
     const [showRelevant, setShowRelevant] = useOnlyRelevantResourcesPreference();
     const showAll = !showRelevant;
     const cardRef = useRef<HTMLDivElement>(null);
@@ -121,14 +126,14 @@ export default function MarketPanel({
 
         const levelGroups = LEVEL_ORDER.map((level) => ({
             level,
-            label: MARKET_LEVEL_LABELS[level] ?? level,
+            label: tl(LEVEL_LABEL_KEYS[level]),
             resources: groups.get(level) ?? [],
         }));
         if (resources.length > 0) {
-            return [{ level: 'all', label: 'All', resources }, ...levelGroups];
+            return [{ level: 'all', label: tc('all'), resources }, ...levelGroups];
         }
         return levelGroups;
-    }, [resources]);
+    }, [resources, tl, tc]);
 
     const [activeTab, setActiveTab] = useState<string>(() => {
         if (typeof window === 'undefined') {
@@ -354,14 +359,14 @@ export default function MarketPanel({
         <Tabs value={activeTab} onValueChange={handleTabChange} className='space-y-3'>
             <Separator />
             <div className='flex items-baseline justify-between py-1'>
-                <h2 className='font-semibold'>Order Books</h2>
+                <h2 className='font-semibold'>{t('orderBooks')}</h2>
                 <div className='flex items-center gap-2'>
                     <Label
                         htmlFor='show-all-resources'
                         className='text-xs text-muted-foreground cursor-pointer'
                         data-tour='market-relevant-toggle'
                     >
-                        Only relevant resources
+                        {t('onlyRelevantResources')}
                     </Label>
                     <Switch id='show-all-resources' checked={showRelevant} onCheckedChange={setShowRelevant} />
                 </div>
@@ -387,7 +392,9 @@ export default function MarketPanel({
                     {resourceGroups.map(({ level, resources: levelResources }) => (
                         <TabsContent key={level} value={level} className='mt-0'>
                             {levelResources.length === 0 ? (
-                                <p className='text-sm text-muted-foreground py-4 text-center'>-empty-</p>
+                                <p className='text-sm text-muted-foreground py-4 text-center'>
+                                    {t('emptyPlaceholder')}
+                                </p>
                             ) : (
                                 <>
                                     <div className='flex items-center px-1 pb-1.5 mb-0.5 border-b'>
@@ -397,7 +404,7 @@ export default function MarketPanel({
                                                 onClick={() => handleColumnSort('name')}
                                                 className='flex flex-1 min-w-0 items-center gap-0.5 cursor-pointer hover:text-muted-foreground truncate'
                                             >
-                                                <span className='truncate'>Resource</span>
+                                                <span className='truncate'>{t('resource')}</span>
                                                 {sortConfig.column === 'name' ? (
                                                     sortConfig.direction === 'asc' ? (
                                                         <ChevronUp className='w-2.5 h-2.5 shrink-0' />
@@ -413,9 +420,9 @@ export default function MarketPanel({
                                                     key={column.id}
                                                     onClick={() => handleColumnSort(column.id)}
                                                     className={`${getHeaderColumnClasses(column.id)} flex items-center justify-end gap-0.5 cursor-pointer hover:text-muted-foreground`}
-                                                    title={column.title}
+                                                    title={t(column.titleKey)}
                                                 >
-                                                    <span className='truncate'>{column.label}</span>
+                                                    <span className='truncate'>{t(column.labelKey)}</span>
                                                     {sortConfig.column === column.id ? (
                                                         sortConfig.direction === 'asc' ? (
                                                             <ChevronUp className='w-2.5 h-2.5 shrink-0' />

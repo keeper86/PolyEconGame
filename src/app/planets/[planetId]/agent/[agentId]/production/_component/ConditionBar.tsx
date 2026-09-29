@@ -1,6 +1,7 @@
 import { Progress } from '@/components/ui/progress';
 import { Wrench } from 'lucide-react';
 import React from 'react';
+import { useTranslations } from 'next-intl';
 
 export function conditionTone(status: number): { text: string; bar: string } {
     if (status >= 0.75) {
@@ -13,6 +14,7 @@ export function conditionTone(status: number): { text: string; bar: string } {
 }
 
 export function ConditionBar({ status, max }: { status: number; max: number }): React.ReactElement {
+    const t = useTranslations('Production');
     const tone = conditionTone(status);
     const fillPct = max > 0 ? Math.min(100, Math.max(0, (status / max) * 100)) : 0;
 
@@ -21,10 +23,10 @@ export function ConditionBar({ status, max }: { status: number; max: number }): 
             <div className='flex flex-row w-full justify-between text-xs text-muted-foreground mb-1'>
                 <span className='flex items-center gap-1.5'>
                     <Wrench className='h-3.5 w-3.5' />
-                    Condition
+                    {t('condition')}
                 </span>
                 <span className={`font-medium ${tone.text}`}>
-                    {Math.round(status * 100)}% / {Math.round(max * 100)}% max
+                    {t('conditionMax', { current: Math.round(status * 100), max: Math.round(max * 100) })}
                 </span>
             </div>
             <Progress value={fillPct} className={`h-2.5 ${tone.bar}`} />

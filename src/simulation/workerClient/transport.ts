@@ -2,6 +2,7 @@ import { sendToWorker, onWorkerMessage } from './manager';
 import type { InboundMessage, OutboundMessage } from './messages';
 import type { CommandSpec } from './commandSpec';
 import { getPending } from './pendingRequests';
+import { domainErrorFromPacket } from '../../server/domainError';
 import { logger } from '../../server/logger';
 
 const GLOBAL_KEY_LOG_LISTENER = Symbol.for('__polyecon_workerLog_listener__');
@@ -11,6 +12,9 @@ const g = globalThis as unknown as {
 };
 
 const DEFAULT_TIMEOUT_MS = 5_000;
+
+const failureToError = (msg: OutboundMessage & { requestId: string }): Error =>
+    'error' in msg ? domainErrorFromPacket(msg.error) : new Error(msg.type);
 
 function ensureLogListener(): void {
     if (g[GLOBAL_KEY_LOG_LISTENER]) {
@@ -37,7 +41,7 @@ ensureLogListener();
 export function sendCommandSpec<
     TInbound extends InboundMessage & { requestId: string },
     TSuccess extends OutboundMessage & { requestId: string },
-    TFailure extends OutboundMessage & { requestId: string; reason: string },
+    TFailure extends OutboundMessage & { requestId: string },
     TResult,
 >(
     message: TInbound,
@@ -64,7 +68,7 @@ export function sendCommandSpec<
             clearTimeout(entry.timer);
 
             if (msg.type === spec.failureType) {
-                entry.reject(new Error((msg as TFailure).reason));
+                entry.reject(failureToError(msg as TFailure));
             } else {
                 const successMsg = msg as TSuccess & { processedAtTick: number };
                 entry.resolve({

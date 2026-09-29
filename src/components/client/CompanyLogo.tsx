@@ -2,6 +2,10 @@ import Image from 'next/image';
 import { getAssetPath } from '@/lib/assetManifest';
 
 export function CompanyLogo({ logoKey, size = 32, className }: { logoKey: string; size?: number; className?: string }) {
+    if (!logoKey) {
+        return null;
+    }
+
     const src = getAssetPath(logoKey);
 
     return (

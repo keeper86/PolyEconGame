@@ -2,15 +2,19 @@ import Footer from '@/app/Footer';
 import AgentConditionIndicators from '@/components/client/AgentConditionIndicators';
 import KeyStatDisplay from '@/components/client/KeyStatDisplay';
 import { MessagesIndicator } from '@/components/client/MessagesIndicator';
+import { SettingsMenu } from '@/components/client/SettingsMenu';
 import TickDisplay from '@/components/client/TickDisplay';
-import { ModeToggle } from '@/components/modeToggle';
 import { AppSidebar } from '@/components/navigation/appSidebar';
 import { ThemeProvider } from '@/components/themeProvider';
 import ThemeWrapper from '@/components/themeWrapper';
 import { TourJoyride } from '@/components/tour/TourJoyride';
 import BackToTopButton from '@/components/ui/BackToTopButton';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { explicitLocale, LOCALE_COOKIE } from '@/i18n/config';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { getServerSession } from 'next-auth';
 import { Geist, Geist_Mono } from 'next/font/google';
 import type { ReactNode } from 'react';
@@ -31,10 +35,13 @@ const geistMono = Geist_Mono({
     display: 'swap',
 });
 
-export const metadata: Metadata = {
-    title: 'Enterprise Engine',
-    description: 'Simulate and manage a company in a dynamic economic environment.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+    const t = await getTranslations('Metadata');
+    return {
+        title: t('title'),
+        description: t('description'),
+    };
+}
 
 export default async function RootLayout({
     children,
@@ -42,40 +49,45 @@ export default async function RootLayout({
     children: ReactNode;
 }>) {
     const session = await getServerSession(authOptions);
+    const locale = await getLocale();
+    const cookieStore = await cookies();
+    const preferredLocale = explicitLocale(cookieStore.get(LOCALE_COOKIE)?.value);
 
     return (
-        <html lang='en' suppressHydrationWarning>
+        <html lang={locale} suppressHydrationWarning>
             <body className={`${geistSans.variable} ${geistMono.variable}`}>
                 <ThemeWrapper>
                     <ThemeProvider attribute='class' defaultTheme='system' enableSystem disableTransitionOnChange>
-                        <AppProviders session={session}>
-                            <SidebarProvider className='h-dvh overflow-hidden'>
-                                <AppSidebar />
-                                <SidebarInset className='min-w-0 overflow-hidden'>
-                                    <header className='sticky top-0 z-30 flex h-12 sm:h-14 shrink-0 items-center justify-between gap-2 px-2 sm:px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
-                                        <div className='flex items-center gap-2 '>
-                                            <SidebarTrigger className='-ml-1' />
-                                            <MessagesIndicator />
-                                            <AgentConditionIndicators />
-                                        </div>
-                                        <div className='flex items-center gap-2'>
-                                            <KeyStatDisplay />
+                        <NextIntlClientProvider>
+                            <AppProviders session={session}>
+                                <SidebarProvider className='h-dvh overflow-hidden'>
+                                    <AppSidebar />
+                                    <SidebarInset className='min-w-0 overflow-hidden'>
+                                        <header className='sticky top-0 z-30 flex h-12 sm:h-14 shrink-0 items-center justify-between gap-2 px-2 sm:px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
+                                            <div className='flex items-center gap-2 '>
+                                                <SidebarTrigger className='-ml-1' />
+                                                <MessagesIndicator />
+                                                <AgentConditionIndicators />
+                                            </div>
+                                            <div className='flex items-center gap-1 sm:gap-2'>
+                                                <KeyStatDisplay />
 
-                                            <TickDisplay />
+                                                <TickDisplay />
 
-                                            <ModeToggle />
-                                        </div>
-                                    </header>
-                                    <main className='flex-1 p-2 sm:p-4 overflow-y-auto overflow-x-hidden break-words'>
-                                        {children}
-                                        <TourJoyride />
-                                    </main>
-                                    <Footer />
-                                </SidebarInset>
-                                <BackToTopButton />
-                            </SidebarProvider>
-                            <Toaster />
-                        </AppProviders>
+                                                <SettingsMenu explicitLocale={preferredLocale} />
+                                            </div>
+                                        </header>
+                                        <main className='flex-1 p-2 sm:p-4 overflow-y-auto overflow-x-hidden break-words'>
+                                            {children}
+                                            <TourJoyride />
+                                        </main>
+                                        <Footer />
+                                    </SidebarInset>
+                                    <BackToTopButton />
+                                </SidebarProvider>
+                                <Toaster />
+                            </AppProviders>
+                        </NextIntlClientProvider>
                     </ThemeProvider>
                 </ThemeWrapper>
             </body>

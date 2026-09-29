@@ -2,6 +2,7 @@
 
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { useTranslations } from 'next-intl';
 
 function fmt(v: number, isPercent: boolean, dt?: (v: number) => number): string {
     const display = dt ? dt(v) : v;
@@ -41,6 +42,7 @@ export function ConfigSlider({
     inverted?: boolean;
     isPercent?: boolean;
 }): React.ReactElement {
+    const t = useTranslations('Market');
     const clamped = Math.max(min, Math.min(max, value));
     const committedClamped = committed !== undefined ? Math.max(min, Math.min(max, committed)) : undefined;
     const committedFrac = committedClamped !== undefined ? (committedClamped - min) / (max - min) : undefined;
@@ -55,7 +57,7 @@ export function ConfigSlider({
                 <span className='text-[11px] tabular-nums font-medium'>
                     {fmt(clamped, !!isPercent, displayTransform)}
                     <span className='ml-1 text-[9px] text-muted-foreground'>
-                        {showCommitted ? `(now ${fmt(committed!, !!isPercent, displayTransform)})` : ''}
+                        {showCommitted ? t('nowValue', { value: fmt(committed!, !!isPercent, displayTransform) }) : ''}
                     </span>
                 </span>
             </div>
@@ -121,6 +123,7 @@ export function ConfigRangeSlider({
     isPercent?: boolean;
     pivot?: number;
 }): React.ReactElement {
+    const t = useTranslations('Market');
     const clampedLow = Math.max(min, Math.min(max, valueLow));
     const clampedHigh = Math.max(min, Math.min(max, valueHigh));
 
@@ -151,7 +154,10 @@ export function ConfigRangeSlider({
                         {innerFmt(clampedLow)} — {innerFmt(clampedHigh)}
                         <span className='ml-1 text-[9px] text-muted-foreground'>
                             {showCommittedLow || showCommittedHigh
-                                ? `(current: ${showCommittedLow ? innerFmt(committedLow!) : innerFmt(clampedLow)} — ${showCommittedHigh ? innerFmt(committedHigh!) : innerFmt(clampedHigh)})`
+                                ? t('currentRange', {
+                                      low: showCommittedLow ? innerFmt(committedLow!) : innerFmt(clampedLow),
+                                      high: showCommittedHigh ? innerFmt(committedHigh!) : innerFmt(clampedHigh),
+                                  })
                                 : ''}
                         </span>
                     </span>
@@ -216,7 +222,10 @@ export function ConfigRangeSlider({
                     {lowDisplay}% / {highDisplay}%
                     <span className='ml-1 text-[9px] text-muted-foreground'>
                         {showCommittedLow || showCommittedHigh
-                            ? `(current: ${showCommittedLow ? `${Math.round(committedLow! * 100)}%` : `${lowDisplay}%`} / ${showCommittedHigh ? `${Math.round(committedHigh! * 100)}%` : `${highDisplay}%`})`
+                            ? t('currentPair', {
+                                  low: showCommittedLow ? `${Math.round(committedLow! * 100)}%` : `${lowDisplay}%`,
+                                  high: showCommittedHigh ? `${Math.round(committedHigh! * 100)}%` : `${highDisplay}%`,
+                              })
                             : ''}
                     </span>
                 </span>

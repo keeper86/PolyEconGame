@@ -7,9 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StorageResourceSelect } from '@/components/client/StorageResourceSelect';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useErrorMessage } from '@/i18n/errors';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 type Props = {
     agentId: string;
@@ -21,6 +23,8 @@ type Props = {
 export function PostTransportContractDialog({ agentId, planetId, tick, children }: Props) {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const t = useTranslations('Ships');
+    const showError = useErrorMessage();
     const [open, setOpen] = useState(false);
 
     const [toPlanetId, setToPlanetId] = useState('');
@@ -72,14 +76,14 @@ export function PostTransportContractDialog({ agentId, planetId, tick, children 
             <DialogTrigger asChild>{children}</DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Post Transport Contract</DialogTitle>
+                    <DialogTitle>{t('contract.postTitle')}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className='space-y-4'>
                     <div className='space-y-1.5'>
-                        <Label>Destination Planet</Label>
+                        <Label>{t('destination')}</Label>
                         <Select value={toPlanetId} onValueChange={setToPlanetId} required>
                             <SelectTrigger>
-                                <SelectValue placeholder='Select destination…' />
+                                <SelectValue placeholder={t('selectDestination')} />
                             </SelectTrigger>
                             <SelectContent>
                                 {planets.map((p) => (
@@ -92,7 +96,7 @@ export function PostTransportContractDialog({ agentId, planetId, tick, children 
                     </div>
                     <div className='grid grid-cols-2 gap-3'>
                         <div className='space-y-1.5'>
-                            <Label>Resource</Label>
+                            <Label>{t('resource')}</Label>
                             <StorageResourceSelect
                                 agentId={agentId}
                                 planetId={planetId}
@@ -102,7 +106,7 @@ export function PostTransportContractDialog({ agentId, planetId, tick, children 
                             />
                         </div>
                         <div className='space-y-1.5'>
-                            <Label>Quantity</Label>
+                            <Label>{t('quantity')}</Label>
                             <Input
                                 type='number'
                                 min={1}
@@ -115,7 +119,7 @@ export function PostTransportContractDialog({ agentId, planetId, tick, children 
                     </div>
                     <div className='grid grid-cols-2 gap-3'>
                         <div className='space-y-1.5'>
-                            <Label>Max Duration (days)</Label>
+                            <Label>{t('contract.maxDuration')}</Label>
                             <Input
                                 type='number'
                                 min={1}
@@ -125,7 +129,7 @@ export function PostTransportContractDialog({ agentId, planetId, tick, children 
                             />
                         </div>
                         <div className='space-y-1.5'>
-                            <Label>Expires in (days)</Label>
+                            <Label>{t('contract.expiresIn')}</Label>
                             <Input
                                 type='number'
                                 min={1}
@@ -136,7 +140,7 @@ export function PostTransportContractDialog({ agentId, planetId, tick, children 
                         </div>
                     </div>
                     <div className='space-y-1.5'>
-                        <Label>Offered Reward</Label>
+                        <Label>{t('contract.offeredReward')}</Label>
                         <Input
                             type='number'
                             min={0}
@@ -145,15 +149,12 @@ export function PostTransportContractDialog({ agentId, planetId, tick, children 
                             placeholder='0'
                             required
                         />
-                        <p className='text-xs text-muted-foreground'>
-                            This amount will be escrowed from your deposits until the contract is fulfilled or
-                            cancelled.
-                        </p>
+                        <p className='text-xs text-muted-foreground'>{t('contract.escrowNote')}</p>
                     </div>
-                    {mutation.error && <p className='text-xs text-destructive'>{mutation.error.message}</p>}
+                    {mutation.error && <p className='text-xs text-destructive'>{showError(mutation.error)}</p>}
                     <DialogFooter>
                         <Button type='submit' disabled={mutation.isPending}>
-                            {mutation.isPending ? 'Posting…' : 'Post Contract'}
+                            {mutation.isPending ? t('market.posting') : t('market.postContract')}
                         </Button>
                     </DialogFooter>
                 </form>

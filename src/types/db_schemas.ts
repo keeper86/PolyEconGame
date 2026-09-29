@@ -62,6 +62,8 @@ export type AgentDecadeSummary = {
     sum_consumption_value: number | null;
     sum_purchases: number | null;
     sum_claim_payments: number | null;
+    sum_interest_paid: number | null;
+    sum_wealth_tax_paid: number | null;
 };
 
 export type AgentMonthlyHistory = {
@@ -77,6 +79,8 @@ export type AgentMonthlyHistory = {
     consumption_value: number | null;
     purchases: number | null;
     claim_payments: number | null;
+    interest_paid: number | null;
+    wealth_tax_paid: number | null;
     facility_count: number | null;
     storage_value: number | null;
     created_at: Date;
@@ -95,6 +99,8 @@ export type AgentMonthlySummary = {
     sum_consumption_value: number | null;
     sum_purchases: number | null;
     sum_claim_payments: number | null;
+    sum_interest_paid: number | null;
+    sum_wealth_tax_paid: number | null;
     avg_facility_count: number | null;
     avg_storage_value: number | null;
 };
@@ -112,6 +118,8 @@ export type AgentYearlySummary = {
     sum_consumption_value: number | null;
     sum_purchases: number | null;
     sum_claim_payments: number | null;
+    sum_interest_paid: number | null;
+    sum_wealth_tax_paid: number | null;
 };
 
 export type GameSnapshots = {

@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import { steelResourceType } from '@/simulation/planet/resources';
 import { ShipTransportingRow } from './ShipTransportingRow';
 
@@ -7,7 +8,7 @@ const summaries = [{ planetId: 'p2', name: 'Gune' }];
 
 describe('ShipTransportingRow', () => {
     it('shows cargo, destination and ETA', () => {
-        render(
+        renderWithIntl(
             <ShipTransportingRow
                 state={{
                     type: 'transporting',
@@ -26,7 +27,7 @@ describe('ShipTransportingRow', () => {
     });
 
     it('shows empty and arriving when the trip is due', () => {
-        render(
+        renderWithIntl(
             <ShipTransportingRow
                 state={{ type: 'transporting', from: 'p1', to: 'p2', arrivalTick: 30, cargo: null }}
                 planetSummaries={summaries}

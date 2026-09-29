@@ -21,17 +21,18 @@ import {
     yearWindowAxis,
 } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
+import { useLocale, useTranslations } from 'next-intl';
 import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
 
-const BUFFER_LABELS: Record<string, string> = {
-    grocery: 'Grocery',
-    healthcare: 'Healthcare',
-    logistics: 'Logistics',
-    education: 'Education',
-    retail: 'Retail',
-    construction: 'Housing',
-};
+const BUFFER_LABEL_KEYS = {
+    grocery: 'buffers.grocery',
+    healthcare: 'buffers.healthcare',
+    logistics: 'buffers.logistics',
+    education: 'buffers.education',
+    retail: 'buffers.retail',
+    construction: 'buffers.construction',
+} as const;
 
 const BUFFER_COLORS: Record<string, string> = {
     grocery: '#22c55e',
@@ -205,12 +206,13 @@ function computeDecadeData(allPts: RawPoint[]): ChartPoint[] {
 }
 
 function EmptyChart() {
+    const t = useTranslations('Demographics');
     return (
         <div
             className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
             style={{ height: 240 }}
         >
-            No data
+            {t('noData')}
         </div>
     );
 }
@@ -276,6 +278,8 @@ function BufferAreaChart({
     xAllowDataOverflow?: boolean;
 }) {
     const chartData = useMemo(() => mergeMonthlyChartData(data, ghostData), [data, ghostData]);
+    const tr = useTranslations('Demographics');
+    const locale = useLocale();
 
     return (
         <div style={{ width: '100%', height: 240 }}>
@@ -329,10 +333,10 @@ function BufferAreaChart({
                             const point = payload[0]?.payload as ChartPoint | undefined;
                             const pointLabel =
                                 granularity === 'monthly'
-                                    ? formatMonthLabel(label as number, point?.year ?? 0)
+                                    ? formatMonthLabel(locale, label as number, point?.year ?? 0)
                                     : granularity === 'yearly'
-                                      ? formatYearLabel(label as number)
-                                      : formatDecadeLabel(label as number);
+                                      ? formatYearLabel(locale, label as number)
+                                      : formatDecadeLabel(locale, label as number);
                             return (
                                 <div
                                     style={{
@@ -344,14 +348,17 @@ function BufferAreaChart({
                                     }}
                                 >
                                     <div style={{ color: '#94a3b8', marginBottom: 4 }}>{pointLabel}</div>
-                                    {visible.map((p) => (
-                                        <div key={p.name} style={{ color: p.color, marginBottom: 2 }}>
-                                            {BUFFER_LABELS[String(p.name)] ?? p.name}:{' '}
-                                            <span style={{ color: '#e2e8f0' }}>
-                                                {typeof p.value === 'number' ? p.value.toFixed(1) : '0'}%
-                                            </span>
-                                        </div>
-                                    ))}
+                                    {visible.map((p) => {
+                                        const labelKey = BUFFER_LABEL_KEYS[p.name as keyof typeof BUFFER_LABEL_KEYS];
+                                        return (
+                                            <div key={p.name} style={{ color: p.color, marginBottom: 2 }}>
+                                                {labelKey ? tr(labelKey) : String(p.name)}:{' '}
+                                                <span style={{ color: '#e2e8f0' }}>
+                                                    {typeof p.value === 'number' ? p.value.toFixed(1) : '0'}%
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             );
                         }}
@@ -480,6 +487,7 @@ export default function PlanetBufferChart({
     live,
 }: Props): React.ReactElement {
     const isLoading = externalLoading ?? false;
+    const locale = useLocale();
 
     const monthlyChartData = useMemo(
         () => computeMonthlyData(monthlyPoints, currentTick, live),
@@ -505,7 +513,7 @@ export default function PlanetBufferChart({
         return liveRow ? [...rows, liveRow] : rows;
     }, [decadePoints, liveRow]);
 
-    const monthlyX = monthAxis();
+    const monthlyX = monthAxis(locale);
     const yearlyX =
         yearlyChartData.length > 0
             ? yearWindowAxis(yearStart(yearlyChartData[0].tick), yearlyChartData[yearlyChartData.length - 1].year)

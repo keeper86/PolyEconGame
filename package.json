@@ -29,6 +29,7 @@
         "db:seed": "knex seed:run --env development",
         "db:types:check": "node ./tools/db_types.cjs check",
         "db:types:update": "node ./tools/db_types.cjs update",
+        "i18n:scan": "node ./tools/i18n_scan.cjs && node ./tools/i18n_scan_literals.cjs && node ./tools/i18n_scan_worker.cjs",
         "db:waitFor": "npx wait-on --timeout=60000 tcp:localhost:5432",
         "generate-keycloak-realm": "set -a && . ./.env && set +a && envsubst < ./keycloak/data/template.json > ./keycloak/data/import/initialRealm.json"
     },
@@ -59,7 +60,6 @@
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "daisyui": "^5.1.6",
-        "date-fns": "^4.1.0",
         "dotenv": "^17.2.2",
         "dotenv-expand": "^12.0.3",
         "embla-carousel-react": "^8.6.0",
@@ -70,6 +70,7 @@
         "motion": "^12.40.0",
         "next": "15.5.9",
         "next-auth": "^4.24.11",
+        "next-intl": "^4.14.7",
         "next-themes": "^0.4.6",
         "pg": "^8.16.3",
         "pino": "^9.10.0",

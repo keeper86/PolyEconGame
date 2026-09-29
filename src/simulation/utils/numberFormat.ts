@@ -1,6 +1,6 @@
 const EPSILON = 1e-3;
 
-export function formatNumbers(n: number | null | undefined): string {
+export function formatNumbers(n: number | null | undefined, decimalSeparator = '.'): string {
     if (n == null || !isFinite(n)) {
         return '—';
     }
@@ -8,7 +8,7 @@ export function formatNumbers(n: number | null | undefined): string {
         if (n === 0) {
             return '0';
         }
-        return '<' + EPSILON;
+        return '<' + String(EPSILON).replace('.', decimalSeparator);
     }
 
     let currentNumber = n;
@@ -37,11 +37,7 @@ export function formatNumbers(n: number | null | undefined): string {
         formatted
             .replace(/(\.\d*?[1-9])0+$/u, '$1')
             .replace(/\.0+$/u, '')
-            .replace(/\.$/u, '') + currentSuffix
+            .replace(/\.$/u, '')
+            .replace('.', decimalSeparator) + currentSuffix
     );
-}
-
-export function formatCargoQty(n: number, form: string): string {
-    const s = formatNumbers(n);
-    return form === 'liquid' ? `${s}ℓ` : `${s}t`;
 }

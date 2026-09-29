@@ -4,6 +4,7 @@ import { Separator } from '@/components/ui/separator';
 import { formatNumberWithUnit } from '@/lib/utils';
 import Link from 'next/link';
 import React from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function FacilityFinancialRow({
     lastTickResults,
@@ -14,6 +15,8 @@ export function FacilityFinancialRow({
     planetId: string;
     agentId: string;
 }): React.ReactElement {
+    const locale = useLocale();
+    const t = useTranslations('Production');
     return (
         <Link href={`/planets/${planetId}/agent/${agentId}/financial` as never}>
             <Separator />
@@ -22,9 +25,9 @@ export function FacilityFinancialRow({
                     <>
                         <div className='flex flex-col items-center'>
                             {' '}
-                            revenue{' '}
+                            {t('revenue')}{' '}
                             <span className='tabular-nums text-green-600 dark:text-green-400'>
-                                {formatNumberWithUnit(lastTickResults.revenue ?? 0, 'currency', planetId)}
+                                {formatNumberWithUnit(lastTickResults.revenue ?? 0, 'currency', planetId, locale)}
                             </span>
                         </div>
                         <span className='shrink-0'>−</span>
@@ -33,9 +36,9 @@ export function FacilityFinancialRow({
 
                 <div className='flex flex-col items-center'>
                     {' '}
-                    inputs{' '}
+                    {t('inputs')}{' '}
                     <span className='tabular-nums text-red-600 dark:text-red-400'>
-                        {formatNumberWithUnit(lastTickResults.inputCosts, 'currency', planetId)}
+                        {formatNumberWithUnit(lastTickResults.inputCosts, 'currency', planetId, locale)}
                     </span>
                 </div>
 
@@ -43,9 +46,9 @@ export function FacilityFinancialRow({
 
                 <div className='flex flex-col items-center'>
                     {' '}
-                    wages{' '}
+                    {t('wages')}{' '}
                     <span className='tabular-nums text-red-600 dark:text-red-400'>
-                        {formatNumberWithUnit(lastTickResults.wageCosts, 'currency', planetId)}
+                        {formatNumberWithUnit(lastTickResults.wageCosts, 'currency', planetId, locale)}
                     </span>
                 </div>
 
@@ -53,7 +56,7 @@ export function FacilityFinancialRow({
 
                 <div className='flex flex-col items-center text-foreground'>
                     {' '}
-                    net/day{' '}
+                    {t('netPerDay')}{' '}
                     <span
                         className={`tabular-nums text-md ${
                             lastTickResults.costBalance >= 0
@@ -61,7 +64,7 @@ export function FacilityFinancialRow({
                                 : 'text-red-600 dark:text-red-400'
                         }`}
                     >
-                        {formatNumberWithUnit(lastTickResults.costBalance, 'currency', planetId)}
+                        {formatNumberWithUnit(lastTickResults.costBalance, 'currency', planetId, locale)}
                     </span>
                 </div>
             </div>

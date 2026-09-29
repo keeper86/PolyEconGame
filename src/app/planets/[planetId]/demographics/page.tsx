@@ -11,7 +11,7 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './_components/CohortFilter';
+import { EDU_COLORS, OCC_COLORS, useCohortLabels } from './_components/CohortFilter';
 import type { GroupMode } from './_components/demographicsTypes';
 import { GV_POP, GV_WEALTH } from './_components/demographicsTypes';
 import ServiceSection from './_components/ServiceSection';
@@ -24,13 +24,17 @@ import PlanetDemography from './_components/PlanetDemography';
 import PlanetPopulationHistoryChart from './_components/PlanetPopulationHistoryChart';
 import TransferChart from './_components/TransferChart';
 import WealthDistributionChart from './_components/WealthDistributionChart';
+import { useLocale, useTranslations } from 'next-intl';
 
 export default function PlanetDemographicsPage() {
+    const locale = useLocale();
+    const tr = useTranslations('Demographics');
     const params = useParams();
     const planetId = (params?.planetId as string) ?? '';
     const trpc = useTRPC();
 
     const isSmallScreen = useIsSmallScreen();
+    const { edu: eduLabels, occ: occLabels } = useCohortLabels();
 
     const [group, setGroup] = useState<GroupMode>('occupation');
 
@@ -46,17 +50,17 @@ export default function PlanetDemographicsPage() {
     const planetName = data?.data?.planetName ?? planetId;
 
     if (!data) {
-        return <div className='text-sm text-muted-foreground'>Loading demographics…</div>;
+        return <div className='text-sm text-muted-foreground'>{tr('loading')}</div>;
     }
     if (data.data === null) {
-        return <div className='text-sm text-muted-foreground'>Planet not found.</div>;
+        return <div className='text-sm text-muted-foreground'>{tr('notFound')}</div>;
     }
 
     const { rows } = data.data;
 
     const groupKeys = group === 'occupation' ? OCCUPATIONS : educationLevelKeys;
     const groupColors: Record<string, string> = group === 'occupation' ? OCC_COLORS : EDU_COLORS;
-    const groupLabels: Record<string, string> = group === 'occupation' ? OCC_LABELS : EDU_LABELS;
+    const groupLabels: Record<string, string> = group === 'occupation' ? occLabels : eduLabels;
 
     const groupPop = [0, 0, 0, 0];
     const groupAgeWeightedSum = [0, 0, 0, 0];
@@ -109,10 +113,10 @@ export default function PlanetDemographicsPage() {
         <Tabs value={group} onValueChange={(v) => setGroup(v as GroupMode)}>
             <TabsList className='h-7'>
                 <TabsTrigger value='occupation' className='text-[10px] px-2 py-0.5'>
-                    By occupation
+                    {tr('byOccupation')}
                 </TabsTrigger>
                 <TabsTrigger value='education' className='text-[10px] px-2 py-0.5'>
-                    By education
+                    {tr('byEducation')}
                 </TabsTrigger>
             </TabsList>
         </Tabs>
@@ -128,7 +132,7 @@ export default function PlanetDemographicsPage() {
                 >
                     <div className='text-muted-foreground text-[9px] leading-tight truncate'>{groupLabels[key]}</div>
                     <div className='font-semibold text-[11px] leading-tight'>
-                        {formatNumberWithUnit(groupPop[i], 'persons')}
+                        {formatNumberWithUnit(groupPop[i], 'persons', undefined, locale)}
                     </div>
                     <div className='text-[9px] text-muted-foreground leading-tight'>
                         {populationTotal > 0 ? ((groupPop[i] / populationTotal) * 100).toFixed(1) + '%' : '0%'}
@@ -147,13 +151,14 @@ export default function PlanetDemographicsPage() {
                     <CardContent className='px-3 py-2.5 space-y-0.5'>
                         <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
                         <p className='text-lg font-semibold leading-tight'>
-                            {formatNumberWithUnit(groupPop[i], 'persons')}
+                            {formatNumberWithUnit(groupPop[i], 'persons', undefined, locale)}
                         </p>
                         <p className='text-xs text-muted-foreground'>
                             {populationTotal > 0 ? ((groupPop[i] / populationTotal) * 100).toFixed(1) + '%' : '0%'}
                         </p>
                         <p className='text-[11px] text-muted-foreground pt-1'>
-                            Ø age <span className='font-medium text-foreground'>{groupMeanAge[i].toFixed(1)}</span>
+                            {tr('averageAge')}{' '}
+                            <span className='font-medium text-foreground'>{groupMeanAge[i].toFixed(1)}</span>
                         </p>
                     </CardContent>
                 </Card>
@@ -171,10 +176,10 @@ export default function PlanetDemographicsPage() {
                 >
                     <div className='text-muted-foreground text-[9px] leading-tight truncate'>{groupLabels[key]}</div>
                     <div className='font-semibold text-[11px] leading-tight'>
-                        {formatNumberWithUnit(wealthMean[i], 'currency', planetId)}
+                        {formatNumberWithUnit(wealthMean[i], 'currency', planetId, locale)}
                     </div>
                     <div className='text-[9px] text-muted-foreground leading-tight'>
-                        {wealthShare[i].toFixed(1)}% of wealth
+                        {tr('percentOfWealth', { percent: wealthShare[i].toFixed(1) })}
                     </div>
                 </div>
             ))}
@@ -190,11 +195,11 @@ export default function PlanetDemographicsPage() {
                     <CardContent className='px-3 py-2.5 space-y-0.5'>
                         <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
                         <p className='text-lg font-semibold leading-tight'>
-                            {formatNumberWithUnit(wealthMean[i], 'currency', planetId)}
+                            {formatNumberWithUnit(wealthMean[i], 'currency', planetId, locale)}
                         </p>
-                        <p className='text-xs text-muted-foreground'>Ø wealth / person</p>
+                        <p className='text-xs text-muted-foreground'>{tr('averageWealthPerPerson')}</p>
                         <p className='text-[11px] text-muted-foreground pt-1'>
-                            Wealth share{' '}
+                            {tr('wealthShare')}{' '}
                             <span className='font-medium text-foreground'>{wealthShare[i].toFixed(1)}%</span>
                         </p>
                     </CardContent>
@@ -220,13 +225,13 @@ export default function PlanetDemographicsPage() {
                         </div>
                         <div className={`font-semibold text-[11px] leading-tight tabular-nums ${valueColor}`}>
                             {sign}
-                            {formatNumberWithUnit(t, 'currency', planetId)}
+                            {formatNumberWithUnit(t, 'currency', planetId, locale)}
                         </div>
                         <div className='text-[9px] text-muted-foreground leading-tight'>
                             {totalAbsoluteTransfer > 0
                                 ? ((Math.abs(t) / totalAbsoluteTransfer) * 100).toFixed(1)
                                 : '0.0'}
-                            % of movement
+                            {tr('ofMovement')}
                         </div>
                     </div>
                 );
@@ -238,7 +243,7 @@ export default function PlanetDemographicsPage() {
                 const t = transferTotals[i];
                 const sign = t > 0 ? '+' : '';
                 const valueColor = t > 0 ? 'text-green-600' : t < 0 ? 'text-red-500' : 'text-muted-foreground';
-                const label = t > 0 ? 'net wealth gain' : t < 0 ? 'net wealth loss' : 'no net transfer';
+                const label = t > 0 ? tr('netWealthGain') : t < 0 ? tr('netWealthLoss') : tr('noNetTransfer');
                 return (
                     <Card
                         key={key}
@@ -249,11 +254,11 @@ export default function PlanetDemographicsPage() {
                             <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
                             <p className={`text-lg font-semibold leading-tight tabular-nums ${valueColor}`}>
                                 {sign}
-                                {formatNumberWithUnit(t, 'currency', planetId)}
+                                {formatNumberWithUnit(t, 'currency', planetId, locale)}
                             </p>
                             <p className='text-xs text-muted-foreground'>{label}</p>
                             <p className='text-[11px] text-muted-foreground pt-1'>
-                                Share of movement{' '}
+                                {tr('shareOfMovement')}{' '}
                                 <span className='font-medium text-foreground'>
                                     {totalAbsoluteTransfer > 0
                                         ? ((Math.abs(t) / totalAbsoluteTransfer) * 100).toFixed(1)
@@ -285,7 +290,7 @@ export default function PlanetDemographicsPage() {
             />
 
             <div className='flex justify-between gap-1 my-3 pt-3 items-center'>
-                <span className='text-md text-slate-400'>Demographics</span>
+                <span className='text-md text-slate-400'>{tr('heading')}</span>
                 {groupTabs}
             </div>
 
@@ -294,7 +299,7 @@ export default function PlanetDemographicsPage() {
                     <AccordionTrigger>
                         <span className='font-semibold flex items-center gap-3'>
                             <ProductIcon productName='demography_overview' size={36} />
-                            Overview
+                            {tr('overview')}
                         </span>
                     </AccordionTrigger>
                     <AccordionContent>
@@ -307,13 +312,13 @@ export default function PlanetDemographicsPage() {
                     <AccordionTrigger>
                         <span className='font-semibold flex items-center gap-3'>
                             <ProductIcon productName={getCurrencyResourceName(planetId)} size={36} />
-                            Wealth distribution
+                            {tr('wealthDistribution')}
                         </span>
                     </AccordionTrigger>
                     <AccordionContent>
                         {wealthCards}
                         <WealthDistributionChart rows={rows} groupMode={group} />
-                        <p className='py-4 text-sm font-medium'>Population Wealth Transfers</p>
+                        <p className='py-4 text-sm font-medium'>{tr('populationWealthTransfers')}</p>
                         {transferCards}
                         <TransferChart matrix={data.data.lastTransferMatrix} viewMode={group} />
                     </AccordionContent>

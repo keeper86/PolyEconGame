@@ -10,15 +10,7 @@ import ServiceBufferChart from './ServiceBufferChart';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { GV_FOOD, GV_POP, GV_STARV } from './demographicsTypes';
 import { ProductIcon } from '@/components/client/ProductIcon';
-
-const SERVICE_LABELS: Record<ServiceName, string> = {
-    grocery: 'Grocery Buffers',
-    healthcare: 'Healthcare Buffers',
-    logistics: 'Logistics Buffers',
-    retail: 'Retail Buffers',
-    education: 'Education Buffers',
-    construction: 'Housing Buffers',
-};
+import { useTranslations } from 'next-intl';
 
 type Props = {
     serviceKey: ServiceName;
@@ -31,6 +23,7 @@ type Props = {
 
 export default function ServiceSection({ serviceKey, rows, groupMode, groupKeys, groupColors, groupLabels }: Props) {
     const isSmallScreen = useIsSmallScreen();
+    const tr = useTranslations('Demographics');
     const targetPerPerson = SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks;
 
     const groupPop = [0, 0, 0, 0];
@@ -90,7 +83,7 @@ export default function ServiceSection({ serviceKey, rows, groupMode, groupKeys,
                         <div className={`font-semibold text-[11px] leading-tight tabular-nums ${valueColor}`}>
                             {pct}%
                         </div>
-                        <div className='text-[9px] text-muted-foreground leading-tight'>of target</div>
+                        <div className='text-[9px] text-muted-foreground leading-tight'>{tr('ofTarget')}</div>
                     </div>
                 );
             })}
@@ -114,16 +107,16 @@ export default function ServiceSection({ serviceKey, rows, groupMode, groupKeys,
                                 : 'text-red-700';
                 const label =
                     ratio >= 0.95
-                        ? 'fully stocked'
+                        ? 'rating.fullyStocked'
                         : ratio >= 0.75
-                          ? 'well stocked'
+                          ? 'rating.wellStocked'
                           : ratio >= 0.5
-                            ? 'below target'
+                            ? 'rating.belowTarget'
                             : ratio >= 0.25
-                              ? 'low supply'
+                              ? 'rating.lowSupply'
                               : ratio >= 0.1
-                                ? 'very low'
-                                : 'critically empty';
+                                ? 'rating.veryLow'
+                                : 'rating.criticallyEmpty';
                 return (
                     <Card
                         key={key}
@@ -133,7 +126,7 @@ export default function ServiceSection({ serviceKey, rows, groupMode, groupKeys,
                         <CardContent className='px-3 py-2.5 space-y-0.5'>
                             <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
                             <p className={`text-lg font-semibold leading-tight tabular-nums ${valueColor}`}>{pct}%</p>
-                            <p className='text-xs text-muted-foreground'>{label}</p>
+                            <p className='text-xs text-muted-foreground'>{tr(label)}</p>
                         </CardContent>
                     </Card>
                 );
@@ -159,7 +152,7 @@ export default function ServiceSection({ serviceKey, rows, groupMode, groupKeys,
                         <div className={`font-semibold text-[11px] leading-tight tabular-nums ${valueColor}`}>
                             {pct}%
                         </div>
-                        <div className='text-[9px] text-muted-foreground leading-tight'>deprivation</div>
+                        <div className='text-[9px] text-muted-foreground leading-tight'>{tr('deprivation')}</div>
                     </div>
                 );
             })}
@@ -172,12 +165,12 @@ export default function ServiceSection({ serviceKey, rows, groupMode, groupKeys,
                 const valueColor = s < 0.05 ? 'text-green-600' : s < 0.25 ? 'text-amber-500' : 'text-red-500';
                 const label =
                     s < 0.05
-                        ? 'well-supplied'
+                        ? 'rating.wellSupplied'
                         : s < 0.25
-                          ? 'light deprivation'
+                          ? 'rating.lightDeprivation'
                           : s < 0.5
-                            ? 'moderate deprivation'
-                            : 'severe deprivation';
+                            ? 'rating.moderateDeprivation'
+                            : 'rating.severeDeprivation';
                 return (
                     <Card
                         key={key}
@@ -187,7 +180,7 @@ export default function ServiceSection({ serviceKey, rows, groupMode, groupKeys,
                         <CardContent className='px-3 py-2.5 space-y-0.5'>
                             <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
                             <p className={`text-lg font-semibold leading-tight tabular-nums ${valueColor}`}>{pct}%</p>
-                            <p className='text-xs text-muted-foreground'>{label}</p>
+                            <p className='text-xs text-muted-foreground'>{tr(label)}</p>
                         </CardContent>
                     </Card>
                 );
@@ -200,13 +193,13 @@ export default function ServiceSection({ serviceKey, rows, groupMode, groupKeys,
             <AccordionTrigger>
                 <span className='font-semibold flex items-center gap-3'>
                     <ProductIcon productName={serviceKey} size={36} />
-                    {SERVICE_LABELS[serviceKey]}
+                    {tr(`services.${serviceKey}`)}
                 </span>
             </AccordionTrigger>
             <AccordionContent>
                 {bufferCards}
                 <ServiceBufferChart rows={rows} groupMode={groupMode} serviceKey={serviceKey} />
-                <p className='py-4 text-sm font-medium'>Deprivation map</p>
+                <p className='py-4 text-sm font-medium'>{tr('deprivationMap')}</p>
                 {starvationCards}
                 <NutritionHeatmapChart rows={rows} groupMode={groupMode} serviceKey={serviceKey} />
             </AccordionContent>

@@ -10,6 +10,7 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { WorkforceSummary } from './workforceSummary';
 import type { DemographicEventCounters } from '@/simulation/planet/planet';
+import { useLocale, useTranslations } from 'next-intl';
 
 export type EducationLevelCardsProps = {
     summary: WorkforceSummary;
@@ -22,10 +23,6 @@ export type EducationLevelCardsProps = {
     deaths?: DemographicEventCounters;
     disabilities?: DemographicEventCounters;
 };
-
-function formatNumbersNextTotal(next: number, total: number): string {
-    return `${formatNumberWithUnit(next, 'persons')}  (${formatNumberWithUnit(total, 'persons')})`;
-}
 
 function Rule(): React.ReactElement {
     return <div className='border-t border-dashed my-1.5' />;
@@ -57,6 +54,10 @@ function EducationCard({
     productivity: { meanAge: number; ageProd: number; meanTenure: number; tenureProd: number; hasWorkers: boolean };
     isTotal?: boolean;
 }): React.ReactElement {
+    const locale = useLocale();
+    const tr = useTranslations('Workforce');
+    const formatNumbersNextTotal = (next: number, total: number): string =>
+        `${formatNumberWithUnit(next, 'persons', undefined, locale)}  (${formatNumberWithUnit(total, 'persons', undefined, locale)})`;
     const { label, badgeClassName } = header;
     const { target, active, unused } = headcount;
     const { count: overqualifiedCount, breakdown: overqualifiedBreakdown } = overqualified ?? {};
@@ -83,24 +84,22 @@ function EducationCard({
             </Badge>
 
             <Stat
-                label='Target'
+                label={tr('target')}
                 value={
                     <>
-                        {formatNumberWithUnit(target, 'persons')}
+                        {formatNumberWithUnit(target, 'persons', undefined, locale)}
                         {overqualifiedCount && overqualifiedCount > 0 ? (
                             <Tooltip>
                                 <TooltipTrigger>
                                     <span className='text-amber-600 ml-1 tabular-nums'>
-                                        ({formatNumberWithUnit(overqualifiedCount, 'persons')})
+                                        ({formatNumberWithUnit(overqualifiedCount, 'persons', undefined, locale)})
                                     </span>
                                 </TooltipTrigger>
                                 <TooltipContent sideOffset={6}>
                                     <div className='max-w-xs'>
-                                        <div className='font-medium'>Overqualified workers</div>
+                                        <div className='font-medium'>{tr('overqualified')}</div>
                                         <div className='text-xs text-muted-foreground mt-1'>
-                                            Facilities filled {formatNumberWithUnit(overqualifiedCount, 'persons')} slot
-                                            {overqualifiedCount !== 1 ? 's' : ''} with higher-educated workers because
-                                            lower-education workers were not available.
+                                            {tr('overqualifiedNote', { count: overqualifiedCount })}
                                         </div>
                                         {overqualifiedBreakdown && (
                                             <div className='mt-2 text-xs'>
@@ -108,7 +107,7 @@ function EducationCard({
                                                     .filter(([, v]) => v && v > 0)
                                                     .map(([wEdu, count]) => (
                                                         <div key={wEdu} className='text-amber-600'>
-                                                            {eduLabel(wEdu as EducationLevelType)} ×{count}
+                                                            {eduLabel(tr, wEdu as EducationLevelType)} ×{count}
                                                         </div>
                                                     ))}
                                             </div>
@@ -121,20 +120,20 @@ function EducationCard({
                 }
             />
             <Stat
-                label='Current total'
-                value={formatNumberWithUnit(totalWorkforce, 'persons')}
+                label={tr('currentTotalLabel')}
+                value={formatNumberWithUnit(totalWorkforce, 'persons', undefined, locale)}
                 valueClassName='text-foreground'
                 bold
             />
             <Stat
-                label={`${unused < 0 ? 'Worker shortage' : 'Unused Worker '}`}
-                value={`${formatNumberWithUnit(Math.abs(unused), 'persons')}`}
+                label={unused < 0 ? tr('workerShortage') : tr('unusedWorker')}
+                value={`${formatNumberWithUnit(Math.abs(unused), 'persons', undefined, locale)}`}
                 valueClassName={unused > 0 ? 'text-green-600' : unused < 0 ? 'text-red-500' : 'text-muted-foreground'}
             />
 
             <Rule />
 
-            <Stat label='Active' value={formatNumberWithUnit(active, 'persons')} />
+            <Stat label={tr('activeLabel')} value={formatNumberWithUnit(active, 'persons', undefined, locale)} />
 
             <div className='flex items-baseline justify-between gap-2'>
                 <button
@@ -144,7 +143,7 @@ function EducationCard({
                     aria-controls={onboardingId}
                     className='flex items-center gap-2 text-left'
                 >
-                    <span className='truncate text-muted-foreground'>Onboarding</span>
+                    <span className='truncate text-muted-foreground'>{tr('onboarding')}</span>
                     <svg
                         className={`w-3 h-3 text-muted-foreground transition-transform ${onboardingOpen ? 'rotate-180' : ''}`}
                         viewBox='0 0 20 20'
@@ -165,18 +164,18 @@ function EducationCard({
                     className='tabular-nums whitespace-nowrap text-purple-500'
                     style={{ color: CHART_COLORS.onboarding }}
                 >
-                    {formatNumberWithUnit(onboardingCurrent, 'persons')}
+                    {formatNumberWithUnit(onboardingCurrent, 'persons', undefined, locale)}
                 </span>
             </div>
 
             {onboardingOpen && (
                 <>
                     <div id={onboardingId} className='pl-3 text-[10px] text-muted-foreground mb-0.5'>
-                        next month
+                        {tr('nextMonth')}
                     </div>
                     <Stat
-                        label='Completing'
-                        value={formatNumberWithUnit(onboardingNext, 'persons')}
+                        label={tr('completing')}
+                        value={formatNumberWithUnit(onboardingNext, 'persons', undefined, locale)}
                         valueClassName={onboardingNext > 0 ? 'text-violet-600' : 'text-muted-foreground'}
                         indent
                     />
@@ -185,16 +184,16 @@ function EducationCard({
 
             {typeof deaths === 'number' && (
                 <Stat
-                    label='Deaths'
-                    value={formatNumberWithUnit(deaths, 'persons')}
+                    label={tr('deaths')}
+                    value={formatNumberWithUnit(deaths, 'persons', undefined, locale)}
                     valueClassName={deaths > 0 ? 'text-red-700' : 'text-muted-foreground'}
                 />
             )}
 
             {typeof disabilities === 'number' && (
                 <Stat
-                    label='Disabilities'
-                    value={formatNumberWithUnit(disabilities, 'persons')}
+                    label={tr('disabilities')}
+                    value={formatNumberWithUnit(disabilities, 'persons', undefined, locale)}
                     valueClassName={disabilities > 0 ? 'text-orange-700' : 'text-muted-foreground'}
                 />
             )}
@@ -207,7 +206,7 @@ function EducationCard({
                     aria-controls={onNoticeId}
                     className='flex items-center gap-2 text-left'
                 >
-                    <span className='truncate text-muted-foreground'>On notice</span>
+                    <span className='truncate text-muted-foreground'>{tr('onNotice')}</span>
                     <svg
                         className={`w-3 h-3 text-muted-foreground transition-transform ${onNoticeOpen ? 'rotate-180' : ''}`}
                         viewBox='0 0 20 20'
@@ -234,22 +233,22 @@ function EducationCard({
             {onNoticeOpen && (
                 <>
                     <div id={onNoticeId} className='pl-3 text-[10px] text-muted-foreground mb-0.5'>
-                        next month · (pipeline)
+                        {tr('nextMonthPipeline')}
                     </div>
                     <Stat
-                        label='Voluntary'
+                        label={tr('voluntary')}
                         value={formatNumbersNextTotal(voluntaryNext, voluntaryTotal)}
                         valueClassName={voluntaryTotal > 0 ? 'text-amber-600' : 'text-muted-foreground'}
                         indent
                     />
                     <Stat
-                        label='Fired'
+                        label={tr('fired')}
                         value={formatNumbersNextTotal(firedNext, firedTotal)}
                         valueClassName={firedTotal > 0 ? 'text-red-500' : 'text-muted-foreground'}
                         indent
                     />
                     <Stat
-                        label='Retired'
+                        label={tr('retired')}
                         value={formatNumbersNextTotal(retiredNext, retiredTotal)}
                         valueClassName={retiredTotal > 0 ? 'text-blue-600' : 'text-muted-foreground'}
                         indent
@@ -260,7 +259,7 @@ function EducationCard({
             <Rule />
 
             <div className='flex items-baseline justify-between gap-2'>
-                <span className='text-muted-foreground'>Age / Tenure (XP)</span>
+                <span className='text-muted-foreground'>{tr('ageTenure')}</span>
                 <span className='tabular-nums font-medium'>
                     {hasWorkers ? `${meanAge.toFixed(1)}` : '—'}
                     <span className='text-muted-foreground mx-0.5'>/</span>
@@ -268,7 +267,7 @@ function EducationCard({
                 </span>
             </div>
             <div className='flex items-baseline justify-between gap-2'>
-                <span className='text-muted-foreground'>Productivity</span>
+                <span className='text-muted-foreground'>{tr('productivity')}</span>
                 <span
                     className={`tabular-nums font-medium ${
                         hasWorkers && combinedProd < 1.0
@@ -302,6 +301,7 @@ export function EducationLevelCards({
     deaths,
     disabilities,
 }: EducationLevelCardsProps): React.ReactElement {
+    const tr = useTranslations('Workforce');
     const totalActive = summary.totalActive;
     const totalOnboarding = summary.totalOnboarding;
     const totalFired = summary.totalFired;
@@ -316,7 +316,7 @@ export function EducationLevelCards({
             {educationLevelKeys.map((edu) => (
                 <EducationCard
                     key={edu}
-                    header={{ label: eduLabel(edu), badgeClassName: EDU_COLORS[edu].badge }}
+                    header={{ label: eduLabel(tr, edu), badgeClassName: EDU_COLORS[edu].badge }}
                     headcount={{
                         target: allocatedWorkers[edu] ?? 0,
                         active: summary.activeByEdu[edu],
@@ -354,7 +354,7 @@ export function EducationLevelCards({
 
             <EducationCard
                 header={{
-                    label: 'Total',
+                    label: tr('total'),
                     badgeClassName: 'border-foreground/30 bg-muted text-foreground font-semibold',
                 }}
                 headcount={{

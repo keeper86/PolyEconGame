@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import { describe, expect, it } from 'vitest';
 import { FacilitiesMaintenanceDebug } from './FacilitiesMaintenanceDebug';
 import { makeAgentPlanetAssets, makeProductionFacility } from '@/simulation/utils/testHelper';
@@ -18,7 +19,7 @@ describe('FacilitiesMaintenanceDebug', () => {
             shell.maxMaintenance = 1;
         }
 
-        render(<FacilitiesMaintenanceDebug assets={assets} />);
+        renderWithIntl(<FacilitiesMaintenanceDebug assets={assets} />);
 
         expect(screen.getByText('Test Facility')).toBeInTheDocument();
         expect(screen.getByText('100% / 100% max')).toBeInTheDocument();
@@ -34,7 +35,7 @@ describe('FacilitiesMaintenanceDebug', () => {
         const assets = makeAgentPlanetAssets('p', { productionFacilities: [facility] });
         assets.storage.department = null;
 
-        render(<FacilitiesMaintenanceDebug assets={assets} />);
+        renderWithIntl(<FacilitiesMaintenanceDebug assets={assets} />);
 
         expect(screen.getByText('under-maintained')).toBeInTheDocument();
     });
@@ -54,7 +55,7 @@ describe('FacilitiesMaintenanceDebug', () => {
         const assets = makeAgentPlanetAssets('p', { productionFacilities: [facility] });
         assets.storage.department = null;
 
-        render(<FacilitiesMaintenanceDebug assets={assets} />);
+        renderWithIntl(<FacilitiesMaintenanceDebug assets={assets} />);
 
         expect(screen.getByText('under construction')).toBeInTheDocument();
     });

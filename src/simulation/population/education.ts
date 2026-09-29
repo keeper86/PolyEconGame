@@ -8,7 +8,6 @@ export type EducationLevel = {
     type: EducationLevelType;
     name: string;
     nextEducation: () => EducationLevel | null;
-    description: string;
     graduationAge: number;
     graduationPreAgeProbability: number;
     graduationProbability: number;
@@ -20,7 +19,6 @@ export const educationLevels: { [key in EducationLevelType]: EducationLevel } = 
         name: 'None',
         type: 'none',
         nextEducation: () => educationLevels.primary,
-        description: 'No formal education. Attending Elementary school.',
         graduationAge: 9,
         graduationPreAgeProbability: 0.1,
         graduationProbability: 0.65,
@@ -31,7 +29,6 @@ export const educationLevels: { [key in EducationLevelType]: EducationLevel } = 
         name: 'Primary',
         type: 'primary',
         nextEducation: () => educationLevels.secondary,
-        description: 'Primary education. Attending High School.',
         graduationAge: 17,
         graduationPreAgeProbability: 0.1,
         graduationProbability: 0.75,
@@ -42,7 +39,6 @@ export const educationLevels: { [key in EducationLevelType]: EducationLevel } = 
         name: 'Secondary',
         type: 'secondary',
         nextEducation: () => educationLevels.tertiary,
-        description: 'Secondary education. Attending University.',
         graduationAge: 22,
         graduationPreAgeProbability: 0.15,
         graduationProbability: 0.5,
@@ -53,7 +49,6 @@ export const educationLevels: { [key in EducationLevelType]: EducationLevel } = 
         name: 'Tertiary',
         type: 'tertiary',
         nextEducation: () => null,
-        description: 'Tertiary education. Finished all education levels.',
         graduationAge: 27,
         graduationPreAgeProbability: 0.1,
         graduationProbability: 0.1,

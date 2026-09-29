@@ -23,6 +23,8 @@ import { PostTransportContractDialog } from './PostTransportContractDialog';
 import { ShipConditionRow } from './ShipConditionRow';
 import type { PlanetSummary } from './shipFormatting';
 import type { ShipBuyingOffer, ShipListing, TransportContract } from './shipTypes';
+import { useLocale, useTranslations } from 'next-intl';
+import { termFor } from '@/i18n/terms';
 
 const allShipTypesByKey = Object.fromEntries(Object.values(shiptypes).flatMap((cat) => Object.entries(cat))) as Record<
     string,
@@ -78,6 +80,9 @@ export function ShipMarketTab({
     offersLoading: boolean;
     listingsLoading: boolean;
 }): React.ReactElement {
+    const locale = useLocale();
+    const t = useTranslations('Ships');
+    const tc = useTranslations('Common');
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const addPending = useAddPendingAction();
@@ -128,16 +133,16 @@ export function ShipMarketTab({
     return (
         <div className='space-y-6 mt-3'>
             <section className='space-y-3'>
-                <SectionHeader title='Transport Contracts' count={openContracts.length}>
+                <SectionHeader title={t('market.transportContracts')} count={openContracts.length}>
                     <PostTransportContractDialog agentId={agentId} planetId={planetId} tick={tick}>
                         <Button size='sm' variant='outline'>
-                            Post Contract
+                            {t('market.postContract')}
                         </Button>
                     </PostTransportContractDialog>
                 </SectionHeader>
-                {contractsLoading && <p className='text-sm text-muted-foreground'>Loading contracts…</p>}
+                {contractsLoading && <p className='text-sm text-muted-foreground'>{t('market.loadingContracts')}</p>}
                 {!contractsLoading && openContracts.length === 0 && (
-                    <p className='text-sm text-muted-foreground'>No open transport contracts on this planet.</p>
+                    <p className='text-sm text-muted-foreground'>{t('market.noContracts')}</p>
                 )}
                 <div className='flex flex-row gap-3 flex-wrap'>
                     {openContracts.map((contract) => {
@@ -179,10 +184,17 @@ export function ShipMarketTab({
                                                     agentId={agentId}
                                                 />
                                                 <span>
-                                                    Reward{' '}
-                                                    {formatNumberWithUnit(contract.offeredReward, 'currency', planetId)}
+                                                    {t('market.reward')}{' '}
+                                                    {formatNumberWithUnit(
+                                                        contract.offeredReward,
+                                                        'currency',
+                                                        planetId,
+                                                        locale,
+                                                    )}
                                                 </span>
-                                                <span>Max {contract.maxDurationInTicks} days</span>
+                                                <span>
+                                                    {t('market.maxDays', { days: contract.maxDurationInTicks })}
+                                                </span>
                                             </span>
                                         }
                                     />
@@ -204,7 +216,7 @@ export function ShipMarketTab({
                                                 })
                                             }
                                         >
-                                            Cancel
+                                            {tc('cancel')}
                                         </Button>
                                     )}
                                     {!isMyContract && (
@@ -218,14 +230,12 @@ export function ShipMarketTab({
                                                             disabled={!hasEligibleShip}
                                                             onClick={() => setAcceptContractTarget(contract)}
                                                         >
-                                                            Accept
+                                                            {t('market.accept')}
                                                         </Button>
                                                     </span>
                                                 </TooltipTrigger>
                                                 {!hasEligibleShip && (
-                                                    <TooltipContent>
-                                                        No idle ship available on this planet
-                                                    </TooltipContent>
+                                                    <TooltipContent>{t('market.noIdleShip')}</TooltipContent>
                                                 )}
                                             </Tooltip>
                                         </TooltipProvider>
@@ -237,21 +247,23 @@ export function ShipMarketTab({
                 </div>
             </section>
             <section className='space-y-3'>
-                <SectionHeader title='Ship Market' count={openBuyingOffers.length + openListings.length}>
+                <SectionHeader title={t('market.title')} count={openBuyingOffers.length + openListings.length}>
                     <PostShipBuyingOfferDialog agentId={agentId} planetId={planetId}>
                         <Button size='sm' variant='outline'>
-                            Post Buy Offer
+                            {t('offer.postBuyOffer')}
                         </Button>
                     </PostShipBuyingOfferDialog>
                 </SectionHeader>
-                {(offersLoading || listingsLoading) && <p className='text-sm text-muted-foreground'>Loading…</p>}
+                {(offersLoading || listingsLoading) && <p className='text-sm text-muted-foreground'>{tc('loading')}</p>}
                 {!offersLoading && !listingsLoading && openBuyingOffers.length === 0 && openListings.length === 0 && (
-                    <p className='text-sm text-muted-foreground'>No open ship offers on this planet.</p>
+                    <p className='text-sm text-muted-foreground'>{t('market.noOffers')}</p>
                 )}
 
                 {openListings.length > 0 && (
                     <>
-                        <p className='text-xs font-medium text-muted-foreground uppercase tracking-wide'>For Sale</p>
+                        <p className='text-xs font-medium text-muted-foreground uppercase tracking-wide'>
+                            {t('market.forSale')}
+                        </p>
                         <div className='flex flex-row gap-3 flex-wrap'>
                             {openListings.map((listing) => {
                                 const isMyListing = listing._agentId === agentId;
@@ -273,7 +285,7 @@ export function ShipMarketTab({
                                                 badge={
                                                     isMyListing ? (
                                                         <Badge variant='secondary' className='text-[10px] px-1.5 py-0'>
-                                                            Your listing
+                                                            {t('market.yourListing')}
                                                         </Badge>
                                                     ) : null
                                                 }
@@ -290,11 +302,12 @@ export function ShipMarketTab({
                                                                 />
                                                             )}
                                                         <span>
-                                                            Ask{' '}
+                                                            {t('market.ask')}{' '}
                                                             {formatNumberWithUnit(
                                                                 listing.askPrice,
                                                                 'currency',
                                                                 planetId,
+                                                                locale,
                                                             )}
                                                         </span>
                                                     </>
@@ -318,7 +331,7 @@ export function ShipMarketTab({
                                                         })
                                                     }
                                                 >
-                                                    Buy
+                                                    {t('market.buy')}
                                                 </Button>
                                             </div>
                                         )}
@@ -331,7 +344,7 @@ export function ShipMarketTab({
                 {openBuyingOffers.length > 0 && (
                     <>
                         <p className='text-xs font-medium text-muted-foreground uppercase tracking-wide mt-3'>
-                            Buy Offers
+                            {t('market.buyOffers')}
                         </p>
                         <div className='flex flex-row gap-3 flex-wrap'>
                             {openBuyingOffers.map((offer) => {
@@ -359,19 +372,24 @@ export function ShipMarketTab({
                                         }
                                         headerContent={
                                             <CardHeaderBlock
-                                                title={shipTypeDef?.name ?? offer.shipType}
+                                                title={termFor(locale, shipTypeDef?.name ?? offer.shipType)}
                                                 titleClassName=''
                                                 badge={
                                                     isMyOffer ? (
                                                         <Badge variant='secondary' className='text-[10px] px-1.5 py-0'>
-                                                            Your offer
+                                                            {t('market.yourOffer')}
                                                         </Badge>
                                                     ) : null
                                                 }
                                                 details={
                                                     <span>
-                                                        Offered{' '}
-                                                        {formatNumberWithUnit(offer.price, 'currency', planetId)}
+                                                        {t('market.offered')}{' '}
+                                                        {formatNumberWithUnit(
+                                                            offer.price,
+                                                            'currency',
+                                                            planetId,
+                                                            locale,
+                                                        )}
                                                     </span>
                                                 }
                                             />
@@ -385,7 +403,7 @@ export function ShipMarketTab({
                                                     className='w-full text-xs'
                                                     onClick={() => setAcceptBuyingTarget(offer)}
                                                 >
-                                                    Sell
+                                                    {t('market.sell')}
                                                 </Button>
                                             </div>
                                         )}
@@ -397,12 +415,14 @@ export function ShipMarketTab({
                                                         <TooltipTrigger asChild>
                                                             <span className='block'>
                                                                 <Button size='sm' className='w-full text-xs' disabled>
-                                                                    Sell
+                                                                    {t('market.sell')}
                                                                 </Button>
                                                             </span>
                                                         </TooltipTrigger>
                                                         <TooltipContent>
-                                                            No idle {offer.shipType} ship available on this planet
+                                                            {t('market.noIdleShipType', {
+                                                                shipType: termFor(locale, offer.shipType),
+                                                            })}
                                                         </TooltipContent>
                                                     </Tooltip>
                                                 </TooltipProvider>

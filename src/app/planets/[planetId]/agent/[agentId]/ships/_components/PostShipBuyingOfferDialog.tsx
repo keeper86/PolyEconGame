@@ -4,11 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useErrorMessage } from '@/i18n/errors';
+import { termFor } from '@/i18n/terms';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTRPC } from '@/lib/trpc';
 import { shiptypes } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 
 const allShipTypeEntries = Object.values(shiptypes).flatMap((cat) => Object.entries(cat)) as [
     string,
@@ -24,6 +27,9 @@ type Props = {
 export function PostShipBuyingOfferDialog({ agentId, planetId, children }: Props) {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const t = useTranslations('Ships');
+    const locale = useLocale();
+    const showError = useErrorMessage();
     const [open, setOpen] = useState(false);
 
     const [shipType, setShipType] = useState('');
@@ -57,26 +63,26 @@ export function PostShipBuyingOfferDialog({ agentId, planetId, children }: Props
             <DialogTrigger asChild>{children}</DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Post Ship Buy Offer</DialogTitle>
+                    <DialogTitle>{t('offer.postTitle')}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className='space-y-4'>
                     <div className='space-y-1.5'>
-                        <Label>Ship Type</Label>
+                        <Label>{t('offer.shipType')}</Label>
                         <Select value={shipType} onValueChange={setShipType} required>
                             <SelectTrigger>
-                                <SelectValue placeholder='Select ship type…' />
+                                <SelectValue placeholder={t('offer.selectShipType')} />
                             </SelectTrigger>
                             <SelectContent>
                                 {allShipTypeEntries.map(([key, def]) => (
                                     <SelectItem key={key} value={key}>
-                                        {def.name}
+                                        {termFor(locale, def.name)}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
                     </div>
                     <div className='space-y-1.5'>
-                        <Label>Offered Price</Label>
+                        <Label>{t('offer.offeredPrice')}</Label>
                         <Input
                             type='number'
                             min={1}
@@ -86,10 +92,10 @@ export function PostShipBuyingOfferDialog({ agentId, planetId, children }: Props
                             required
                         />
                     </div>
-                    {mutation.error && <p className='text-xs text-destructive'>{mutation.error.message}</p>}
+                    {mutation.error && <p className='text-xs text-destructive'>{showError(mutation.error)}</p>}
                     <DialogFooter>
                         <Button type='submit' disabled={mutation.isPending || !shipType}>
-                            {mutation.isPending ? 'Posting…' : 'Post Buy Offer'}
+                            {mutation.isPending ? t('market.posting') : t('offer.postBuyOffer')}
                         </Button>
                     </DialogFooter>
                 </form>

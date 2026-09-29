@@ -12,9 +12,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Page } from '@/components/client/Page';
+import { useLocale, useTranslations } from 'next-intl';
 
 function CarouselNav() {
     const { scrollPrev, scrollNext, canScrollPrev, canScrollNext } = useCarousel();
+    const t = useTranslations('Planets');
 
     return (
         <div className='absolute bottom-0 left-0 right-0 z-10 flex items-center justify-between p-3 sm:p-5 pointer-events-none rounded-b-xl'>
@@ -25,7 +27,7 @@ function CarouselNav() {
                 className='pointer-events-auto inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow hover:bg-primary/90 h-8 w-8 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer'
             >
                 <ChevronLeft className='h-4 w-4' />
-                <span className='sr-only'>Previous planet</span>
+                <span className='sr-only'>{t('previous')}</span>
             </button>
 
             <button
@@ -35,13 +37,16 @@ function CarouselNav() {
                 className='pointer-events-auto inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow hover:bg-primary/90 h-8 w-8 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer'
             >
                 <ChevronRight className='h-4 w-4' />
-                <span className='sr-only'>Next planet</span>
+                <span className='sr-only'>{t('next')}</span>
             </button>
         </div>
     );
 }
 
 export default function PlanetsPage() {
+    const locale = useLocale();
+    const t = useTranslations('Planets');
+    const tCommon = useTranslations('Common');
     const trpc = useTRPC();
 
     const { isLoading, data } = useSimulationQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
@@ -49,9 +54,9 @@ export default function PlanetsPage() {
     const planetSummaries = data?.planets ?? [];
 
     return (
-        <Page title='Planets'>
+        <Page title={t('title')}>
             {isLoading || planetSummaries.length === 0 ? (
-                <div className='text-sm text-muted-foreground'>Waiting for simulation data…</div>
+                <div className='text-sm text-muted-foreground'>{tCommon('waitingForData')}</div>
             ) : (
                 <div className='max-w-lg'>
                     <Carousel>
@@ -85,57 +90,74 @@ export default function PlanetsPage() {
                                                 <h3 className='text-xl font-semibold'>{p.name}</h3>
 
                                                 <div className='grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-outline-strong'>
-                                                    <span className='text-muted-foreground'>Population</span>
+                                                    <span className='text-muted-foreground'>{t('population')}</span>
                                                     <span className='text-right font-medium'>
-                                                        {formatNumberWithUnit(p.populationTotal, 'persons')}
+                                                        {formatNumberWithUnit(
+                                                            p.populationTotal,
+                                                            'persons',
+                                                            undefined,
+                                                            locale,
+                                                        )}
                                                     </span>
 
-                                                    <span className='text-muted-foreground'>GDP</span>
+                                                    <span className='text-muted-foreground'>{t('gdp')}</span>
                                                     <span className='text-right font-medium'>
-                                                        {formatNumberWithUnit(p.gdp, 'currency', p.planetId)}
+                                                        {formatNumberWithUnit(p.gdp, 'currency', p.planetId, locale)}
                                                     </span>
 
-                                                    <span className='text-muted-foreground'>Money Supply</span>
+                                                    <span className='text-muted-foreground'>{t('moneySupply')}</span>
                                                     <span className='text-right font-medium'>
-                                                        {formatNumberWithUnit(p.moneySupply, 'currency', p.planetId)}
+                                                        {formatNumberWithUnit(
+                                                            p.moneySupply,
+                                                            'currency',
+                                                            p.planetId,
+                                                            locale,
+                                                        )}
                                                     </span>
 
-                                                    <span className='text-muted-foreground'>Bank Equity</span>
+                                                    <span className='text-muted-foreground'>{t('bankEquity')}</span>
                                                     <span className='text-right font-medium'>
                                                         {formatNumberWithUnit(
                                                             bankEquity(p.bank),
                                                             'currency',
                                                             p.planetId,
+                                                            locale,
                                                         )}
                                                     </span>
 
-                                                    <span className='text-muted-foreground'>Interest Rate</span>
+                                                    <span className='text-muted-foreground'>{t('interestRate')}</span>
                                                     <span className='text-right font-medium tabular-nums'>
                                                         {(p.policyRate * 100).toFixed(2)} %
                                                     </span>
 
-                                                    <span className='text-muted-foreground'>Cost of Living</span>
+                                                    <span className='text-muted-foreground'>{t('costOfLiving')}</span>
                                                     <span className='text-right font-medium'>
-                                                        {formatNumberWithUnit(p.costOfLiving, 'currency', p.planetId)}
+                                                        {formatNumberWithUnit(
+                                                            p.costOfLiving,
+                                                            'currency',
+                                                            p.planetId,
+                                                            locale,
+                                                        )}
                                                         {' – '}
                                                         {formatNumberWithUnit(
                                                             p.costOfLivingRich,
                                                             'currency',
                                                             p.planetId,
+                                                            locale,
                                                         )}
                                                     </span>
 
-                                                    <span className='text-muted-foreground'>Wages</span>
+                                                    <span className='text-muted-foreground'>{t('wages')}</span>
                                                     <span className='text-right font-medium'>
-                                                        {formatNumberWithUnit(minWage, 'currency', p.planetId)}
+                                                        {formatNumberWithUnit(minWage, 'currency', p.planetId, locale)}
                                                         {' – '}
-                                                        {formatNumberWithUnit(maxWage, 'currency', p.planetId)}
+                                                        {formatNumberWithUnit(maxWage, 'currency', p.planetId, locale)}
                                                     </span>
                                                 </div>
 
                                                 <div>
                                                     <p className='text-xs text-muted-foreground mb-1.5'>
-                                                        Available Resources
+                                                        {t('availableResources')}
                                                     </p>
                                                     {p.claims.length > 0 ? (
                                                         <div className='flex flex-wrap gap-1.5'>

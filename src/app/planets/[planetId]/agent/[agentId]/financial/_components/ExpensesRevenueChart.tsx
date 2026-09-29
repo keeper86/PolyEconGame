@@ -8,6 +8,7 @@ import {
     decadeStart,
     decadeWindowAxis,
     formatMonthLabel,
+    monthShortName,
     yearStart,
     yearWindowAxis,
 } from '@/lib/historyChartAxis';
@@ -18,7 +19,6 @@ import { FinancialTooltip } from './FinancialTooltip';
 import {
     MONTHLY_GRID_VALUES,
     MONTHLY_X_TICKS,
-    MONTH_NAMES,
     bucketDecadeMid,
     computeExpensesRevenueBuckets,
     formatDecadeLabel,
@@ -28,6 +28,7 @@ import {
     type FinancialPoint,
     type Granularity,
 } from './financialChartLogic';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function ExpensesRevenueChart({
     data,
@@ -40,6 +41,8 @@ export function ExpensesRevenueChart({
     granularity: Granularity;
     live?: FinancialLive;
 }) {
+    const locale = useLocale();
+    const t = useTranslations('Financial');
     const yDomain = (vals: number[]): [number, number] | ['auto', 'auto'] => {
         const finite = vals.filter(Number.isFinite);
         if (finite.length === 0) {
@@ -62,9 +65,16 @@ export function ExpensesRevenueChart({
             p.avgWages,
             p.sumPurchases,
             p.sumClaimPayments,
+            p.sumInterestPaid + p.sumWealthTaxPaid,
         ]);
         if (live && live.tick > 0) {
-            allVals.push(live.avgMonthlyNetIncome, live.avgWages, live.sumPurchases, live.sumClaimPayments);
+            allVals.push(
+                live.avgMonthlyNetIncome,
+                live.avgWages,
+                live.sumPurchases,
+                live.sumClaimPayments,
+                live.sumInterestPaid + live.sumWealthTaxPaid,
+            );
         }
         const positive = allVals.filter((v) => v > 0);
         if (positive.length >= 2) {
@@ -114,10 +124,12 @@ export function ExpensesRevenueChart({
                         wages: nullIfZeroLog(curr?.avgWages ?? null),
                         purchases: nullIfZeroLog(curr?.sumPurchases ?? null),
                         claimPayments: nullIfZeroLog(curr?.sumClaimPayments ?? null),
+                        misc: nullIfZeroLog(curr ? curr.sumInterestPaid + curr.sumWealthTaxPaid : null),
                         ghostRevenue: nullIfZeroLog(ghost ? ghost.avgMonthlyNetIncome : null),
                         ghostWages: nullIfZeroLog(ghost?.avgWages ?? null),
                         ghostPurchases: nullIfZeroLog(ghost?.sumPurchases ?? null),
                         ghostClaimPayments: nullIfZeroLog(ghost?.sumClaimPayments ?? null),
+                        ghostMisc: nullIfZeroLog(ghost ? ghost.sumInterestPaid + ghost.sumWealthTaxPaid : null),
                     };
                 });
         }
@@ -131,7 +143,7 @@ export function ExpensesRevenueChart({
                 type: 'number' as const,
                 domain: [0, 12] as [number, number],
                 ticks: MONTHLY_X_TICKS,
-                tickFormatter: (v: number) => MONTH_NAMES[(Math.ceil(v) + 11) % 12] ?? '',
+                tickFormatter: (v: number) => monthShortName(locale, (Math.ceil(v) + 11) % 12),
                 gridVertical: true,
                 gridValues: MONTHLY_GRID_VALUES,
             };
@@ -167,23 +179,25 @@ export function ExpensesRevenueChart({
             gridVertical: true,
             gridValues: decade.gridValues,
         };
-    }, [granularity, data, liveX]);
+    }, [granularity, data, liveX, locale]);
 
     const tooltipLabelFormatter = useMemo(() => {
         if (granularity === 'monthly') {
             const byMonthIdx = new Map(
                 chartData
                     .filter((p): p is { monthIdx: number; year: number } & typeof p => 'monthIdx' in p)
-                    .map((p) => [p.monthIdx, formatMonthLabel(p.monthIdx, p.year)]),
+                    .map((p) => [p.monthIdx, formatMonthLabel(locale, p.monthIdx, p.year)]),
             );
             return (label: number) => byMonthIdx.get(label) ?? '';
         }
-        return granularity === 'decade' ? formatDecadeLabel : formatYearLabel;
-    }, [granularity, chartData]);
+        return granularity === 'decade'
+            ? (v: number) => formatDecadeLabel(locale, v)
+            : (v: number) => formatYearLabel(locale, v);
+    }, [granularity, chartData, locale]);
 
     return (
         <div className='flex flex-col items-start gap-1'>
-            <p className='text-xs font-semibold text-muted-foreground mb-2'>Expenses & Revenue</p>
+            <p className='text-xs font-semibold text-muted-foreground mb-2'>{t('expensesRevenueTitle')}</p>
             <div style={{ width: '100%', height: 200 }}>
                 <ResponsiveContainer width='100%' height='100%'>
                     <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
@@ -203,6 +217,10 @@ export function ExpensesRevenueChart({
                             <linearGradient id='gradClaims' x1='0' x2='0' y1='0' y2='1'>
                                 <stop offset='5%' stopColor='#8b5cf6' stopOpacity={0.5} />
                                 <stop offset='95%' stopColor='#8b5cf6' stopOpacity={0.1} />
+                            </linearGradient>
+                            <linearGradient id='gradMisc' x1='0' x2='0' y1='0' y2='1'>
+                                <stop offset='5%' stopColor='#ec4899' stopOpacity={0.5} />
+                                <stop offset='95%' stopColor='#ec4899' stopOpacity={0.1} />
                             </linearGradient>
                         </defs>
                         <CartesianGrid
@@ -234,13 +252,14 @@ export function ExpensesRevenueChart({
                             axisLine={false}
                             tickLine={false}
                             width={56}
-                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
+                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency', undefined, locale)}
                         />
                         <Tooltip content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} />} />
                         <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />
                         <Area
                             type='monotone'
                             dataKey='wages'
+                            name={t('wages')}
                             stroke='#ef4444'
                             strokeWidth={1.5}
                             fill='url(#gradWages)'
@@ -252,6 +271,7 @@ export function ExpensesRevenueChart({
                         <Area
                             type='monotone'
                             dataKey='purchases'
+                            name={t('purchases')}
                             stroke='#f59e0b'
                             strokeWidth={1.5}
                             fill='url(#gradPurchases)'
@@ -263,6 +283,7 @@ export function ExpensesRevenueChart({
                         <Area
                             type='monotone'
                             dataKey='claimPayments'
+                            name={t('claims')}
                             stroke='#8b5cf6'
                             strokeWidth={1.5}
                             fill='url(#gradClaims)'
@@ -273,7 +294,20 @@ export function ExpensesRevenueChart({
                         />
                         <Area
                             type='monotone'
+                            dataKey='misc'
+                            name={t('interestAndTax')}
+                            stroke='#ec4899'
+                            strokeWidth={1.5}
+                            fill='url(#gradMisc)'
+                            dot={{ r: 2.5, fill: '#ec4899' }}
+                            activeDot={{ r: 3 }}
+                            isAnimationActive={false}
+                            connectNulls={false}
+                        />
+                        <Area
+                            type='monotone'
                             dataKey='revenue'
+                            name={t('revenue')}
                             stroke='#10b981'
                             strokeWidth={2}
                             fill='url(#gradRevenue)'
@@ -319,6 +353,20 @@ export function ExpensesRevenueChart({
                             strokeDasharray='4 2'
                             fill='none'
                             dot={{ r: 2, fill: '#8b5cf6', fillOpacity: 0.4, stroke: 'none' }}
+                            activeDot={false}
+                            legendType='none'
+                            isAnimationActive={false}
+                            connectNulls={false}
+                        />
+                        <Area
+                            type='monotone'
+                            dataKey='ghostMisc'
+                            stroke='#ec4899'
+                            strokeWidth={1}
+                            strokeOpacity={0.5}
+                            strokeDasharray='4 2'
+                            fill='none'
+                            dot={{ r: 2, fill: '#ec4899', fillOpacity: 0.4, stroke: 'none' }}
                             activeDot={false}
                             legendType='none'
                             isAnimationActive={false}

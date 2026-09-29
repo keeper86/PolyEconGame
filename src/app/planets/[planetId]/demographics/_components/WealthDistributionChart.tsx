@@ -5,9 +5,8 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recha
 
 import {
     EDU_COLORS,
-    EDU_LABELS,
     OCC_COLORS,
-    OCC_LABELS,
+    useCohortLabels,
 } from '@/app/planets/[planetId]/demographics/_components/CohortFilter';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumberWithUnit } from '@/lib/utils';
@@ -15,6 +14,7 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { GV_POP, GV_WEALTH } from './demographicsTypes';
+import { useLocale, useTranslations } from 'next-intl';
 
 type ChartRow = Record<string, number>;
 
@@ -28,13 +28,15 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
         payload?: { payload: ChartRow }[];
         label?: number;
     }) {
+        const locale = useLocale();
+        const t = useTranslations('Demographics');
         if (!active || !payload || payload.length === 0) {
             return null;
         }
         const row = payload[0].payload;
         return (
             <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[180px]'>
-                <div className='font-medium mb-1'>Age {label}</div>
+                <div className='font-medium mb-1'>{t('tooltipAge', { age: String(label) })}</div>
                 {keys.map((key) => {
                     const pop = row[`${key}_pop`] ?? 0;
                     if (pop === 0) {
@@ -51,7 +53,8 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
                                 {labels[key]}
                             </span>
                             <span className='ml-auto pl-2 text-muted-foreground'>
-                                {formatNumberWithUnit(mean, 'currency')} · {formatNumberWithUnit(pop, 'persons')}
+                                {formatNumberWithUnit(mean, 'currency', undefined, locale)} ·{' '}
+                                {formatNumberWithUnit(pop, 'persons', undefined, locale)}
                             </span>
                         </div>
                     );
@@ -93,21 +96,24 @@ type Props = {
 };
 
 function EmptyChart({ height = 180 }: { height?: number }) {
+    const t = useTranslations('Demographics');
     return (
         <div
             className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
             style={{ height }}
         >
-            No data
+            {t('noData')}
         </div>
     );
 }
 
 export default function WealthDistributionChart({ rows, groupMode }: Props): React.ReactElement {
+    const locale = useLocale();
     const isVerySmall = useIsSmallScreen();
+    const { edu: eduLabels, occ: occLabels } = useCohortLabels();
 
     const keys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
-    const labels: Record<string, string> = groupMode === 'occupation' ? OCC_LABELS : EDU_LABELS;
+    const labels: Record<string, string> = groupMode === 'occupation' ? occLabels : eduLabels;
     const colors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
 
     const { data, yDomain } = useMemo(() => {
@@ -170,7 +176,7 @@ export default function WealthDistributionChart({ rows, groupMode }: Props): Rea
                 <YAxis
                     width={48}
                     tick={{ fontSize: 10 }}
-                    tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
+                    tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency', undefined, locale)}
                     domain={yDomain}
                 />
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}

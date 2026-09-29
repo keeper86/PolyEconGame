@@ -17,7 +17,7 @@ export function handleAcquireLicense(
         safePostMessage({
             type: 'licenseAcquisitionFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -28,7 +28,7 @@ export function handleAcquireLicense(
         safePostMessage({
             type: 'licenseAcquisitionFailed',
             requestId,
-            reason: `Planet '${planetId}' not found`,
+            error: { code: 'planetNotFound', params: { planetId: planetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -48,7 +48,7 @@ export function handleAcquireLicense(
         safePostMessage({
             type: 'licenseAcquisitionFailed',
             requestId,
-            reason: `A commercial license must be acquired before a workforce license on planet '${planetId}'`,
+            error: { code: 'licensePrerequisiteMissing', params: { planetId: planetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -58,7 +58,7 @@ export function handleAcquireLicense(
         safePostMessage({
             type: 'licenseAcquisitionFailed',
             requestId,
-            reason: `Agent already holds a '${licenseType}' license on planet '${planetId}'`,
+            error: { code: 'licenseAlreadyHeld', params: { licenseType: licenseType, planetId: planetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -77,7 +77,10 @@ export function handleAcquireLicense(
             safePostMessage({
                 type: 'licenseAcquisitionFailed',
                 requestId,
-                reason: `Insufficient deposits. Required: ${cost}, available: ${assets.deposits}`,
+                error: {
+                    code: 'insufficientDepositsForLicense',
+                    params: { required: cost, available: assets.deposits },
+                },
                 processedAtTick: state.tick,
             });
             return;
@@ -102,7 +105,7 @@ export function handleAcquireLicense(
         planetId,
         agentId,
         agentName: agent.name,
-        message: `${agent.name} acquired ${licenseType} license on ${planet.name}`,
+        details: { kind: 'licenseAcquired', planetName: planet.name, licenseType },
         tick: state.tick,
     });
 

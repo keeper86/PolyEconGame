@@ -2,7 +2,14 @@
 
 import { tickToDate } from '@/components/client/TickDisplay';
 import { liveYearX } from '@/lib/chartTime';
-import { decadeStart, decadeWindowAxis, formatMonthLabel, yearStart, yearWindowAxis } from '@/lib/historyChartAxis';
+import {
+    decadeStart,
+    decadeWindowAxis,
+    formatMonthLabel,
+    monthShortName,
+    yearStart,
+    yearWindowAxis,
+} from '@/lib/historyChartAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -10,7 +17,6 @@ import { FinancialTooltip } from './FinancialTooltip';
 import {
     MONTHLY_GRID_VALUES,
     MONTHLY_X_TICKS,
-    MONTH_NAMES,
     bucketDecadeMid,
     bucketYearMid,
     computeCostOfLivingMonthlyData,
@@ -23,6 +29,7 @@ import {
     type CostOfLivingPoint,
     type Granularity,
 } from './financialChartLogic';
+import { useLocale, useTranslations } from 'next-intl';
 
 export type { CostOfLivingPoint };
 
@@ -55,6 +62,8 @@ export function PlanetCostOfLivingChart({
     currentTick: number;
     live?: CostOfLivingLive;
 }) {
+    const locale = useLocale();
+    const t = useTranslations('CentralBank');
     const liveRow = useMemo(
         () =>
             live && live.tick > 0
@@ -177,7 +186,7 @@ export function PlanetCostOfLivingChart({
                 type: 'number' as const,
                 domain: [0, 12] as [number, number],
                 ticks: MONTHLY_X_TICKS,
-                tickFormatter: (v: number) => MONTH_NAMES[(Math.ceil(v) + 11) % 12] ?? '',
+                tickFormatter: (v: number) => monthShortName(locale, (Math.ceil(v) + 11) % 12),
                 gridVertical: true,
                 gridValues: MONTHLY_GRID_VALUES,
             };
@@ -216,23 +225,25 @@ export function PlanetCostOfLivingChart({
             gridVertical: true,
             gridValues: decade.gridValues,
         };
-    }, [granularity, data, decadeDisplayData, liveRow]);
+    }, [granularity, data, decadeDisplayData, liveRow, locale]);
 
     const tooltipLabelFormatter = useMemo(() => {
         if (granularity === 'monthly') {
             const byMonthIdx = new Map(
                 chartData
                     .filter((p): p is { monthIdx: number; year: number } & typeof p => 'monthIdx' in p)
-                    .map((p) => [p.monthIdx, formatMonthLabel(p.monthIdx, p.year)]),
+                    .map((p) => [p.monthIdx, formatMonthLabel(locale, p.monthIdx, p.year)]),
             );
             return (label: number) => byMonthIdx.get(label) ?? '';
         }
-        return granularity === 'decade' ? formatDecadeLabel : formatYearLabel;
-    }, [granularity, chartData]);
+        return granularity === 'decade'
+            ? (v: number) => formatDecadeLabel(locale, v)
+            : (v: number) => formatYearLabel(locale, v);
+    }, [granularity, chartData, locale]);
 
     return (
         <div className='flex flex-col items-start gap-1'>
-            <p className='text-xs font-semibold text-muted-foreground mb-2'>Cost of Living & Wages</p>
+            <p className='text-xs font-semibold text-muted-foreground mb-2'>{t('costOfLivingWages')}</p>
             <div style={{ width: '100%', height: 200 }}>
                 <ResponsiveContainer width='100%' height='100%'>
                     <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
@@ -268,7 +279,7 @@ export function PlanetCostOfLivingChart({
                             axisLine={false}
                             tickLine={false}
                             width={56}
-                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency', planetId)}
+                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency', planetId, locale)}
                         />
                         <Tooltip
                             content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} planetId={planetId} />}
@@ -365,7 +376,7 @@ export function PlanetCostOfLivingChart({
                         <Area
                             type='monotone'
                             dataKey='costOfLiving'
-                            name='Cost of Living'
+                            name={t('costOfLivingSeries')}
                             stroke='#ef4444'
                             strokeWidth={2}
                             fill='#ef4444'
@@ -380,7 +391,7 @@ export function PlanetCostOfLivingChart({
                         <Area
                             type='monotone'
                             dataKey='costOfLivingRichDiff'
-                            name='Cost of Living'
+                            name={t('costOfLivingSeries')}
                             stroke='#ef4444'
                             strokeWidth={2}
                             fill='url(#colRichGrad)'
@@ -393,7 +404,7 @@ export function PlanetCostOfLivingChart({
                         <Area
                             type='monotone'
                             dataKey='wageEdu0'
-                            name='Wage None'
+                            name={t('wageNone')}
                             stroke={WAGE_COLORS[0]}
                             strokeWidth={1.5}
                             fill='none'
@@ -405,7 +416,7 @@ export function PlanetCostOfLivingChart({
                         <Area
                             type='monotone'
                             dataKey='wageEdu1'
-                            name='Wage Primary'
+                            name={t('wagePrimary')}
                             stroke={WAGE_COLORS[1]}
                             strokeWidth={1.5}
                             fill='none'
@@ -417,7 +428,7 @@ export function PlanetCostOfLivingChart({
                         <Area
                             type='monotone'
                             dataKey='wageEdu2'
-                            name='Wage Secondary'
+                            name={t('wageSecondary')}
                             stroke={WAGE_COLORS[2]}
                             strokeWidth={1.5}
                             fill='none'
@@ -429,7 +440,7 @@ export function PlanetCostOfLivingChart({
                         <Area
                             type='monotone'
                             dataKey='wageEdu3'
-                            name='Wage Tertiary'
+                            name={t('wageTertiary')}
                             stroke={WAGE_COLORS[3]}
                             strokeWidth={1.5}
                             fill='none'

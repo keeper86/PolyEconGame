@@ -7,21 +7,26 @@ import { validateSellOffer } from '@/simulation/market/validation';
 import { queryStorageFacility } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets, AutomatedPricingConfig } from '@/simulation/planet/planet';
 import { useMutation } from '@tanstack/react-query';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { getResourceByName } from './marketHelpers';
+import { termFor } from '@/i18n/terms';
+import { readDomainError, useErrorMessage } from '@/i18n/errors';
 import type { AutoConfigLocalState, LocalResourceState, MarketOfferEntry } from './marketTypes';
 import { localToAutoConfig, SELL_PRICING_KEYS, SELL_VOLUME_KEYS } from './marketTypes';
 
-function depositWarning(message: string, agentId: string, planetId: string) {
+type ToastTranslator = ReturnType<typeof useTranslations<'Toasts'>>;
+
+function depositWarning(t: ToastTranslator, message: string, agentId: string, planetId: string) {
     return (
         <span>
-            {message}. You can borrow funds on the{' '}
+            {message}. {t('depositBorrowPrefix')}
             <a
                 href={`/planets/${planetId}/agent/${agentId}/financial`}
                 className='underline font-medium hover:text-blue-700'
             >
-                Financial page
+                {t('depositBorrowLink')}
             </a>
             .
         </span>
@@ -84,45 +89,37 @@ export function useSellSectionMutations({
     const trpc = useTRPC();
     const addPending = useAddPendingAction();
     const pendingActions = usePendingActions(agentId, planetId);
+    const t = useTranslations('Toasts');
+    const tErrors = useTranslations('Errors');
+    const locale = useLocale();
+    const showError = useErrorMessage();
     const resource = getResourceByName(resourceName);
     const inventoryQty = queryStorageFacility(assets.storage, resourceName);
 
+    const reportError = (err: unknown, fallback: string) => {
+        const message = err instanceof Error ? showError(err) : fallback;
+        if (readDomainError(err)?.code === 'insufficientDeposits') {
+            toast.error(depositWarning(t, message, agentId, planetId));
+        } else {
+            toast.error(message);
+        }
+    };
+
     const sellMutation = useMutation(
         trpc.setSellOffers.mutationOptions({
-            onError: (err) => {
-                const errorMessage = err instanceof Error ? err.message : 'Failed to update sell offers';
-                if (errorMessage.includes('Insufficient deposits')) {
-                    toast.error(depositWarning(errorMessage, agentId, planetId));
-                } else {
-                    toast.error(errorMessage);
-                }
-            },
+            onError: (err) => reportError(err, t('updateSellOffersFailed')),
         }),
     );
 
     const sellPricingMutation = useMutation(
         trpc.setSellOffers.mutationOptions({
-            onError: (err) => {
-                const errorMessage = err instanceof Error ? err.message : 'Failed to update sell offers';
-                if (errorMessage.includes('Insufficient deposits')) {
-                    toast.error(depositWarning(errorMessage, agentId, planetId));
-                } else {
-                    toast.error(errorMessage);
-                }
-            },
+            onError: (err) => reportError(err, t('updateSellOffersFailed')),
         }),
     );
 
     const sellVolumeMutation = useMutation(
         trpc.setSellOffers.mutationOptions({
-            onError: (err) => {
-                const errorMessage = err instanceof Error ? err.message : 'Failed to update sell offers';
-                if (errorMessage.includes('Insufficient deposits')) {
-                    toast.error(depositWarning(errorMessage, agentId, planetId));
-                } else {
-                    toast.error(errorMessage);
-                }
-            },
+            onError: (err) => reportError(err, t('updateSellOffersFailed')),
         }),
     );
 
@@ -133,7 +130,7 @@ export function useSellSectionMutations({
 
     const handleSaveSell = () => {
         if (!resource) {
-            toast.error(`Unknown resource: ${resourceName}`);
+            toast.error(tErrors('unknownResource', { resourceName: termFor(locale, resourceName) }));
             return;
         }
 
@@ -142,13 +139,13 @@ export function useSellSectionMutations({
         if (!isNaN(offerPrice)) {
             const validation = validateSellOffer(offerPrice, inventoryQty);
             if (!validation.isValid) {
-                toast.error(`Sell validation failed: ${validation.error}`);
+                toast.error(`${t('sellValidationFailedPrefix')}${tErrors(validation.code, validation.params)}`);
                 return;
             }
         }
 
         if (isNaN(offerPrice) || offerPrice < PRICE_FLOOR) {
-            toast.error(`Sell validation failed: Invalid offer price.`);
+            toast.error(t('invalidOfferPrice'));
             return;
         }
 
@@ -208,17 +205,9 @@ export function useSellSectionMutations({
                             triggerTick: data.processedAtTick,
                         });
                     }
-                    toast.success('Sell offers saved. Changes take effect on the next market tick.');
+                    toast.success(t('sellOffersSaved'));
                 },
-                onError: (err) => {
-                    setSellAutomationSaving(false);
-                    const errorMessage = err instanceof Error ? err.message : 'Failed to update sell offers';
-                    if (errorMessage.includes('Insufficient deposits')) {
-                        toast.error(depositWarning(errorMessage, agentId, planetId));
-                    } else {
-                        toast.error(errorMessage);
-                    }
-                },
+                onError: () => setSellAutomationSaving(false),
             },
         );
     };
@@ -248,12 +237,9 @@ export function useSellSectionMutations({
                             triggerTick: data.processedAtTick,
                         });
                     }
-                    toast.success('Pricing config saved.');
+                    toast.success(t('pricingConfigSaved'));
                 },
-                onError: (err) => {
-                    setSellPricingConfigSaving(false);
-                    toast.error(err instanceof Error ? err.message : 'Failed to save');
-                },
+                onError: () => setSellPricingConfigSaving(false),
             },
         );
     };
@@ -283,12 +269,9 @@ export function useSellSectionMutations({
                             triggerTick: data.processedAtTick,
                         });
                     }
-                    toast.success('Volume config saved.');
+                    toast.success(t('volumeConfigSaved'));
                 },
-                onError: (err) => {
-                    setSellVolumeConfigSaving(false);
-                    toast.error(err instanceof Error ? err.message : 'Failed to save');
-                },
+                onError: () => setSellVolumeConfigSaving(false),
             },
         );
     };
@@ -307,23 +290,23 @@ export function useSellSectionMutations({
     );
 
     const sellAutomationOverlay = sellAutomationSaving
-        ? 'Saving…'
+        ? t('saving')
         : pendingSellAutomationAction
-          ? 'Awaiting next day…'
+          ? t('awaitingNextDay')
           : null;
 
-    const sellPriceOverlay = sellPriceSaving ? 'Saving…' : pendingSellPriceAction ? 'Awaiting next day…' : null;
+    const sellPriceOverlay = sellPriceSaving ? t('saving') : pendingSellPriceAction ? t('awaitingNextDay') : null;
 
     const sellPricingConfigOverlay = sellPricingConfigSaving
-        ? 'Saving…'
+        ? t('saving')
         : pendingSellPricingConfigAction
-          ? 'Awaiting next day…'
+          ? t('awaitingNextDay')
           : null;
 
     const sellVolumeConfigOverlay = sellVolumeConfigSaving
-        ? 'Saving…'
+        ? t('saving')
         : pendingSellVolumeConfigAction
-          ? 'Awaiting next day…'
+          ? t('awaitingNextDay')
           : null;
 
     return {

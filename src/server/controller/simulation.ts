@@ -702,6 +702,8 @@ export const getAgentFinancialHistory = () =>
                         avgWages: z.number(),
                         sumPurchases: z.number(),
                         sumClaimPayments: z.number(),
+                        sumInterestPaid: z.number(),
+                        sumWealthTaxPaid: z.number(),
                     }),
                 ),
             }),
@@ -728,6 +730,8 @@ export const getAgentFinancialHistory = () =>
                         avgWages: r.avg_wages ?? 0,
                         sumPurchases: r.sum_purchases ?? 0,
                         sumClaimPayments: r.sum_claim_payments ?? 0,
+                        sumInterestPaid: r.sum_interest_paid ?? 0,
+                        sumWealthTaxPaid: r.sum_wealth_tax_paid ?? 0,
                     }))
                     .sort((a, b) => a.bucket - b.bucket),
             };
@@ -746,15 +750,18 @@ export const getUsedLogos = () =>
             return { usedLogos };
         });
 
-const bankruptcyRecordSchema = z.object({
+const bankruptcyBaseSchema = z.object({
     agentId: z.string(),
     agentName: z.string(),
     planetId: z.string(),
     planetName: z.string().nullable(),
     tick: z.number(),
-    outcome: z.enum(['restructured', 'liquidated']),
-    message: z.string(),
 });
+
+const bankruptcyRecordSchema = z.discriminatedUnion('outcome', [
+    bankruptcyBaseSchema.extend({ outcome: z.literal('liquidated') }),
+    bankruptcyBaseSchema.extend({ outcome: z.literal('restructured'), successorAgentName: z.string() }),
+]);
 
 export const getMyBankruptcy = () =>
     protectedProcedure
@@ -868,31 +875,89 @@ export const getLoanConditions = () =>
             return { conditions: conditions ?? null, activeLoans: activeLoans ?? [] };
         });
 
+const tickerEventCategorySchema = z.enum([
+    'agentCreated',
+    'shipDispatched',
+    'shipArrived',
+    'shipCompleted',
+    'facilityCompleted',
+    'facilityScrapped',
+    'licenseAcquired',
+    'agentBankrupt',
+    'contractAccepted',
+    'loanRollover',
+    'priceSpike',
+    'populationMilestone',
+]);
+
+const resourceFormSchema = z.enum([
+    'solid',
+    'liquid',
+    'pieces',
+    'landBoundResource',
+    'services',
+    'currency',
+    'internal',
+]);
+
+const tickerEventLoadSchema = z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('empty') }),
+    z.object({ kind: z.literal('cargo'), quantity: z.number(), resourceForm: resourceFormSchema }),
+    z.object({
+        kind: z.literal('cargoRange'),
+        current: z.number(),
+        goal: z.number(),
+        resourceForm: resourceFormSchema,
+        resourceName: z.string(),
+    }),
+    z.object({ kind: z.literal('construction') }),
+    z.object({ kind: z.literal('passenger') }),
+]);
+
+const tickerEventDetailsSchema = z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('agentCreated'), planetName: z.string() }),
+    z.object({ kind: z.literal('licenseAcquired'), planetName: z.string(), licenseType: z.string() }),
+    z.object({ kind: z.literal('facilityCompleted'), planetName: z.string(), facilityName: z.string() }),
+    z.object({ kind: z.literal('facilityScrapped'), planetName: z.string(), facilityName: z.string() }),
+    z.object({
+        kind: z.literal('shipCompleted'),
+        planetName: z.string(),
+        shipName: z.string(),
+        shipType: z.string(),
+    }),
+    z.object({
+        kind: z.literal('shipDispatched'),
+        shipName: z.string(),
+        fromPlanetId: z.string(),
+        toPlanetId: z.string(),
+        load: tickerEventLoadSchema,
+    }),
+    z.object({
+        kind: z.literal('shipArrived'),
+        shipName: z.string(),
+        fromPlanetId: z.string(),
+        toPlanetId: z.string(),
+    }),
+    z.object({ kind: z.literal('companyDissolved') }),
+    z.object({ kind: z.literal('companyRefounded'), successorName: z.string() }),
+    z.object({ kind: z.literal('companyRestructured'), successorName: z.string() }),
+]);
+
+export type TickerEventDetails = z.infer<typeof tickerEventDetailsSchema>;
+
 const baseTickerEventSchema = z.object({
     id: z.number(),
     planetId: z.string(),
     tick: z.number(),
+    agentLogo: z.string(),
 });
 
 const tickerEventSchema = baseTickerEventSchema.extend(
     z.object({
-        category: z.enum([
-            'agentCreated',
-            'shipDispatched',
-            'shipArrived',
-            'shipCompleted',
-            'facilityCompleted',
-            'facilityScrapped',
-            'licenseAcquired',
-            'agentBankrupt',
-            'contractAccepted',
-            'loanRollover',
-            'priceSpike',
-            'populationMilestone',
-        ]),
+        category: tickerEventCategorySchema,
         agentId: z.string().optional(),
         agentName: z.string().optional(),
-        message: z.string(),
+        details: tickerEventDetailsSchema,
     }).shape,
 );
 

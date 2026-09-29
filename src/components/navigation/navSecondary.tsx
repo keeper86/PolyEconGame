@@ -11,11 +11,13 @@ import {
 import type { RouteMetadata } from '@/lib/appRoutes';
 import { getSecondaryNavRoutes } from '@/lib/appRoutes';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 
 export function NavSecondary({ ...props }: React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
     const secondaryNavRoutes = getSecondaryNavRoutes();
     const { isMobile, setOpenMobile } = useSidebar();
+    const t = useTranslations('Nav');
 
     const loggedIn = useSession().status === 'authenticated';
 
@@ -37,7 +39,7 @@ export function NavSecondary({ ...props }: React.ComponentPropsWithoutRef<typeof
                                         {item.isPublic === true || loggedIn ? (
                                             <Link href={item.path as unknown as '/'}>
                                                 {item.icon && <item.icon width={16} height={16} />}
-                                                <span>{item.label}</span>
+                                                <span>{t(item.label)}</span>
                                             </Link>
                                         ) : (
                                             <span
@@ -45,7 +47,7 @@ export function NavSecondary({ ...props }: React.ComponentPropsWithoutRef<typeof
                                                 aria-disabled='true'
                                             >
                                                 {item.icon && <item.icon width={16} height={16} />}
-                                                <span>{item.label}</span>
+                                                <span>{t(item.label)}</span>
                                             </span>
                                         )}
                                     </SidebarMenuButton>

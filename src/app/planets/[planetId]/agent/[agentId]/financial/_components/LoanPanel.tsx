@@ -16,6 +16,8 @@ import { Separator } from '@/components/ui/separator';
 import { useTour } from '@/components/tour/TourContext';
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
+import { useErrorMessage } from '@/i18n/errors';
+import { useLocale, useTranslations } from 'next-intl';
 
 type Props = {
     agentId: string;
@@ -23,30 +25,51 @@ type Props = {
     deposits: number;
 };
 
-const LOAN_TYPE_LABELS: Record<Loan['type'], string> = {
-    starter: 'Starter',
-    discretionary: 'Discretionary',
-    wageCoverage: 'Wage coverage',
-    emergency: 'Emergency',
-    governmentSupport: 'Government support',
-    rollover: 'Rollover',
-    bufferCoverage: 'Buffer coverage',
-    claimCoverage: 'Claim coverage',
-    shipPenaltyCoverage: 'Ship penalty',
-    licenseBootstrap: 'License bootstrap',
-    forexWorkingCapital: 'Forex working capital',
-    shipbuilderBootstrap: 'Shipbuilder bootstrap',
-    consolidated: 'Consolidated',
+type LoanTypeKey =
+    | 'starter'
+    | 'discretionary'
+    | 'wageCoverage'
+    | 'emergency'
+    | 'governmentSupport'
+    | 'rollover'
+    | 'bufferCoverage'
+    | 'claimCoverage'
+    | 'shipPenaltyCoverage'
+    | 'licenseBootstrap'
+    | 'forexWorkingCapital'
+    | 'shipbuilderBootstrap'
+    | 'consolidated';
+
+const LOAN_TYPE_LABEL_KEYS: Record<Loan['type'], LoanTypeKey> = {
+    starter: 'starter',
+    discretionary: 'discretionary',
+    wageCoverage: 'wageCoverage',
+    emergency: 'emergency',
+    governmentSupport: 'governmentSupport',
+    rollover: 'rollover',
+    bufferCoverage: 'bufferCoverage',
+    claimCoverage: 'claimCoverage',
+    shipPenaltyCoverage: 'shipPenaltyCoverage',
+    licenseBootstrap: 'licenseBootstrap',
+    forexWorkingCapital: 'forexWorkingCapital',
+    shipbuilderBootstrap: 'shipbuilderBootstrap',
+    consolidated: 'consolidated',
 };
 
 const LOAN_REQUEST_PENDING_KEY = '__loan_request__';
 
-function overlayMessage(isSending: boolean, isAwaitingTick: boolean): string | null {
+type OverlayMessageKey = 'sendingRequest' | 'awaitingNextDay';
+
+function overlayMessage(
+    t: (key: OverlayMessageKey) => string,
+    isSending: boolean,
+    isAwaitingTick: boolean,
+): string | null {
     if (isSending) {
-        return 'Sending request…';
+        return t('sendingRequest');
     }
     if (isAwaitingTick) {
-        return 'Awaiting next day…';
+        return t('awaitingNextDay');
     }
     return null;
 }
@@ -75,8 +98,11 @@ function LoanRow({
     agentId: string;
     planetId: string;
     onRepaid: (amount: number) => void;
-    onError: (msg: string) => void;
+    onError: (error: unknown) => void;
 }) {
+    const locale = useLocale();
+    const t = useTranslations('Financial');
+    const tLoanType = useTranslations('Financial.loanTypes');
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const addPending = useAddPendingAction();
@@ -105,7 +131,7 @@ function LoanRow({
                 });
             },
             onError: (err) => {
-                onError(err instanceof Error ? err.message : 'Repayment failed');
+                onError(err);
             },
         }),
     );
@@ -115,21 +141,25 @@ function LoanRow({
 
     const isSending = repayMutation.isPending;
     const isAwaitingTick = hasPendingRepay && !isSending;
-    const overlayMsg = overlayMessage(isSending, isAwaitingTick);
+    const overlayMsg = overlayMessage(t, isSending, isAwaitingTick);
 
     return (
         <div className='space-y-2 relative'>
             <div className='text-xs'>
                 <div className='flex items-center justify-between gap-2'>
                     <span className='flex items-center'>
-                        <span className='font-medium text-foreground'>{LOAN_TYPE_LABELS[loan.type]}</span>
+                        <span className='font-medium text-foreground'>
+                            {tLoanType(LOAN_TYPE_LABEL_KEYS[loan.type])}
+                        </span>
                     </span>
                     <span>
-                        Loan Rate {pct.toFixed(1)} % p.a. ·{' '}
-                        {formatNumberWithUnit(monthlyInterest, 'currency', planetId)}/month
+                        {t('loanRate', {
+                            rate: pct.toFixed(1),
+                            monthly: formatNumberWithUnit(monthlyInterest, 'currency', planetId, locale),
+                        })}
                     </span>
-                    {loan.maturityTick > 0 && <span>Matures: {mapTickToDate(loan.maturityTick)}</span>}
-                    {!loan.earlyRepaymentAllowed && <span className='italic'>No early repayment</span>}
+                    {loan.maturityTick > 0 && <span>{t('matures', { date: mapTickToDate(loan.maturityTick) })}</span>}
+                    {!loan.earlyRepaymentAllowed && <span className='italic'>{t('noEarlyRepayment')}</span>}
                 </div>
             </div>
 
@@ -144,7 +174,7 @@ function LoanRow({
                                 key={fraction}
                                 variant='payback'
                                 label={label}
-                                amount={formatNumberWithUnit(amount, 'units', planetId)}
+                                amount={formatNumberWithUnit(amount, 'units', planetId, locale)}
                                 isFull={fraction === 1}
                                 disabled={
                                     repayMutation.isPending || !canAfford || amount === 0 || !loan.earlyRepaymentAllowed
@@ -165,6 +195,10 @@ function LoanRow({
 }
 
 export default function LoanPanel({ agentId, planetId, deposits }: Props): React.ReactElement {
+    const locale = useLocale();
+    const t = useTranslations('Toasts');
+    const tf = useTranslations('Financial');
+    const showError = useErrorMessage();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const { isTourActive, markActionCompleted } = useTour();
@@ -188,7 +222,9 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
         trpc.requestLoan.mutationOptions({
             onSuccess: (result) => {
                 toast.success(
-                    `Loan request successful: ${formatNumberWithUnit(result.grantedAmount, 'currency', planetId)} will be credited after this tick.`,
+                    t('loanRequested', {
+                        amount: formatNumberWithUnit(result.grantedAmount, 'currency', planetId, locale),
+                    }),
                 );
 
                 addPending({
@@ -209,34 +245,34 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
             },
             onError: (err) => {
                 removePendingByKey(agentId, planetId, LOAN_REQUEST_PENDING_KEY);
-                toast.error(err instanceof Error ? err.message : 'Loan request failed');
+                toast.error(err instanceof Error ? showError(err) : t('loanRequestFailed'));
             },
         }),
     );
 
     const isSendingLoan = requestLoanMutation.isPending;
     const isAwaitingLoan = hasPendingLoanRequest && !isSendingLoan;
-    const loanOverlayMsg = overlayMessage(isSendingLoan, isAwaitingLoan);
+    const loanOverlayMsg = overlayMessage(tf, isSendingLoan, isAwaitingLoan);
 
     return (
         <div className='space-y-3' data-tour='financial-loan-panel'>
             {}
-            {isLoading && <p className='text-xs text-muted-foreground'>Loading credit conditions…</p>}
+            {isLoading && <p className='text-xs text-muted-foreground'>{tf('loadingConditions')}</p>}
 
             {!isLoading && conditions === null && (
-                <p className='text-xs text-muted-foreground'>
-                    Credit conditions unavailable. The agent or planet may not be loaded yet.
-                </p>
+                <p className='text-xs text-muted-foreground'>{tf('conditionsUnavailable')}</p>
             )}
 
             <p className='text-sm font-semibold flex items-center gap-2'>
                 <HandCoins className='h-4 w-4 text-muted-foreground' />
-                Request a loan
+                {tf('requestLoan')}
             </p>
             {conditions && (
                 <p className='text-xs text-muted-foreground'>
-                    Interest on new loans:{' '}
-                    <span className='text-foreground'>{(conditions.annualInterestRate * 100).toFixed(1)} % p.a. </span>
+                    {tf('interestOnNewLoans')}{' '}
+                    <span className='text-foreground'>
+                        {tf('interestRateValue', { rate: (conditions.annualInterestRate * 100).toFixed(1) })}
+                    </span>
                 </p>
             )}
             {conditions && (conditions.maxLoanAmount > 0 || conditions.isNewAgent) && (
@@ -248,7 +284,14 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                                     variant='starter'
                                     planetId={planetId}
                                     isFull={true}
-                                    label={`Take initial loan ${formatNumberWithUnit(conditions.maxLoanAmount, 'units', planetId)}`}
+                                    label={tf('takeInitialLoan', {
+                                        amount: formatNumberWithUnit(
+                                            conditions.maxLoanAmount,
+                                            'units',
+                                            planetId,
+                                            locale,
+                                        ),
+                                    })}
                                     isPending={requestLoanMutation.isPending}
                                     disabled={conditions.maxLoanAmount === 0}
                                     onClick={() => {
@@ -261,13 +304,13 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                                 />
                             </span>
                             <p className='text-xs text-muted-foreground'>
-                                Maturity: {mapTickToDate(currentTick + LOAN_TERM_TICKS.starter)}
+                                {tf('maturity', { date: mapTickToDate(currentTick + LOAN_TERM_TICKS.starter) })}
                             </p>
                         </>
                     ) : (
                         <>
                             <p className='text-xs text-muted-foreground '>
-                                Maturity: {mapTickToDate(currentTick + LOAN_TERM_TICKS.discretionary)}
+                                {tf('maturity', { date: mapTickToDate(currentTick + LOAN_TERM_TICKS.discretionary) })}
                             </p>
                             <div className='flex justify-between gap-2'>
                                 {(
@@ -283,7 +326,7 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                                         <CreditButton
                                             key={label}
                                             label={label}
-                                            amount={formatNumberWithUnit(amount, 'units', planetId)}
+                                            amount={formatNumberWithUnit(amount, 'units', planetId, locale)}
                                             isFull={isFull}
                                             isPending={requestLoanMutation.isPending}
                                             disabled={conditions.maxLoanAmount === 0}
@@ -310,17 +353,12 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                         className='w-full h-[42px] flex items-center gap-2 border-muted-foreground/30 bg-muted/20 cursor-not-allowed'
                     >
                         <Ban className='h-5 w-5 text-muted-foreground' />
-                        <span className='text-md'>No additional credit available</span>
+                        <span className='text-md'>{tf('noAdditionalCredit')}</span>
                     </Button>
-                    <span className='text-[10px] right-0 text-muted-foreground'>
-                        Improve your cash flow (increase revenue or reduce costs) or raise your asset evaluation to
-                        unlock further borrowing.
-                    </span>
+                    <span className='text-[10px] right-0 text-muted-foreground'>{tf('improveCashFlow')}</span>
                 </div>
             ) : (
-                <p className='text-xs text-muted-foreground'>
-                    The funds will be credited to your account after the current tick completes.
-                </p>
+                <p className='text-xs text-muted-foreground'>{tf('fundsCredited')}</p>
             )}
 
             <Separator />
@@ -346,17 +384,21 @@ function OutstandingLoansSection({
     agentId: string;
     planetId: string;
 }) {
+    const locale = useLocale();
+    const t = useTranslations('Toasts');
+    const tf = useTranslations('Financial');
+    const showError = useErrorMessage();
     return (
         <Collapsible defaultOpen={false} className={'space-y-2 '} disabled={activeLoans.length === 0}>
             <CollapsibleTrigger
                 className={`text-sm font-semibold flex items-center gap-2 hover:opacity-80 transition-opacity [&[data-state=closed]>svg:last-child]:rotate-0 [&[data-state=open]>svg:last-child]:rotate-180 ${activeLoans.length === 0 ? 'cursor-not-allowed' : 'cursor-pointer'}`}
             >
                 <Landmark className='h-4 w-4 text-muted-foreground' />
-                Outstanding loans ({activeLoans.length})
+                {tf('outstandingLoansCount', { count: activeLoans.length })}
                 <ChevronDown className='h-4 w-4 text-muted-foreground transition-transform duration-200' />
             </CollapsibleTrigger>
             <CollapsibleContent>
-                <p className='text-xs text-muted-foreground'>Pay back early:</p>
+                <p className='text-xs text-muted-foreground'>{tf('payBackEarly')}</p>
                 <div className='space-y-2 pt-1'>
                     {activeLoans.map((loan) => (
                         <LoanRow
@@ -367,12 +409,12 @@ function OutstandingLoansSection({
                             planetId={planetId}
                             onRepaid={(amount) => {
                                 toast.success(
-                                    `Repaid ${formatNumberWithUnit(amount, 'currency', planetId)} — loan partially or fully settled.`,
+                                    t('loanRepaid', {
+                                        amount: formatNumberWithUnit(amount, 'currency', planetId, locale),
+                                    }),
                                 );
                             }}
-                            onError={(msg) => {
-                                toast.error(msg);
-                            }}
+                            onError={showError}
                         />
                     ))}
                 </div>

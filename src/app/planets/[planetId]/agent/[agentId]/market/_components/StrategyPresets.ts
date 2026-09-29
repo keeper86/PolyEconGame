@@ -31,39 +31,11 @@ export type SellPricingPresetType = 'liquidation' | 'market-rate' | 'premium' | 
 
 // ─── Buy Volume presets ──────────────────────────────────────────────────────
 
-export const BUY_VOLUME_PRESET_LABELS: Record<BuyVolumePresetType, string> = {
-    'just-in-time': 'Lean',
-    'balanced': 'Balanced',
-    'stockpile': 'Hoard',
-    'custom': '⚙️',
-};
-
 export const BUY_VOLUME_PRESET_ORDER: BuyVolumePresetType[] = ['just-in-time', 'balanced', 'stockpile', 'custom'];
-
-export const SELL_VOLUME_PRESET_LABELS: Record<SellVolumePresetType, string> = {
-    dump: 'Dump',
-    balanced: 'Balanced',
-    reserve: 'Reserve',
-    custom: '⚙️',
-};
 
 export const SELL_VOLUME_PRESET_ORDER: SellVolumePresetType[] = ['dump', 'balanced', 'reserve', 'custom'];
 
-export const BUY_PRICING_PRESET_LABELS: Record<PricingPresetType, string> = {
-    'patient': 'Patient',
-    'market-rate': 'Market Rate',
-    'urgent': 'Urgent',
-    'custom': '⚙️',
-};
-
 export const BUY_PRICING_PRESET_ORDER: PricingPresetType[] = ['patient', 'market-rate', 'urgent', 'custom'];
-
-export const SELL_PRICING_PRESET_LABELS: Record<SellPricingPresetType, string> = {
-    'liquidation': 'Liquidation',
-    'market-rate': 'Market Rate',
-    'premium': 'Premium',
-    'custom': '⚙️',
-};
 
 export const SELL_PRICING_PRESET_ORDER: SellPricingPresetType[] = ['liquidation', 'market-rate', 'premium', 'custom'];
 

@@ -7,6 +7,7 @@ import React from 'react';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { FaTruck } from 'react-icons/fa';
 import { Warehouse } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export function StorageStarvationBar({
     ss,
@@ -16,6 +17,7 @@ export function StorageStarvationBar({
     scope?: 'department' | 'shell';
 }): React.ReactElement {
     const smallScreen = useIsSmallScreen();
+    const tr = useTranslations('Storage');
     const pct = ss * 100;
     const healthColor = BANDS[classifyBand(ss)].color;
     const storageColor = BANDS[classifyBand(1 - storagePreservationFactor(ss))].color;
@@ -25,7 +27,7 @@ export function StorageStarvationBar({
             <span className='flex w-full flex-row justify-between'>
                 <span className='flex items-center gap-1'>
                     <Warehouse className='h-4 w-4' />
-                    Storage {smallScreen ? '' : 'health'}
+                    {smallScreen ? tr('storageShort') : tr('storageHealthLabel')}
                 </span>
                 <span style={{ color: storageColor }}>{storagePreservationFactor(ss) * 100}%</span>
             </span>
@@ -44,7 +46,7 @@ export function StorageStarvationBar({
             <span className='flex w-full flex-row justify-between'>
                 <span className='flex items-center gap-1'>
                     <FaTruck className='h-4 w-4' />
-                    Transport {smallScreen ? '' : 'efficiency'}
+                    {smallScreen ? tr('transportShort') : tr('transportEfficiencyLabel')}
                 </span>
                 <span style={{ color: BANDS[classifyBand(1 - inflowPreservation(ss))].color }}>
                     {inflowPreservation(ss) * 100}%
@@ -78,27 +80,27 @@ export function StorageStarvationBar({
                 <div className='text-xs space-y-1'>
                     {scope === 'shell' && (
                         <>
-                            <div style={{ color: healthColor }}>Storage Health: {(100 - pct).toFixed(0)}%</div>
+                            <div style={{ color: healthColor }}>
+                                {tr('storageHealthTooltip')} {(100 - pct).toFixed(0)}%
+                            </div>
                             <div style={{ color: BANDS[classifyBand(1 - storagePreservationFactor(ss))].color }}>
-                                Storage Preservation: {storagePreservationFactor(ss) * 100}%
+                                {tr('preservationTooltip')} {storagePreservationFactor(ss) * 100}%
                             </div>
                             <div className='text-muted-foreground'>
-                                {ss >= 0.5
-                                    ? 'This storage facility is over-utilised. Expand it to reduce decay losses.'
-                                    : 'This storage facility is keeping its contents stable.'}
+                                {ss >= 0.5 ? tr('overUtilised') : tr('stableStorage')}
                             </div>
                         </>
                     )}
                     {scope === 'department' && (
                         <>
-                            <div style={{ color: healthColor }}>Transport Health: {(100 - pct).toFixed(0)}%</div>
+                            <div style={{ color: healthColor }}>
+                                {tr('transportHealthTooltip')} {(100 - pct).toFixed(0)}%
+                            </div>
                             <div style={{ color: BANDS[classifyBand(1 - inflowPreservation(ss))].color }}>
-                                Inflow Efficiency: {inflowPreservation(ss) * 100}%
+                                {tr('inflowTooltip')} {inflowPreservation(ss) * 100}%
                             </div>
                             <div className='text-muted-foreground'>
-                                {ss >= 0.5
-                                    ? 'Expand your Logistics Department to reduce throughput losses.'
-                                    : 'Your Logistics Department is keeping the flow stable.'}
+                                {ss >= 0.5 ? tr('expandLogistics') : tr('flowStable')}
                             </div>
                         </>
                     )}

@@ -13,6 +13,7 @@ import React from 'react';
 import { countManifestPassengers } from './PassengerManifestDialog';
 import { PassengerManifestButton } from './PassengerManifestButton';
 import { planetName, type PlanetSummary } from './shipFormatting';
+import { useLocale, useTranslations } from 'next-intl';
 
 function provisionEfficiency(provision: { currently: number; goal: number }): number {
     return provision.goal > 0 ? Math.min(provision.currently / provision.goal, 1) : 1;
@@ -27,6 +28,9 @@ export function ShipPassengerProvisioningRow({
     planetSummaries: PlanetSummary[];
     agentId: string;
 }): React.ReactElement {
+    const locale = useLocale();
+    const t = useTranslations('Ships');
+    const tu = useTranslations('Units');
     const total = countManifestPassengers(state.manifest);
     const grocery = state.groceryProvisioned;
     const healthcare = state.healthcareProvisioned;
@@ -41,8 +45,11 @@ export function ShipPassengerProvisioningRow({
         <div className='space-y-1.5'>
             <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
                 <span>
-                    Provisioning <span className='tabular-nums text-foreground'>{total.toLocaleString()}</span>{' '}
-                    passengers
+                    {t('status.provisioning')}{' '}
+                    <span className='tabular-nums text-foreground'>
+                        {formatNumberWithUnit(total, 'persons', undefined, locale)}
+                    </span>{' '}
+                    {tu('passengers')}
                 </span>
                 <ArrowRight className='h-3 w-3' />
                 <span>{destination}</span>
@@ -56,7 +63,7 @@ export function ShipPassengerProvisioningRow({
                     isLimiting={groceryEff === minEff}
                     planetId={state.planetId}
                     agentId={agentId}
-                    quantityLabel={`${formatNumberWithUnit(grocery.currently, 'units')} (${formatNumberWithUnit(grocery.goal, 'units')})`}
+                    quantityLabel={`${formatNumberWithUnit(grocery.currently, 'units', undefined, locale)} (${formatNumberWithUnit(grocery.goal, 'units', undefined, locale)})`}
                 />
                 <ProductQuantity
                     resource={healthcareServiceResourceType}
@@ -65,7 +72,7 @@ export function ShipPassengerProvisioningRow({
                     isLimiting={healthcareEff === minEff}
                     planetId={state.planetId}
                     agentId={agentId}
-                    quantityLabel={`${formatNumberWithUnit(healthcare.currently, 'units')} (${formatNumberWithUnit(healthcare.goal, 'units')})`}
+                    quantityLabel={`${formatNumberWithUnit(healthcare.currently, 'units', undefined, locale)} (${formatNumberWithUnit(healthcare.goal, 'units', undefined, locale)})`}
                 />
                 {education.goal > 0 && (
                     <ProductQuantity
@@ -75,7 +82,7 @@ export function ShipPassengerProvisioningRow({
                         isLimiting={educationEff === minEff}
                         planetId={state.planetId}
                         agentId={agentId}
-                        quantityLabel={`${formatNumberWithUnit(education.currently, 'units')} (${formatNumberWithUnit(education.goal, 'units')})`}
+                        quantityLabel={`${formatNumberWithUnit(education.currently, 'units', undefined, locale)} (${formatNumberWithUnit(education.goal, 'units', undefined, locale)})`}
                     />
                 )}
             </div>

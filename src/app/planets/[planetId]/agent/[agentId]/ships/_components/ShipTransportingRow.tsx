@@ -1,10 +1,13 @@
 'use client';
 
+import { formatNumberWithUnit } from '@/lib/utils';
 import { ProductIcon } from '@/components/client/ProductIcon';
 import type { TransportShipStatusTransporting } from '@/simulation/ships/ships';
+import { termFor } from '@/i18n/terms';
 import { ArrowRight } from 'lucide-react';
 import React from 'react';
 import { planetName, ShipEta, type PlanetSummary } from './shipFormatting';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function ShipTransportingRow({
     state,
@@ -15,18 +18,22 @@ export function ShipTransportingRow({
     planetSummaries: PlanetSummary[];
     tick: number;
 }): React.ReactElement {
+    const locale = useLocale();
+    const t = useTranslations('Common');
     return (
         <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
             {state.cargo ? (
                 <>
                     <ProductIcon productName={state.cargo.resource.name} size={18} />
                     <span>
-                        <span className='tabular-nums text-foreground'>{state.cargo.quantity.toLocaleString()}</span>{' '}
-                        {state.cargo.resource.name}
+                        <span className='tabular-nums text-foreground'>
+                            {formatNumberWithUnit(state.cargo.quantity, 'units', undefined, locale)}
+                        </span>{' '}
+                        {termFor(locale, state.cargo.resource.name)}
                     </span>
                 </>
             ) : (
-                <span>Empty</span>
+                <span>{t('empty')}</span>
             )}
             <ArrowRight className='h-3 w-3' />
             <span>{planetName(planetSummaries, state.to)}</span>

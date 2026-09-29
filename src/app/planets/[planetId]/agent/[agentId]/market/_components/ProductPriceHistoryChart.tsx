@@ -7,6 +7,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { usePriceScaleModePreference, type PriceScaleMode } from '@/hooks/uiPreferences';
 import { liveYearX } from '@/lib/chartTime';
 import { useTRPC } from '@/lib/trpc';
+import type { Locale } from '@/i18n/config';
 import { formatNumberWithUnit } from '@/lib/utils';
 
 import {
@@ -19,6 +20,7 @@ import {
     decadeWindowAxis,
     formatDecadeLabel,
     formatYearLabel,
+    monthShortName,
     yearCentre,
     yearStart,
     yearWindowAxis,
@@ -28,8 +30,7 @@ import { computeMonthlyData, computeMonthlyGhostData } from './monthlyChartLogic
 import type { ChartPoint, LiveData, RawPoint } from './monthlyChartLogic';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useIsSmallScreen } from '@/hooks/useMobile';
-
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+import { useLocale, useTranslations } from 'next-intl';
 
 function rescalePoints(points: ChartPoint[]): ChartPoint[] {
     return points.map((p) => {
@@ -105,29 +106,44 @@ function usesLogScale(points: ChartPoint[]): boolean {
     return lo > 0 && hi / lo >= 10;
 }
 
+type PriceLabelKey =
+    | 'avgPrice'
+    | 'minPrice'
+    | 'maxPrice'
+    | 'estimatedCost'
+    | 'rescaledPrice'
+    | 'rescaledMinPrice'
+    | 'rescaledMaxPrice'
+    | 'rescaledEstCost';
+
+const PRICE_LABEL_KEYS: Record<string, PriceLabelKey> = {
+    avgPrice: 'avgPrice',
+    minPrice: 'minPrice',
+    maxPrice: 'maxPrice',
+    priceFloor: 'estimatedCost',
+};
+
+const RESCALED_PRICE_LABEL_KEYS: Record<string, PriceLabelKey> = {
+    avgPrice: 'rescaledPrice',
+    minPrice: 'rescaledMinPrice',
+    maxPrice: 'rescaledMaxPrice',
+    priceFloor: 'rescaledEstCost',
+};
+
 const tooltipValueFormatter = (
     value: number,
     _name: string,
     rescaleMode: PriceScaleMode,
     planetId: string,
+    locale: Locale,
+    t: (key: PriceLabelKey) => string,
 ): [string, string] => {
-    const labels: Record<string, string> = {
-        avgPrice: 'Avg price',
-        minPrice: 'Min price',
-        maxPrice: 'Max price',
-        priceFloor: 'Estimated Cost',
-    };
     if (rescaleMode === 'relative') {
-        const labelMap: Record<string, string> = {
-            avgPrice: 'Rescaled price',
-            minPrice: 'Rescaled Min price',
-            maxPrice: 'Rescaled Max price',
-            priceFloor: 'Resc.est. cost (1)',
-        };
-        const label = labelMap[_name] ?? _name;
-        return [`${value.toFixed(2)}×`, label];
+        const key = RESCALED_PRICE_LABEL_KEYS[_name];
+        return [`${value.toFixed(2)}×`, key ? t(key) : _name];
     }
-    return [formatNumberWithUnit(value, 'currency', planetId), labels[_name] ?? _name];
+    const key = PRICE_LABEL_KEYS[_name];
+    return [formatNumberWithUnit(value, 'currency', planetId, locale), key ? t(key) : _name];
 };
 
 type MergedPoint = {
@@ -177,6 +193,9 @@ function SimplePriceAreaChart({
     planetId: string;
     xAllowDataOverflow?: boolean;
 }) {
+    const locale = useLocale();
+    const tPriceLabels = useTranslations('Market.priceLabels');
+    const tLegend = useTranslations('Market.legend');
     const smallScreen = useIsSmallScreen();
     const mergedData = useMemo((): MergedPoint[] => {
         if (!ghostData || ghostData.length === 0) {
@@ -225,8 +244,9 @@ function SimplePriceAreaChart({
         if (rescaleMode === 'relative') {
             return (v: number) => `${v.toFixed(1)}×`;
         }
-        return (v: number) => (typeof v === 'number' ? formatNumberWithUnit(v, 'currency', planetId) : String(v));
-    }, [rescaleMode, planetId]);
+        return (v: number) =>
+            typeof v === 'number' ? formatNumberWithUnit(v, 'currency', planetId, locale) : String(v);
+    }, [rescaleMode, planetId, locale]);
 
     return (
         <ResponsiveContainer width='100%' height='100%'>
@@ -306,6 +326,8 @@ function SimplePriceAreaChart({
                                         p.name as string,
                                         rescaleMode,
                                         planetId,
+                                        locale,
+                                        tPriceLabels,
                                     );
                                     return (
                                         <div key={p.name} style={{ color: seriesColor[p.name as string] ?? '#e2e8f0' }}>
@@ -328,23 +350,23 @@ function SimplePriceAreaChart({
                         let costLabel: string;
                         if (smallScreen) {
                             if (rescaleMode === 'relative') {
-                                priceLabel = 'Sca. price';
-                                minMaxLabel = 'Sca. min/max';
-                                costLabel = 'Sca. Cost';
+                                priceLabel = tLegend('scaPrice');
+                                minMaxLabel = tLegend('scaMinMax');
+                                costLabel = tLegend('scaCost');
                             } else {
-                                priceLabel = 'Avg Price';
-                                minMaxLabel = 'Min/max Price';
-                                costLabel = 'Est. Cost';
+                                priceLabel = tLegend('avgPrice');
+                                minMaxLabel = tLegend('minMaxPrice');
+                                costLabel = tLegend('estCost');
                             }
                         } else {
                             if (rescaleMode === 'relative') {
-                                priceLabel = 'Scaled price';
-                                minMaxLabel = 'Scaled min/max';
-                                costLabel = 'Scaled Cost';
+                                priceLabel = tLegend('scaledPrice');
+                                minMaxLabel = tLegend('scaledMinMax');
+                                costLabel = tLegend('scaledCost');
                             } else {
-                                priceLabel = 'Average Price';
-                                minMaxLabel = 'Min/max Price';
-                                costLabel = 'Estimated Cost';
+                                priceLabel = tLegend('averagePrice');
+                                minMaxLabel = tLegend('minMaxPrice');
+                                costLabel = tLegend('estimatedCost');
                             }
                         }
                         const entries = [
@@ -528,6 +550,8 @@ function MonthlyChart({
     rescaleMode: PriceScaleMode;
     planetId: string;
 }) {
+    const locale = useLocale();
+    const t = useTranslations('Market');
     const data = useMemo(
         (): ChartPoint[] => computeMonthlyData(monthlyPoints, live ?? { tick: 0, price: 0 }, productName),
         [monthlyPoints, live, productName],
@@ -547,19 +571,18 @@ function MonthlyChart({
     const yDomain = useMemo(() => yDomainFor([...scaleData, ...scaleGhostData]), [scaleData, scaleGhostData]);
     const gradId = `grad_mon_${productName.replace(/\s+/g, '_')}`;
 
-    const formatMonthTick = (monthIdx: number): string => MONTH_NAMES[(Math.ceil(monthIdx) + 11) % 12] ?? '';
+    const formatMonthTick = (monthIdx: number): string => monthShortName(locale, (Math.ceil(monthIdx) + 11) % 12);
 
     const monthTooltipLabel = (monthIdx: number): string => {
         const pt = data.find((p) => p.monthIdx === monthIdx);
         const { year: yearInt } = pt ? tickToDate(pt.tick) : { year: 0 };
         if (monthIdx === PREVIOUS_DECEMBER_IDX) {
-            return `End of ${MONTH_NAMES[11]} ${yearInt}`;
+            return t('endOfMonth', { month: monthShortName(locale, 11), year: yearInt });
         }
         if (!Number.isInteger(monthIdx)) {
-            return `Live data`;
+            return t('liveData');
         }
-        const label = MONTH_NAMES[(monthIdx + 11) % 12] ?? '';
-        return `End of ${label} ${yearInt}`;
+        return t('endOfMonth', { month: monthShortName(locale, (monthIdx + 11) % 12), year: yearInt });
     };
 
     return (
@@ -612,6 +635,7 @@ function YearlyChart({
     rescaleMode: PriceScaleMode;
     planetId: string;
 }) {
+    const locale = useLocale();
     const data = useMemo((): ChartPoint[] => {
         const rows = [...yearlyPoints]
             .sort((a, b) => a.bucket - b.bucket)
@@ -652,7 +676,7 @@ function YearlyChart({
                 xDomain={yearlyAxis.domain}
                 xTicks={yearlyAxis.ticks}
                 xTickFormatter={yearlyAxis.tickFormatter}
-                tooltipLabelFormatter={formatYearLabel}
+                tooltipLabelFormatter={(v) => formatYearLabel(locale, v)}
                 scale={useLog ? 'log' : 'linear'}
                 yDomain={yDomain}
                 yTicks={data.length === 0 ? [] : yTicks}
@@ -677,6 +701,7 @@ function DecadesChart({
     rescaleMode: PriceScaleMode;
     planetId: string;
 }) {
+    const locale = useLocale();
     const data = useMemo((): ChartPoint[] => {
         const rows = [...decadePoints]
             .sort((a, b) => a.bucket - b.bucket)
@@ -717,7 +742,7 @@ function DecadesChart({
                 xDomain={decade.domain}
                 xTicks={decade.ticks}
                 xTickFormatter={decade.tickFormatter}
-                tooltipLabelFormatter={formatDecadeLabel}
+                tooltipLabelFormatter={(v) => formatDecadeLabel(locale, v)}
                 scale={useLog ? 'log' : 'linear'}
                 yDomain={yDomain}
                 yTicks={data.length === 0 ? [] : yTicks}
@@ -731,6 +756,7 @@ function DecadesChart({
 
 export default function ProductPriceHistoryChart({ planetId, productName, live }: Props): React.ReactElement {
     const trpc = useTRPC();
+    const t = useTranslations('Market');
     const { granularity, setGranularity, currentTick } = useGranularity();
     const [rescaleMode, setRescaleMode] = usePriceScaleModePreference();
 
@@ -817,13 +843,13 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                                     value='absolute'
                                     className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                                 >
-                                    Price
+                                    {t('price')}
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value='relative'
                                     className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                                 >
-                                    {smallScreen ? 'P/C' : 'Price/Cost'}
+                                    {smallScreen ? t('priceOverCostShort') : t('priceOverCost')}
                                 </TabsTrigger>
                             </TabsList>
                         </Tabs>

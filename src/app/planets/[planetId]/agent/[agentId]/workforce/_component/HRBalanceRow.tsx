@@ -1,7 +1,10 @@
+'use client';
+
 import { Separator } from '@/components/ui/separator';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { PRODUCED_HR_QUANTITY } from '@/simulation/planet/specialFacilities';
 import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function HRBalanceRow({
     demand,
@@ -14,6 +17,8 @@ export function HRBalanceRow({
     production: number;
     children?: React.ReactNode;
 }): React.ReactElement {
+    const locale = useLocale();
+    const tr = useTranslations('Workforce');
     if (demand === 0) {
         return (
             <Link href={'' as never}>
@@ -22,21 +27,26 @@ export function HRBalanceRow({
                     <div className='py-1 flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground'>
                         <div className='flex flex-col items-center'>
                             {' '}
-                            production <span className='tabular-nums text-muted-foreground'>{production} workers</span>
+                            {tr('productionLabel')}{' '}
+                            <span className='tabular-nums text-muted-foreground'>
+                                {production} {tr('workers')}
+                            </span>
                         </div>
 
                         <span className='shrink-0'>−</span>
                         <div className='flex flex-col items-center'>
                             {' '}
-                            demand <span className='tabular-nums text-muted-foreground'>-</span>
+                            {tr('demandLabel')} <span className='tabular-nums text-muted-foreground'>-</span>
                         </div>
 
                         <span className='shrink-0'>{' → '}</span>
 
                         <div className='flex flex-col items-center text-foreground'>
                             {' '}
-                            buffer{' '}
-                            <span className='tabular-nums text-md text-muted-foreground'>{buffer} worker-days</span>
+                            {tr('bufferLabel')}{' '}
+                            <span className='tabular-nums text-md text-muted-foreground'>
+                                {buffer} {tr('workerDays')}
+                            </span>
                         </div>
                     </div>
                     {children}
@@ -54,18 +64,18 @@ export function HRBalanceRow({
                 <div className='py-1 flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground'>
                     <div className='flex flex-col items-center'>
                         {' '}
-                        production{' '}
+                        {tr('productionLabel')}{' '}
                         <span className='tabular-nums text-green-600 dark:text-green-400'>
-                            {formatNumberWithUnit(production / demand, 'days')}
+                            {formatNumberWithUnit(production / demand, 'days', undefined, locale)}
                         </span>
                     </div>
 
                     <span className='shrink-0'>−</span>
                     <div className='flex flex-col items-center'>
                         {' '}
-                        demand{' '}
+                        {tr('demandLabel')}{' '}
                         <span className='tabular-nums text-red-600 dark:text-red-400'>
-                            {formatNumberWithUnit(1, 'days')}
+                            {formatNumberWithUnit(1, 'days', undefined, locale)}
                         </span>
                     </div>
 
@@ -73,7 +83,7 @@ export function HRBalanceRow({
 
                     <div className='flex flex-col items-center text-foreground'>
                         {' '}
-                        buffer{' '}
+                        {tr('bufferLabel')}{' '}
                         <span
                             className={`tabular-nums text-md ${
                                 scaledBuffer >= 4
@@ -85,7 +95,7 @@ export function HRBalanceRow({
                                         : 'text-red-600 dark:text-red-400'
                             }`}
                         >
-                            {formatNumberWithUnit(scaledBuffer, 'days')}
+                            {formatNumberWithUnit(scaledBuffer, 'days', undefined, locale)}
                         </span>
                     </div>
                 </div>
@@ -98,17 +108,17 @@ export function HRBalanceRow({
 }
 
 export function HRBuildRow({ scale }: { scale: number }): React.ReactElement {
+    const locale = useLocale();
+    const tr = useTranslations('Workforce');
     return (
         <Link href={'' as never}>
             <Separator />
             <div className='py-1 flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground bg-muted/80 w-full h-12'>
                 <div className='flex flex-row items-center gap-1'>
                     {' '}
-                    Can manage up to{' '}
-                    <span className='tabular-nums text-green-600 dark:text-green-400'>
-                        {formatNumberWithUnit(scale * PRODUCED_HR_QUANTITY, 'persons')}
-                    </span>{' '}
-                    workers.
+                    {tr('canManageUpTo', {
+                        count: formatNumberWithUnit(scale * PRODUCED_HR_QUANTITY, 'persons', undefined, locale),
+                    })}
                 </div>
             </div>
             <Separator />

@@ -3,6 +3,7 @@
 import { tickToDate } from '@/components/client/TickDisplay';
 import { Card, CardContent } from '@/components/ui/card';
 import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
+import { monthShortName } from '@/lib/historyChartAxis';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
@@ -10,6 +11,7 @@ import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import type { Granularity } from '@/components/client/GranularityButtonGroup';
+import { useLocale, useTranslations } from 'next-intl';
 
 type AgentMetric =
     | 'netBalance'
@@ -29,33 +31,44 @@ type HistoryPoint = {
     sumConsumptionValue: number;
 };
 
+type ChartTitleKey =
+    | 'netBalance'
+    | 'monthlyNetIncome'
+    | 'productionValue'
+    | 'consumptionValue'
+    | 'wages'
+    | 'totalWorkers';
+
 type ChartConfig = {
-    title: string;
+    titleKey: ChartTitleKey;
     color: string;
     gradId: string;
     dataKey: keyof HistoryPoint;
 };
 
 const CHART_CONFIGS: Record<AgentMetric, ChartConfig> = {
-    netBalance: { title: 'Net Balance', color: '#4f46e5', gradId: 'gradBalance', dataKey: 'avgNetBalance' },
+    netBalance: { titleKey: 'netBalance', color: '#4f46e5', gradId: 'gradBalance', dataKey: 'avgNetBalance' },
     monthlyNetIncome: {
-        title: 'Monthly Net Income',
+        titleKey: 'monthlyNetIncome',
         color: '#10b981',
         gradId: 'gradIncome',
         dataKey: 'avgMonthlyNetIncome',
     },
-    productionValue: { title: 'Production Value', color: '#f59e0b', gradId: 'gradProd', dataKey: 'sumProductionValue' },
+    productionValue: {
+        titleKey: 'productionValue',
+        color: '#f59e0b',
+        gradId: 'gradProd',
+        dataKey: 'sumProductionValue',
+    },
     consumptionValue: {
-        title: 'Consumption Value',
+        titleKey: 'consumptionValue',
         color: '#8b5cf6',
         gradId: 'gradCons',
         dataKey: 'sumConsumptionValue',
     },
-    wages: { title: 'Wages', color: '#ef4444', gradId: 'gradWages', dataKey: 'avgWages' },
-    totalWorkers: { title: 'Total Workers', color: '#06b6d4', gradId: 'gradWorkers', dataKey: 'avgTotalWorkers' },
+    wages: { titleKey: 'wages', color: '#ef4444', gradId: 'gradWages', dataKey: 'avgWages' },
+    totalWorkers: { titleKey: 'totalWorkers', color: '#06b6d4', gradId: 'gradWorkers', dataKey: 'avgTotalWorkers' },
 };
-
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
 type MonthlyMergedPoint = {
     monthIdx: number;
@@ -171,23 +184,25 @@ function MonthlyMetricChart({
     currentTick: number;
     history: HistoryPoint[];
 }) {
+    const locale = useLocale();
+    const t = useTranslations('Charts');
     const yDomain = useMemo(() => yDomainForMerged(mergedData), [mergedData]);
     const { year: currentYear } = tickToDate(
         currentTick > 0 ? currentTick : (history[history.length - 1]?.bucket ?? 0),
     );
     const monthTooltipLabel = (monthIdx: number): string => {
         if (!Number.isInteger(monthIdx) || monthIdx === 0) {
-            return `${MONTH_NAMES[11]} ${currentYear - 1}`;
+            return `${monthShortName(locale, 11)} ${currentYear - 1}`;
         }
-        return `End of ${MONTH_NAMES[(monthIdx + 11) % 12]} ${currentYear}`;
+        return t('endOfMonth', { month: monthShortName(locale, (monthIdx + 11) % 12), year: currentYear });
     };
     const xTicks = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5];
-    const formatMonthTick = (monthIdx: number): string => MONTH_NAMES[(Math.ceil(monthIdx) + 11) % 12] ?? '';
+    const formatMonthTick = (monthIdx: number): string => monthShortName(locale, (Math.ceil(monthIdx) + 11) % 12);
 
     return (
         <Card>
             <CardContent className='px-3 pt-3 pb-2'>
-                <p className='text-xs font-semibold text-muted-foreground mb-2'>{config.title}</p>
+                <p className='text-xs font-semibold text-muted-foreground mb-2'>{t(config.titleKey)}</p>
                 <div style={{ width: '100%', height: 200 }}>
                     <ResponsiveContainer width='100%' height='100%'>
                         <AreaChart data={mergedData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
@@ -222,7 +237,7 @@ function MonthlyMetricChart({
                                 axisLine={false}
                                 tickLine={false}
                                 width={56}
-                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'units')}
+                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'units', undefined, locale)}
                             />
                             <Tooltip
                                 content={({ active, payload, label }) => {
@@ -251,13 +266,24 @@ function MonthlyMetricChart({
                                             </div>
                                             {hasCurrentVal && (
                                                 <div style={{ color: '#e2e8f0' }}>
-                                                    {config.title}:{' '}
-                                                    {formatNumberWithUnit(current.value as number, 'units')}
+                                                    {t(config.titleKey)}:{' '}
+                                                    {formatNumberWithUnit(
+                                                        current.value as number,
+                                                        'units',
+                                                        undefined,
+                                                        locale,
+                                                    )}
                                                 </div>
                                             )}
                                             {hasGhostVal && (
                                                 <div style={{ color: '#64748b' }}>
-                                                    Last year: {formatNumberWithUnit(ghost.value as number, 'units')}
+                                                    {t('lastYear')}{' '}
+                                                    {formatNumberWithUnit(
+                                                        ghost.value as number,
+                                                        'units',
+                                                        undefined,
+                                                        locale,
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -306,6 +332,8 @@ function NonMonthlyMetricChart({
     config: ChartConfig;
     granularity: 'yearly' | 'decade';
 }) {
+    const locale = useLocale();
+    const t = useTranslations('Charts');
     const chartData = useMemo(
         () =>
             [...data]
@@ -321,12 +349,14 @@ function NonMonthlyMetricChart({
     const xdomain = useMemo(() => [firstYear, firstYear + 11], [firstYear]);
     const formatYearTick = (year: number): string => `${Math.floor(year)}`;
     const tooltipLabel = (year: number): string =>
-        granularity === 'yearly' ? `Year ${Math.floor(year)}` : `Y${Math.round(year)}`;
+        granularity === 'yearly'
+            ? t('yearLabel', { year: Math.floor(year) })
+            : t('yearShort', { year: Math.round(year) });
 
     return (
         <Card>
             <CardContent className='px-3 pt-3 pb-2'>
-                <p className='text-xs font-semibold text-muted-foreground mb-2'>{config.title}</p>
+                <p className='text-xs font-semibold text-muted-foreground mb-2'>{t(config.titleKey)}</p>
                 <div style={{ width: '100%', height: 200 }}>
                     <ResponsiveContainer width='100%' height='100%'>
                         <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
@@ -354,11 +384,14 @@ function NonMonthlyMetricChart({
                                 axisLine={false}
                                 tickLine={false}
                                 width={56}
-                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'units')}
+                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'units', undefined, locale)}
                             />
                             <Tooltip
                                 labelFormatter={(v) => tooltipLabel(v as number)}
-                                formatter={(v) => [formatNumberWithUnit(v as number, 'units'), config.title]}
+                                formatter={(v) => [
+                                    formatNumberWithUnit(v as number, 'units', undefined, locale),
+                                    t(config.titleKey),
+                                ]}
                             />
                             <Area
                                 type='monotone'

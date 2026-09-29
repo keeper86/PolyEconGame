@@ -7,19 +7,12 @@ import { Label } from '@/components/ui/label';
 import { constructionShipType, shiptypes } from '@/simulation/ships/ships';
 import type { ConstructionShipType, PassengerShipType, TransportShipType } from '@/simulation/ships/ships';
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ShipBuildPlanPanel } from './ShipBuildPlanPanel';
 import { ShipTypeButton } from './ShipTypeButton';
 
-const categoryLabels: Record<keyof typeof shiptypes, string> = {
-    solid: 'Bulk Carriers',
-    liquid: 'Tankers',
-    pieces: 'Freighters',
-    passenger: 'Passenger Ships',
-};
-
 const allShipTypesByCategory = Object.entries(shiptypes).map(([key, types]) => ({
     key: key as keyof typeof shiptypes,
-    label: categoryLabels[key as keyof typeof shiptypes],
     ships: Object.values(types) as (TransportShipType | PassengerShipType)[],
 }));
 
@@ -42,8 +35,17 @@ export function ShipSelectionDialog({
     isPending: boolean;
     error?: string | null;
 }): React.ReactElement {
+    const t = useTranslations('Ships');
+    const tc = useTranslations('Common');
     const [selectedShipType, setSelectedShipType] = useState<SelectableShipType | null>(null);
     const [shipName, setShipName] = useState('');
+
+    const categoryLabels: Record<keyof typeof shiptypes, string> = {
+        solid: t('build.categories.solid'),
+        liquid: t('build.categories.liquid'),
+        pieces: t('build.categories.pieces'),
+        passenger: t('build.categories.passenger'),
+    };
 
     const handleConfirm = () => {
         if (!selectedShipType || !shipName.trim()) {
@@ -64,13 +66,13 @@ export function ShipSelectionDialog({
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent className='max-w-2xl max-h-[85vh] flex flex-col'>
                 <DialogHeader>
-                    <DialogTitle>Choose Ship Type</DialogTitle>
+                    <DialogTitle>{t('build.chooseType')}</DialogTitle>
                 </DialogHeader>
 
                 <div className='flex-1 overflow-y-auto space-y-4 pr-1'>
                     <div>
                         <p className='text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2'>
-                            Construction Ships
+                            {t('build.constructionShips')}
                         </p>
                         <div className='grid grid-cols-2 gap-2 sm:grid-cols-4'>
                             <ShipTypeButton
@@ -80,10 +82,10 @@ export function ShipSelectionDialog({
                             />
                         </div>
                     </div>
-                    {allShipTypesByCategory.map(({ key, label, ships }) => (
+                    {allShipTypesByCategory.map(({ key, ships }) => (
                         <div key={key}>
                             <p className='text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2'>
-                                {label}
+                                {categoryLabels[key]}
                             </p>
                             <div className='grid grid-cols-2 gap-2 sm:grid-cols-4'>
                                 {ships.map((shipType) => (
@@ -103,10 +105,10 @@ export function ShipSelectionDialog({
                     <div className='border-t pt-4 space-y-3'>
                         <ShipBuildPlanPanel shipType={selectedShipType} planetId={planetId} agentId={agentId} />
                         <div className='space-y-1'>
-                            <Label className='text-xs'>Ship name</Label>
+                            <Label className='text-xs'>{t('build.shipName')}</Label>
                             <Input
                                 className='h-8 text-sm'
-                                placeholder='Enter a unique name for this ship'
+                                placeholder={t('build.shipNamePlaceholder')}
                                 value={shipName}
                                 maxLength={50}
                                 onChange={(e) => setShipName(e.target.value)}
@@ -121,10 +123,12 @@ export function ShipSelectionDialog({
                         {error && <p className='text-destructive text-xs'>{error}</p>}
                         <div className='flex gap-2'>
                             <Button size='sm' disabled={!shipName.trim() || isPending} onClick={handleConfirm}>
-                                {isPending ? 'Starting…' : `Build ${selectedShipType.name}`}
+                                {isPending
+                                    ? t('build.starting')
+                                    : t('build.buildNamed', { name: selectedShipType.name })}
                             </Button>
                             <Button size='sm' variant='destructive' onClick={() => handleOpenChange(false)}>
-                                Cancel
+                                {tc('cancel')}
                             </Button>
                         </div>
                     </div>

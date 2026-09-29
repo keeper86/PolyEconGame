@@ -5,6 +5,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { FlowRates, ResourceFlowData } from './resourceFlowNormalizer';
 import { ResourceFlowTooltip } from './ResourceFlowTooltip';
+import { termFor } from '@/i18n/terms';
+import { useLocale, useTranslations } from 'next-intl';
 
 type StatusLevel = 'green' | 'yellow' | 'red';
 
@@ -36,6 +38,7 @@ type FlowRowProps = {
 };
 
 function FlowRow({ label, icon, rates, color }: FlowRowProps): React.ReactElement {
+    const locale = useLocale();
     return (
         <Tooltip>
             <TooltipTrigger asChild>
@@ -45,7 +48,7 @@ function FlowRow({ label, icon, rates, color }: FlowRowProps): React.ReactElemen
                         <DivergenceMeter rates={rates} color={color} />
                     </div>
                     <span className='text-[9px] tabular-nums text-muted-foreground/60 w-12 text-right shrink-0'>
-                        {formatNumberWithUnit(rates.lastTickRate, 'none')}
+                        {formatNumberWithUnit(rates.lastTickRate, 'none', undefined, locale)}
                     </span>
                 </div>
             </TooltipTrigger>
@@ -76,6 +79,8 @@ export type MicroCardEntry = {
 };
 
 export function ResourceMicroCard({ entry }: { entry: MicroCardEntry }): React.ReactElement {
+    const locale = useLocale();
+    const tr = useTranslations('Storage');
     const status = computeStatus(entry.stock, entry.flowData);
 
     return (
@@ -83,22 +88,27 @@ export function ResourceMicroCard({ entry }: { entry: MicroCardEntry }): React.R
             {/* Header */}
             <div className='flex items-center gap-1.5 min-w-0'>
                 <ProductIcon productName={entry.name} size={20} />
-                <span className='text-[10px] font-medium truncate flex-1'>{entry.name}</span>
+                <span className='text-[10px] font-medium truncate flex-1'>{termFor(locale, entry.name)}</span>
                 {statusDot(status)}
             </div>
 
             {/* Stock */}
             <div className='text-right'>
                 <span className='text-[11px] font-semibold tabular-nums'>
-                    {formatNumberWithUnit(entry.stock, 'none')}
+                    {formatNumberWithUnit(entry.stock, 'none', undefined, locale)}
                 </span>
             </div>
 
             {/* Flow rows */}
             <div className='flex flex-col gap-0.5'>
-                <FlowRow label='Inflow' icon='↓' rates={entry.flowData.inflow} color='bg-sky-500' />
-                <FlowRow label='Outflow' icon='↑' rates={entry.flowData.outflow} color='bg-amber-500' />
-                <FlowRow label='Depreciation' icon='✕' rates={entry.flowData.depreciation} color='bg-red-400' />
+                <FlowRow label={tr('inflow')} icon='↓' rates={entry.flowData.inflow} color='bg-sky-500' />
+                <FlowRow label={tr('outflow')} icon='↑' rates={entry.flowData.outflow} color='bg-amber-500' />
+                <FlowRow
+                    label={tr('depreciationLabel')}
+                    icon='✕'
+                    rates={entry.flowData.depreciation}
+                    color='bg-red-400'
+                />
             </div>
         </div>
     );

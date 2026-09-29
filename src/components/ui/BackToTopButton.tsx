@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { useSidebar } from '@/components/ui/sidebar';
 
 export default function BackToTopButton() {
     const [isVisible, setIsVisible] = useState(false);
     const { state, isMobile } = useSidebar();
+    const t = useTranslations('Common');
 
     const toggleVisibility = () => {
         if (window.scrollY > 300) {
@@ -45,7 +47,7 @@ export default function BackToTopButton() {
                      bg-green-700
                      text-white
                      hover:bg-green-500'
-                    aria-label='Back to top'
+                    aria-label={t('backToTop')}
                 >
                     &uarr;
                 </Button>

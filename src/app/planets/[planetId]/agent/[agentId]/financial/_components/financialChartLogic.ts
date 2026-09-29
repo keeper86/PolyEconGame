@@ -4,23 +4,20 @@ import { liveYearX } from '@/lib/chartTime';
 import {
     PREVIOUS_DECEMBER_IDX,
     blendLive,
+    bucketAverageToDate,
     bucketProgress,
     decadeCentre,
+    extrapolateLive,
     ghostMonthVisible,
-    monthAxis,
     monthCentre,
     yearCentre,
 } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
 
 export type { Granularity };
-export { MONTH_NAMES, formatDecadeLabel, formatYearLabel } from '@/lib/historyChartAxis';
+export { formatDecadeLabel, formatYearLabel } from '@/lib/historyChartAxis';
 export { decadeCentre as bucketDecadeMid, yearCentre as bucketYearMid } from '@/lib/historyChartAxis';
-
-const MONTHLY_AXIS = monthAxis();
-
-export const MONTHLY_X_TICKS = MONTHLY_AXIS.ticks;
-export const MONTHLY_GRID_VALUES = MONTHLY_AXIS.gridValues;
+export { MONTHLY_GRID_VALUES, MONTHLY_TICKS as MONTHLY_X_TICKS } from '@/lib/historyChartAxis';
 
 export type FinancialPoint = {
     bucket: number;
@@ -30,6 +27,8 @@ export type FinancialPoint = {
     avgWages: number;
     sumPurchases: number;
     sumClaimPayments: number;
+    sumInterestPaid: number;
+    sumWealthTaxPaid: number;
 };
 
 export function alignedYDomains(valsA: number[], valsB: number[]): [[number, number], [number, number]] {
@@ -80,6 +79,8 @@ export type FinancialLive = {
     avgWages: number;
     sumPurchases: number;
     sumClaimPayments: number;
+    sumInterestPaid: number;
+    sumWealthTaxPaid: number;
 };
 
 function liveFinancialPoint(live: FinancialLive): FinancialChartPoint {
@@ -92,6 +93,8 @@ function liveFinancialPoint(live: FinancialLive): FinancialChartPoint {
         avgWages: live.avgWages,
         sumPurchases: live.sumPurchases,
         sumClaimPayments: live.sumClaimPayments,
+        sumInterestPaid: live.sumInterestPaid,
+        sumWealthTaxPaid: live.sumWealthTaxPaid,
         monthIdx: monthIndex + Math.max(day - 1, 0.001) / TICKS_PER_MONTH,
     };
 }
@@ -136,10 +139,12 @@ export function computeFinancialMonthlyData(
             ...liveFinancialPoint(live),
             avgNetBalance: blendLive(previous?.avgNetBalance, live.avgNetBalance, progress),
             avgAssetValue: blendLive(previous?.avgAssetValue, live.avgAssetValue, progress),
-            avgMonthlyNetIncome: blendLive(previous?.avgMonthlyNetIncome, live.avgMonthlyNetIncome, progress),
-            avgWages: blendLive(previous?.avgWages, live.avgWages, progress),
-            sumPurchases: blendLive(previous?.sumPurchases, live.sumPurchases, progress),
-            sumClaimPayments: blendLive(previous?.sumClaimPayments, live.sumClaimPayments, progress),
+            avgMonthlyNetIncome: extrapolateLive(previous?.avgMonthlyNetIncome, live.avgMonthlyNetIncome, progress),
+            avgWages: extrapolateLive(previous?.avgWages, live.avgWages, progress),
+            sumPurchases: extrapolateLive(previous?.sumPurchases, live.sumPurchases, progress),
+            sumClaimPayments: extrapolateLive(previous?.sumClaimPayments, live.sumClaimPayments, progress),
+            sumInterestPaid: extrapolateLive(previous?.sumInterestPaid, live.sumInterestPaid, progress),
+            sumWealthTaxPaid: extrapolateLive(previous?.sumWealthTaxPaid, live.sumWealthTaxPaid, progress),
         });
     }
 
@@ -177,10 +182,12 @@ export type ExpensesRevenueBucketRow = {
     wages: number | null;
     purchases: number | null;
     claimPayments: number | null;
+    misc: number | null;
     ghostRevenue: null;
     ghostWages: null;
     ghostPurchases: null;
     ghostClaimPayments: null;
+    ghostMisc: null;
 };
 
 export function computeExpensesRevenueBuckets(
@@ -202,10 +209,15 @@ export function computeExpensesRevenueBuckets(
                 wages: scale === 'log' && p.avgWages <= 0 ? null : p.avgWages,
                 purchases: scale === 'log' && p.sumPurchases <= 0 ? null : p.sumPurchases / monthsPerBucket,
                 claimPayments: scale === 'log' && p.sumClaimPayments <= 0 ? null : p.sumClaimPayments / monthsPerBucket,
+                misc:
+                    scale === 'log' && p.sumInterestPaid + p.sumWealthTaxPaid <= 0
+                        ? null
+                        : (p.sumInterestPaid + p.sumWealthTaxPaid) / monthsPerBucket,
                 ghostRevenue: null,
                 ghostWages: null,
                 ghostPurchases: null,
                 ghostClaimPayments: null,
+                ghostMisc: null,
             };
         });
 
@@ -214,7 +226,6 @@ export function computeExpensesRevenueBuckets(
     }
 
     const previous = rows[rows.length - 1];
-    const progress = bucketProgress(live.tick, granularity);
     rows.push({
         xVal: liveYearX(live.tick),
         year: tickToDate(live.tick).year,
@@ -222,23 +233,38 @@ export function computeExpensesRevenueBuckets(
         revenue:
             scale === 'log' && live.avgMonthlyNetIncome <= 0
                 ? null
-                : blendLive(previous?.revenue ?? undefined, live.avgMonthlyNetIncome, progress),
+                : bucketAverageToDate(previous?.revenue ?? undefined, live.avgMonthlyNetIncome, live.tick, granularity),
         wages:
             scale === 'log' && live.avgWages <= 0
                 ? null
-                : blendLive(previous?.wages ?? undefined, live.avgWages, progress),
+                : bucketAverageToDate(previous?.wages ?? undefined, live.avgWages, live.tick, granularity),
         purchases:
             scale === 'log' && live.sumPurchases <= 0
                 ? null
-                : blendLive(previous?.purchases ?? undefined, live.sumPurchases, progress),
+                : bucketAverageToDate(previous?.purchases ?? undefined, live.sumPurchases, live.tick, granularity),
         claimPayments:
             scale === 'log' && live.sumClaimPayments <= 0
                 ? null
-                : blendLive(previous?.claimPayments ?? undefined, live.sumClaimPayments, progress),
+                : bucketAverageToDate(
+                      previous?.claimPayments ?? undefined,
+                      live.sumClaimPayments,
+                      live.tick,
+                      granularity,
+                  ),
+        misc:
+            scale === 'log' && live.sumInterestPaid + live.sumWealthTaxPaid <= 0
+                ? null
+                : bucketAverageToDate(
+                      previous?.misc ?? undefined,
+                      live.sumInterestPaid + live.sumWealthTaxPaid,
+                      live.tick,
+                      granularity,
+                  ),
         ghostRevenue: null,
         ghostWages: null,
         ghostPurchases: null,
         ghostClaimPayments: null,
+        ghostMisc: null,
     });
     return rows;
 }

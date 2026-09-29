@@ -94,6 +94,20 @@ export default defineConfig([
             ],
         },
     },
+    {
+        files: ['src/**/*.{ts,tsx}'],
+        rules: {
+            'no-restricted-syntax': [
+                'error',
+                {
+                    selector:
+                        'CallExpression > MemberExpression[property.name=/^toLocale(String|DateString|TimeString)$/]',
+                    message:
+                        'Format locale-sensitive values with next-intl (useFormatter/getFormatter) instead of toLocale*.',
+                },
+            ],
+        },
+    },
     js.configs.recommended,
     tseslint.configs.recommended,
 ]);

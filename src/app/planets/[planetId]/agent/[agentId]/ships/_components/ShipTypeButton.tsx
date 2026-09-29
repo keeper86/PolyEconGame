@@ -2,12 +2,14 @@
 
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { Badge } from '@/components/ui/badge';
+import { termFor } from '@/i18n/terms';
 import { getAssetPath } from '@/lib/assetManifest';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { ConstructionShipType, PassengerShipType, TransportShipType } from '@/simulation/ships/ships';
 import { Clock, Package, Users, Zap } from 'lucide-react';
 import Image from 'next/image';
 import React from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function ShipTypeButton({
     shipType,
@@ -18,6 +20,8 @@ export function ShipTypeButton({
     selected: boolean;
     onSelect: () => void;
 }): React.ReactElement {
+    const locale = useLocale();
+    const tu = useTranslations('Units');
     return (
         <button
             type='button'
@@ -28,7 +32,7 @@ export function ShipTypeButton({
         >
             <FacilityOrShipIcon facilityOrShipName={shipType.name} size={80} />
             <span className='flex flex-row items-center gap-1 text-xs font-medium text-center leading-tight'>
-                {shipType.name}{' '}
+                {termFor(locale, shipType.name)}{' '}
                 {shipType.type === 'transport' ? (
                     <Image
                         src={getAssetPath(`form_${shipType.cargoSpecification.type}`)}
@@ -46,18 +50,19 @@ export function ShipTypeButton({
                 {shipType.type === 'transport' ? (
                     <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
                         <Package className='h-2.5 w-2.5' />
-                        {formatNumberWithUnit(shipType.cargoSpecification.volume, 'm3')}
+                        {formatNumberWithUnit(shipType.cargoSpecification.volume, 'm3', undefined, locale)}
                     </Badge>
                 ) : null}
                 {shipType.type === 'passenger' ? (
                     <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
                         <Users className='h-2.5 w-2.5' />
-                        {formatNumberWithUnit(shipType.passengerCapacity, 'persons')}
+                        {formatNumberWithUnit(shipType.passengerCapacity, 'persons', undefined, locale)}
                     </Badge>
                 ) : null}
                 <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
                     <Clock className='h-2.5 w-2.5' />
-                    {shipType.buildingTime}t
+                    {shipType.buildingTime}
+                    {tu('ticks')}
                 </Badge>
             </div>
         </button>

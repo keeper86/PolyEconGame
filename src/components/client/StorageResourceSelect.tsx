@@ -1,11 +1,14 @@
 'use client';
 
+import { formatNumberWithUnit } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { RESOURCES_BY_NAME } from '@/simulation/planet/resourceCatalog';
 import type { TransportableResourceType } from '@/simulation/planet/claims';
 import { ProductIcon } from './ProductIcon';
+import { useLocale, useTranslations } from 'next-intl';
+import { termFor } from '@/i18n/terms';
 
 type Props = {
     agentId: string;
@@ -25,8 +28,12 @@ export function StorageResourceSelect({
     value,
     onValueChange,
     required,
-    placeholder = 'Select resource…',
+    placeholder,
 }: Props) {
+    const locale = useLocale();
+    const t = useTranslations('Storage');
+    const tc = useTranslations('Common');
+    const resolvedPlaceholder = placeholder ?? tc('selectResource');
     const trpc = useTRPC();
     const { data: storage } = useSimulationQuery(trpc.getAgentPlanetStorage.queryOptions({ agentId, planetId }));
 
@@ -55,22 +62,24 @@ export function StorageResourceSelect({
                 {value ? (
                     <span className='flex items-center gap-2'>
                         <ProductIcon productName={value} size={24} />
-                        <span>{value}</span>
+                        <span>{termFor(locale, value)}</span>
                     </span>
                 ) : (
-                    <SelectValue placeholder={placeholder} />
+                    <SelectValue placeholder={resolvedPlaceholder} />
                 )}
             </SelectTrigger>
             <SelectContent>
                 {options.length === 0 && (
-                    <div className='px-2 py-1.5 text-sm text-muted-foreground'>No matching resources in storage</div>
+                    <div className='px-2 py-1.5 text-sm text-muted-foreground'>{t('noMatchingResources')}</div>
                 )}
                 {options.map(([resourceName, qty]) => (
                     <SelectItem key={resourceName} value={resourceName}>
                         <span className='flex items-center gap-2'>
                             <ProductIcon productName={resourceName} size={24} />
-                            <span>{resourceName}</span>
-                            <span className='ml-auto text-xs text-muted-foreground'>{qty.toLocaleString()}</span>
+                            <span>{termFor(locale, resourceName)}</span>
+                            <span className='ml-auto text-xs text-muted-foreground'>
+                                {formatNumberWithUnit(qty, 'units', undefined, locale)}
+                            </span>
                         </span>
                     </SelectItem>
                 ))}

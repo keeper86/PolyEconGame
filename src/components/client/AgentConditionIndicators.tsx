@@ -6,6 +6,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { Users, Warehouse } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
 import { Spinner } from '../ui/spinner';
 
@@ -50,6 +51,7 @@ export default function AgentConditionIndicators() {
 
 function ConditionIndicators({ agentId, planetId }: { agentId: string; planetId: string }) {
     const trpc = useTRPC();
+    const t = useTranslations('Agent');
     const { data, isLoading } = useSimulationQuery(
         trpc.simulation.getAgentConditions.queryOptions({ agentId, planetId }),
     );
@@ -75,7 +77,9 @@ function ConditionIndicators({ agentId, planetId }: { agentId: string; planetId:
                     </Link>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <span className={hrProductivityColor(hr)}>HR productivity {Math.round(hr * 100)}%</span>
+                    <span className={hrProductivityColor(hr)}>
+                        {t('hrProductivity', { percent: Math.round(hr * 100) })}
+                    </span>
                 </TooltipContent>
             </Tooltip>
 
@@ -86,7 +90,9 @@ function ConditionIndicators({ agentId, planetId }: { agentId: string; planetId:
                     </Link>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <span className={storageStarvationColor(ss)}>Storage health {Math.round((1 - ss) * 100)}%</span>
+                    <span className={storageStarvationColor(ss)}>
+                        {t('storageHealth', { percent: Math.round((1 - ss) * 100) })}
+                    </span>
                 </TooltipContent>
             </Tooltip>
         </div>

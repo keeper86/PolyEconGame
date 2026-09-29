@@ -43,7 +43,7 @@ export function handleCreateAgent(
         planetId,
         agentId,
         agentName,
-        message: `${agentName} founded on ${planet?.name ?? planetId}`,
+        details: { kind: 'agentCreated', planetName: planet?.name ?? planetId },
         tick: state.tick,
     });
 
@@ -62,7 +62,7 @@ function handleSetAutomation(
         safePostMessage({
             type: 'automationFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -85,7 +85,7 @@ function handleSetWorkerAllocationTargets(
         safePostMessage({
             type: 'workerAllocationFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -95,7 +95,7 @@ function handleSetWorkerAllocationTargets(
         safePostMessage({
             type: 'workerAllocationFailed',
             requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -121,7 +121,7 @@ export function handleAcknowledgeBankruptcy(
         safePostMessage({
             type: 'bankruptcyAcknowledgeFailed',
             requestId,
-            reason: 'No bankruptcy record found for agent',
+            error: { code: 'noBankruptcyRecord', params: {} },
             processedAtTick: state.tick,
         });
         return;

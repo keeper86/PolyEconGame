@@ -13,6 +13,7 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '@/simulation/constants';
 import type { ManagementFacility, ProductionFacility, StorageFacility } from '@/simulation/planet/facility';
 import { calculateCostsForConstruction, getFacilityType, isFacilityOperating } from '@/simulation/planet/facility';
+import { useErrorMessage } from '@/i18n/errors';
 import { useMutation } from '@tanstack/react-query';
 import { Clock, Percent, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -24,6 +25,7 @@ import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityFinancialRow } from './FacilityFinancialRow';
 import { FacilityHeader, limitingEfficiency } from '../../_component/FacilityHeader';
 import { FacilityProductionIORow } from './FacilityIORow';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function ActiveFacilityCard({
     facility,
@@ -46,6 +48,11 @@ export function ActiveFacilityCard({
     headerBadge?: React.ReactElement;
     dataTour?: string;
 }): React.ReactElement {
+    const locale = useLocale();
+    const t = useTranslations('Toasts');
+    const tp = useTranslations('Production');
+    const tc = useTranslations('Common');
+    const showError = useErrorMessage();
     const trpc = useTRPC();
     const [previewScale, setPreviewScale] = useState(facility.maxScale + 1);
     const [showExpand, setShowExpand] = useState(false);
@@ -98,12 +105,12 @@ export function ActiveFacilityCard({
                     targetScale: previewScale,
                     triggerTick: data.processedAtTick,
                 });
-                toast.success('Expansion ordered. Changes take effect on the next tick.');
+                toast.success(t('expansionOrdered'));
                 setShowExpand(false);
                 onExpanded?.();
             },
             onError: (err) => {
-                toast.error(err instanceof Error ? err.message : 'Expand failed');
+                toast.error(err instanceof Error ? showError(err) : t('expandFailed'));
             },
         }),
     );
@@ -119,10 +126,10 @@ export function ActiveFacilityCard({
                     targetScaleFraction: SCALE_FRACTIONS[scaleFractionIndex] ?? 1,
                     triggerTick: data.processedAtTick,
                 });
-                toast.success('Operating scale updated. Changes take effect on the next tick.');
+                toast.success(t('scaleUpdated'));
             },
             onError: (err) => {
-                toast.error(err instanceof Error ? err.message : 'Scale change failed');
+                toast.error(err instanceof Error ? showError(err) : t('scaleChangeFailed'));
             },
         }),
     );
@@ -138,12 +145,12 @@ export function ActiveFacilityCard({
                     targetScale: reduceTarget,
                     triggerTick: data.processedAtTick,
                 });
-                toast.success('Capacity reduction ordered. Changes take effect on the next tick.');
+                toast.success(t('capacityReductionOrdered'));
                 setShowReduce(false);
                 onExpanded?.();
             },
             onError: (err) => {
-                toast.error(err instanceof Error ? err.message : 'Contract failed');
+                toast.error(err instanceof Error ? showError(err) : t('contractFailed'));
             },
         }),
     );
@@ -213,18 +220,24 @@ export function ActiveFacilityCard({
         return { estimatedPayout: marketValue * RECYCLER_PAYMENT_RATIO * recyclerRatio, amount };
     }, [csPrice, recyclerRatio, amount]);
 
-    // Compute the pending scale fraction from the pending action (if any)
     const pendingScaleFraction = pendingScaleAction?.targetScaleFraction;
     const pendingScaleText =
-        pendingScaleFraction !== undefined ? `Pending → ${Math.round(pendingScaleFraction * 100)}%` : null;
+        pendingScaleFraction !== undefined
+            ? tp('pendingScale', { percent: Math.round(pendingScaleFraction * 100) })
+            : null;
 
     const operatingScaleSection = (
         <div className='space-y-1 pt-2 pb-1.5'>
             <span className='flex flex-row text-muted-foreground text-xs gap-2'>
-                Operating scale
+                {tp('operatingScale')}
                 <span>
-                    {formatNumberWithUnit(facility.maxScale * (SCALE_FRACTIONS[scaleFractionIndex] ?? 1), 'units')}/
-                    {formatNumberWithUnit(facility.maxScale, 'units')}
+                    {formatNumberWithUnit(
+                        facility.maxScale * (SCALE_FRACTIONS[scaleFractionIndex] ?? 1),
+                        'units',
+                        undefined,
+                        locale,
+                    )}
+                    /{formatNumberWithUnit(facility.maxScale, 'units', undefined, locale)}
                 </span>
                 {pendingScaleText && (
                     <span className='text-amber-600 dark:text-amber-400 ml-auto text-[10px] italic'>
@@ -272,7 +285,7 @@ export function ActiveFacilityCard({
                         });
                     }}
                 >
-                    {setScaleMutation.isPending ? <Spinner className='h-4 w-4' /> : 'Apply'}
+                    {setScaleMutation.isPending ? <Spinner className='h-4 w-4' /> : tp('apply')}
                 </Button>
             </div>
         </div>
@@ -283,19 +296,19 @@ export function ActiveFacilityCard({
 
     // Determine blocking overlay message for any in-flight or pending action
     const overlayMessage = expandMutation.isPending
-        ? 'Expanding…'
+        ? tp('expanding')
         : expandPending
-          ? 'Awaiting next day…'
+          ? tp('awaitingNextDay')
           : contractMutation.isPending
-            ? 'Reducing…'
+            ? tp('reducing')
             : contractPending
-              ? 'Awaiting next day…'
+              ? tp('awaitingNextDay')
               : pendingCancelAction
-                ? 'Cancellation pending…'
+                ? tp('cancellationPending')
                 : pendingSuspensionAction
                   ? pendingSuspensionAction.type === 'suspend'
-                      ? 'Suspension pending…'
-                      : 'Resume pending…'
+                      ? tp('suspensionPending')
+                      : tp('resumePending')
                   : null;
 
     return (
@@ -310,7 +323,7 @@ export function ActiveFacilityCard({
                     badge={
                         headerBadge ?? (
                             <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
-                                Scale {facility.scale} {facility.scale === facility.maxScale ? 'max' : ''}
+                                {tp('scale')} {facility.scale} {facility.scale === facility.maxScale ? tp('max') : ''}
                             </Badge>
                         )
                     }
@@ -365,9 +378,9 @@ export function ActiveFacilityCard({
                                 constructionServicePrice={constructionServicePrice}
                                 planetId={planetId}
                                 otherConstructionCosts={otherConstructionCosts}
-                                label='Expand to scale'
-                                confirmLabel='Confirm Expand'
-                                pendingLabel={expandMutation.isPending ? 'Expanding…' : 'Awaiting next day…'}
+                                label={tp('expandToScale')}
+                                confirmLabel={tp('confirmExpand')}
+                                pendingLabel={expandMutation.isPending ? tp('expanding') : tp('awaitingNextDay')}
                                 isPending={expandMutation.isPending || expandPending}
                                 financials={financials}
                                 onCancel={() => setShowExpand(false)}
@@ -378,7 +391,7 @@ export function ActiveFacilityCard({
                             />
                         ) : showReduce || contractPending ? (
                             <div className='space-y-2'>
-                                <p className='text-xs text-muted-foreground pt-2 pb-1'>Reduce capacity to scale</p>
+                                <p className='text-xs text-muted-foreground pt-2 pb-1'>{tp('reduceCapacityToScale')}</p>
                                 <Slider
                                     min={0}
                                     max={Math.max(0, reduceOptions.length - 1)}
@@ -407,7 +420,7 @@ export function ActiveFacilityCard({
                                                     transform: `translateX(${translate})`,
                                                 }}
                                             >
-                                                {formatNumberWithUnit(v, 'none')}
+                                                {formatNumberWithUnit(v, 'none', undefined, locale)}
                                             </span>
                                         );
                                     })}
@@ -416,17 +429,22 @@ export function ActiveFacilityCard({
                                 <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 pb-1'>
                                     <div className='grid grid-cols-1 gap-y-1'>
                                         <Stat
-                                            label='Reduced capacity'
-                                            value={formatNumberWithUnit(facility.maxScale - reduceTarget, 'units')}
+                                            label={tp('reducedCapacity')}
+                                            value={formatNumberWithUnit(
+                                                facility.maxScale - reduceTarget,
+                                                'units',
+                                                undefined,
+                                                locale,
+                                            )}
                                             icon={<TrendingDown className='h-3 w-3' />}
                                         />
                                         <Stat
-                                            label='Estimated price'
-                                            value={formatNumberWithUnit(estimatedPayout, 'currency', planetId)}
+                                            label={tp('estimatedPrice')}
+                                            value={formatNumberWithUnit(estimatedPayout, 'currency', planetId, locale)}
                                             icon={<TrendingUp className='h-3 w-3' />}
                                         />
                                         <Stat
-                                            label='Efficiency'
+                                            label={tp('efficiency')}
                                             value={
                                                 Math.round(recyclerRatio * RECYCLER_BASE_RECOVERY_EFFICIENCY * 100) +
                                                 '%'
@@ -437,22 +455,28 @@ export function ActiveFacilityCard({
                                     </div>
                                     <div className='grid grid-cols-1 gap-y-1'>
                                         <Stat
-                                            label='Deposits'
-                                            value={formatNumberWithUnit(financials?.deposits, 'currency', planetId)}
+                                            label={tp('deposits')}
+                                            value={formatNumberWithUnit(
+                                                financials?.deposits,
+                                                'currency',
+                                                planetId,
+                                                locale,
+                                            )}
                                             icon={<Wallet className='h-3 w-3' />}
                                         />
                                         <Stat
-                                            label='Monthly cash flow'
+                                            label={tp('monthlyCashFlow')}
                                             value={formatNumberWithUnit(
                                                 financials?.monthlyNetCashFlow,
                                                 'currency',
                                                 planetId,
+                                                locale,
                                             )}
                                             icon={<Percent className='h-3 w-3' />}
                                         />
                                         <Stat
-                                            label='Loans'
-                                            value={formatNumberWithUnit(0, 'currency', planetId)}
+                                            label={tp('loans')}
+                                            value={formatNumberWithUnit(0, 'currency', planetId, locale)}
                                             icon={<TrendingDown className='h-3 w-3' />}
                                         />
                                     </div>
@@ -464,7 +488,7 @@ export function ActiveFacilityCard({
                                         className='flex-1 text-xs'
                                         onClick={() => setShowReduce(false)}
                                     >
-                                        Cancel
+                                        {tc('cancel')}
                                     </Button>
                                     <Button
                                         size='sm'
@@ -482,7 +506,7 @@ export function ActiveFacilityCard({
                                         <span
                                             className={`font-bold text-[14px] dark:text-[12px] ${recyclerColor} text-outline-strong text-muted-foreground`}
                                         >
-                                            {contractMutation.isPending ? 'Reducing…' : 'Confirm Reduce'}
+                                            {contractMutation.isPending ? tp('reducing') : tp('confirmReduce')}
                                         </span>
                                     </Button>
                                 </div>
@@ -502,7 +526,7 @@ export function ActiveFacilityCard({
                                             setShowExpand(true);
                                         }}
                                     >
-                                        Expand facility
+                                        {tp('expandFacility')}
                                     </Button>
                                     <Button
                                         variant='outline'
@@ -513,7 +537,7 @@ export function ActiveFacilityCard({
                                             setShowReduce(true);
                                         }}
                                     >
-                                        Reduce capacity
+                                        {tp('reduceCapacity')}
                                     </Button>
                                 </div>
                             </>

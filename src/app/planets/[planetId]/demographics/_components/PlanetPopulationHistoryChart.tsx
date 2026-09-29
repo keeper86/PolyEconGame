@@ -9,7 +9,6 @@ import { liveYearX } from '@/lib/chartTime';
 import {
     DECADE_WINDOW,
     HISTORY_BUCKET_LIMIT,
-    PREVIOUS_DECEMBER_IDX,
     YEAR_WINDOW,
     decadeCentre,
     decadeStart,
@@ -17,20 +16,19 @@ import {
     formatDecadeLabel,
     formatMonthLabel,
     formatYearLabel,
-    ghostMonthVisible,
-    isLiveMonthPoint,
     monthAxis,
-    monthCentre,
     yearCentre,
     yearStart,
     yearWindowAxis,
 } from '@/lib/historyChartAxis';
 import { useTRPC } from '@/lib/trpc';
+import type { Locale } from '@/i18n/config';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import PlanetBufferChart from './PlanetBufferChart';
+import { computeMonthlyPopulation, computeMonthlyPopulationGhost } from './populationChartLogic';
+import { useLocale, useTranslations } from 'next-intl';
 
 type BufferRawPoint = {
     bucket: number;
@@ -86,84 +84,12 @@ function yDomainFor(points: { value: number }[]): [number, number] | ['auto', 'a
     return [Math.max(0, lo - pad), hi + pad];
 }
 
-function computeMonthlyData(allPts: PopulationRawPoint[], live: LiveData): ChartPoint[] {
-    const pts = [...allPts].sort((a, b) => a.bucket - b.bucket);
-    if (pts.length === 0 && live.tick === 0) {
-        return [];
-    }
-
-    const latestYear =
-        live.tick > 0 ? tickToDate(live.tick).year : pts.length > 0 ? tickToDate(pts[pts.length - 1].bucket).year : 0;
-
-    const result: ChartPoint[] = pts
-        .filter((p) => tickToDate(p.bucket).year === latestYear)
-        .map((p) => {
-            return {
-                tick: p.bucket,
-                year: p.bucket / TICKS_PER_YEAR,
-                monthIdx: monthCentre(p.bucket),
-                value: p.avgPopulation,
-            };
-        });
-
-    const prevDecPoint = pts.find((p) => {
-        const { year, monthIndex } = tickToDate(p.bucket);
-        return year === latestYear - 1 && monthIndex === 11;
-    });
-    if (prevDecPoint) {
-        result.unshift({
-            tick: prevDecPoint.bucket,
-            year: prevDecPoint.bucket / TICKS_PER_YEAR,
-            monthIdx: PREVIOUS_DECEMBER_IDX,
-            value: prevDecPoint.avgPopulation,
-        });
-    } else {
-        const lastBefore = [...pts].reverse().find((p) => tickToDate(p.bucket).year < latestYear);
-        if (lastBefore) {
-            result.unshift({
-                tick: lastBefore.bucket,
-                year: lastBefore.bucket / TICKS_PER_YEAR,
-                monthIdx: PREVIOUS_DECEMBER_IDX,
-                value: lastBefore.avgPopulation,
-            });
-        }
-    }
-
-    if (live.tick > 0) {
-        const { year: liveYear, monthIndex: liveMi, day: liveDay } = tickToDate(live.tick);
-        if (liveYear === latestYear) {
-            const dayFraction = Math.max(liveDay - 1, 0.001) / TICKS_PER_MONTH;
-            const fractionalMonthIdx = liveMi + dayFraction;
-            result.push({
-                tick: live.tick,
-                year: live.tick / TICKS_PER_YEAR,
-                monthIdx: fractionalMonthIdx,
-                value: live.population,
-            });
-        }
-    }
-
-    return result;
-}
-
-function computeMonthlyGhostData(allPts: PopulationRawPoint[], live: LiveData): ChartPoint[] {
-    const pts = [...allPts].sort((a, b) => a.bucket - b.bucket);
-    const { monthIndex: liveMi, day: liveDay, year: liveYear } = tickToDate(live.tick);
-    const fractionalThreshold = liveMi + Math.max(liveDay - 1, 0.001) / TICKS_PER_MONTH;
-
-    return pts
-        .filter((p) => tickToDate(p.bucket).year === liveYear - 1 && ghostMonthVisible(p.bucket, fractionalThreshold))
-        .map((p) => {
-            return {
-                tick: p.bucket,
-                year: p.bucket / TICKS_PER_YEAR,
-                monthIdx: monthCentre(p.bucket),
-                value: p.avgPopulation,
-            };
-        });
-}
-
-function populationTooltipContent(label: string, value: number | undefined | null): React.ReactElement | null {
+function populationTooltipContent(
+    label: string,
+    value: number | undefined | null,
+    locale: Locale,
+    populationLabel: string,
+): React.ReactElement | null {
     if (value == null) {
         return null;
     }
@@ -178,26 +104,40 @@ function populationTooltipContent(label: string, value: number | undefined | nul
             }}
         >
             <div style={{ color: '#94a3b8', marginBottom: 4 }}>{label}</div>
-            <div style={{ color: '#e2e8f0' }}>Population: {formatNumberWithUnit(value, 'persons')}</div>
+            <div style={{ color: '#e2e8f0' }}>
+                {populationLabel} {formatNumberWithUnit(value, 'persons', undefined, locale)}
+            </div>
         </div>
     );
 }
 
 function EmptyChart() {
+    const t = useTranslations('Demographics');
     return (
         <div
             className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
             style={{ height: 240 }}
         >
-            No data
+            {t('noData')}
         </div>
     );
 }
 
+type MonthlyChartRow = {
+    tick: number;
+    monthIndex: number;
+    monthIdx: number;
+    value: number | null;
+    isLive: boolean;
+    ghostValue: number | null;
+};
+
 function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoint[]; live?: LiveData }) {
+    const locale = useLocale();
+    const tr = useTranslations('Demographics');
     const data = useMemo(
         () =>
-            computeMonthlyData(
+            computeMonthlyPopulation(
                 monthlyPoints,
                 live ?? {
                     tick: 0,
@@ -213,32 +153,37 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
         [monthlyPoints, live],
     );
     const ghostData = useMemo(
-        () => (live && live.tick > 0 ? computeMonthlyGhostData(monthlyPoints, live) : []),
+        () => (live && live.tick > 0 ? computeMonthlyPopulationGhost(monthlyPoints, live) : []),
         [monthlyPoints, live],
     );
 
-    const mergedData = useMemo(() => {
-        const ghostByMonth = new Map(ghostData.map((p) => [p.monthIdx!, p]));
-        const result = data.map((p) => ({ ...p, ghostValue: ghostByMonth.get(p.monthIdx!)?.value ?? null }));
+    const mergedData = useMemo((): MonthlyChartRow[] => {
+        const ghostByMonth = new Map(ghostData.map((p) => [p.monthIdx, p]));
+        const result: MonthlyChartRow[] = data.map((p) => ({
+            ...p,
+            ghostValue: ghostByMonth.get(p.monthIdx)?.value ?? null,
+        }));
 
         for (const g of ghostData) {
             if (!data.some((d) => d.monthIdx === g.monthIdx)) {
-                result.push({ ...g, value: null as unknown as number, ghostValue: g.value });
+                result.push({ ...g, value: null, isLive: false, ghostValue: g.value });
             }
         }
-        return result.sort((a, b) => (a.monthIdx ?? 0) - (b.monthIdx ?? 0));
+        return result.sort((a, b) => a.monthIdx - b.monthIdx);
     }, [data, ghostData]);
 
     const yDomain = useMemo(() => yDomainFor(data), [data]);
 
-    const monthlyX = monthAxis();
+    const monthlyX = monthAxis(locale);
     const monthTooltipLabel = (monthIdx: number): string => {
-        if (isLiveMonthPoint(monthIdx)) {
-            return 'Live';
-        }
         const pt = data.find((p) => p.monthIdx === monthIdx);
-        const { year: yearInt } = pt ? tickToDate(pt.tick) : { year: 0 };
-        return formatMonthLabel(monthIdx, yearInt);
+        if (!pt) {
+            return '';
+        }
+        if (pt.isLive) {
+            return tr('live');
+        }
+        return formatMonthLabel(locale, pt.monthIndex, tickToDate(pt.tick).year);
     };
 
     return (
@@ -277,7 +222,7 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
                         axisLine={false}
                         tickLine={false}
                         width={52}
-                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons', undefined, locale)}
                     />
                     <Tooltip
                         content={({ active, payload, label }) => {
@@ -305,7 +250,8 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
                                     </div>
                                     {filtered.map((p) => (
                                         <div key={p.name} style={{ color: '#e2e8f0' }}>
-                                            Population: {formatNumberWithUnit(p.value as number, 'persons')}
+                                            {tr('populationLabel')}{' '}
+                                            {formatNumberWithUnit(p.value as number, 'persons', undefined, locale)}
                                         </div>
                                     ))}
                                 </div>
@@ -345,6 +291,8 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
 }
 
 function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[]; live?: LiveData }) {
+    const locale = useLocale();
+    const tr = useTranslations('Demographics');
     const data = useMemo((): ChartPoint[] => {
         const rows = [...yearlyPoints]
             .sort((a, b) => a.bucket - b.bucket)
@@ -398,7 +346,7 @@ function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[
                         axisLine={false}
                         tickLine={false}
                         width={52}
-                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons', undefined, locale)}
                     />
                     <Tooltip
                         content={({ active, payload, label }) => {
@@ -407,8 +355,10 @@ function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[
                             }
                             const p = payload.find((e) => e.dataKey === 'value');
                             return populationTooltipContent(
-                                formatYearLabel(label as number),
+                                formatYearLabel(locale, label as number),
                                 p?.value as number | undefined,
+                                locale,
+                                tr('populationLabel'),
                             );
                         }}
                     />
@@ -430,6 +380,8 @@ function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[
 }
 
 function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint[]; live?: LiveData }) {
+    const locale = useLocale();
+    const tr = useTranslations('Demographics');
     const data = useMemo((): ChartPoint[] => {
         const rows = [...decadePoints]
             .sort((a, b) => a.bucket - b.bucket)
@@ -486,7 +438,7 @@ function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint
                         axisLine={false}
                         tickLine={false}
                         width={52}
-                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons', undefined, locale)}
                     />
                     <Tooltip
                         content={({ active, payload, label }) => {
@@ -495,8 +447,10 @@ function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint
                             }
                             const p = payload.find((e) => e.dataKey === 'value');
                             return populationTooltipContent(
-                                formatDecadeLabel(label as number),
+                                formatDecadeLabel(locale, label as number),
                                 p?.value as number | undefined,
+                                locale,
+                                tr('populationLabel'),
                             );
                         }}
                     />
@@ -523,6 +477,8 @@ type Props = {
 };
 
 export default function PlanetPopulationHistoryChart({ planetId, live }: Props): React.ReactElement {
+    const locale = useLocale();
+    const tr = useTranslations('Demographics');
     const trpc = useTRPC();
     const { granularity, setGranularity, currentTick } = useGranularity();
 
@@ -575,7 +531,9 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
             <CardContent className='px-4 pt-2 pb-4'>
                 <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
                     <GranularityHeader
-                        title={`Population ${formatNumberWithUnit(live?.population, 'persons')}`}
+                        title={tr('populationTitle', {
+                            value: formatNumberWithUnit(live?.population, 'persons', undefined, locale),
+                        })}
                         granularity={granularity}
                         onGranularityChange={setGranularity}
                         currentTick={currentTick}
@@ -599,7 +557,7 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
                     <Separator />
 
                     <div className='my-3'>
-                        <span className='text-md text-slate-400'>Service Buffers</span>
+                        <span className='text-md text-slate-400'>{tr('serviceBuffers')}</span>
                     </div>
                     <PlanetBufferChart
                         monthlyPoints={bufferMonthlyPoints}

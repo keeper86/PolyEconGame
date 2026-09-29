@@ -15,7 +15,7 @@ function handleRequestLoan(
         safePostMessage({
             type: 'loanDenied',
             requestId,
-            reason: 'Agent or planet not found',
+            error: { code: 'agentOrPlanetNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -25,7 +25,7 @@ function handleRequestLoan(
         safePostMessage({
             type: 'loanDenied',
             requestId,
-            reason: `Requested amount ${amount} exceeds approved limit ${conditions.maxLoanAmount}`,
+            error: { code: 'loanAmountExceedsLimit', params: { amount: amount, limit: conditions.maxLoanAmount } },
             processedAtTick: state.tick,
         });
         return;
@@ -36,7 +36,7 @@ function handleRequestLoan(
         safePostMessage({
             type: 'loanDenied',
             requestId,
-            reason: `Agent '${agentId}' has no asset record for planet '${planetId}'`,
+            error: { code: 'agentAssetRecordMissing', params: { agentId: agentId, planetId: planetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -61,7 +61,7 @@ function handleRepayLoan(
         safePostMessage({
             type: 'repayDenied',
             requestId,
-            reason: 'Agent or planet not found',
+            error: { code: 'agentOrPlanetNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -71,7 +71,7 @@ function handleRepayLoan(
         safePostMessage({
             type: 'repayDenied',
             requestId,
-            reason: `Agent has no asset record for planet '${planetId}'`,
+            error: { code: 'agentAssetRecordMissingForPlanet', params: { planetId: planetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -81,7 +81,7 @@ function handleRepayLoan(
         safePostMessage({
             type: 'repayDenied',
             requestId,
-            reason: `Loan '${loanId}' not found`,
+            error: { code: 'loanNotFound', params: { loanId: loanId } },
             processedAtTick: state.tick,
         });
         return;
@@ -90,7 +90,7 @@ function handleRepayLoan(
         safePostMessage({
             type: 'repayDenied',
             requestId,
-            reason: `Early repayment is not allowed for this loan`,
+            error: { code: 'earlyRepaymentNotAllowed', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -100,7 +100,7 @@ function handleRepayLoan(
         safePostMessage({
             type: 'repayDenied',
             requestId,
-            reason: 'Repayment amount is zero',
+            error: { code: 'repaymentAmountZero', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -109,7 +109,7 @@ function handleRepayLoan(
         safePostMessage({
             type: 'repayDenied',
             requestId,
-            reason: `Insufficient deposits (have ${assets.deposits}, need ${amount})`,
+            error: { code: 'insufficientDeposits', params: { available: assets.deposits, required: amount } },
             processedAtTick: state.tick,
         });
         return;

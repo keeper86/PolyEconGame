@@ -1,10 +1,12 @@
 import {
     type LucideIcon,
+    Building2,
     EuroIcon,
     FileText,
     FlaskConical,
     Gamepad,
     Home,
+    Landmark,
     Mail,
     Network,
     Package,
@@ -13,17 +15,20 @@ import {
     Users,
     Warehouse,
 } from 'lucide-react';
+import { GiAxeInStump } from 'react-icons/gi';
 import { GoRocket } from 'react-icons/go';
 
 import type { Route } from 'nextjs-routes';
 import type { IconType } from 'react-icons';
+import type en from '../i18n/messages/en.json';
+
+export type NavLabel = keyof typeof en.Nav;
 
 export type RouteMetadata = {
     path: Exclude<Route['pathname'], `/api/${string}`>;
-    label: string;
+    label: NavLabel;
     icon?: LucideIcon | IconType;
     isPublic?: boolean;
-    description?: string;
     isMainNav?: boolean;
     isSecondaryNav?: boolean;
 };
@@ -49,21 +54,18 @@ export const APP_ROUTES = {
         label: 'Enterprise Engine',
         icon: Home,
         isPublic: true,
-        description: 'Dashboard and overview',
     },
     pong: {
         path: '/pong',
         label: 'Paddle War',
         icon: Gamepad,
         isPublic: true,
-        description: 'Classic pong game',
     },
     account: {
         root: {
             path: '/account',
             label: 'Account',
             icon: User,
-            description: 'User account settings',
         },
     },
     messages: {
@@ -71,7 +73,6 @@ export const APP_ROUTES = {
         label: 'Messages',
         icon: Mail,
         isSecondaryNav: true,
-        description: 'Direct messages from other players',
     },
     imprint: {
         path: '/imprint',
@@ -79,7 +80,6 @@ export const APP_ROUTES = {
         icon: FileText,
         isPublic: true,
         isSecondaryNav: true,
-        description: 'Legal information and imprint',
     },
     simulation: {
         path: '/simulation',
@@ -87,14 +87,12 @@ export const APP_ROUTES = {
         icon: FlaskConical,
         isPublic: true,
         isSecondaryNav: true,
-        description: 'Scientific description of the simulation model with mathematical formulations',
     },
     supplyChain: {
         path: '/supply-chain',
         label: 'Supply Chain Simulator',
         icon: Network,
         isSecondaryNav: true,
-        description: 'Interactive supply chain balance calculator and dependency visualiser',
     },
 } as const satisfies RouteManifest;
 
@@ -148,8 +146,8 @@ export function getSecondaryNavRoutes(): RouteMetadata[] {
 
 export type AgentSubPage = {
     segment: string;
-    label: string;
-    icon: LucideIcon | typeof GoRocket;
+    label: NavLabel;
+    icon: LucideIcon | IconType;
 };
 
 export const AGENT_SUB_PAGES: AgentSubPage[] = [
@@ -159,4 +157,11 @@ export const AGENT_SUB_PAGES: AgentSubPage[] = [
     { segment: 'storage', label: 'Storage', icon: Warehouse },
     { segment: 'market', label: 'Market', icon: ShoppingCartIcon },
     { segment: 'ships', label: 'Ships', icon: GoRocket },
+];
+
+export const PLANET_SUB_PAGES: AgentSubPage[] = [
+    { segment: 'demographics', label: 'Demographics', icon: Users },
+    { segment: 'central-bank', label: 'Central Bank', icon: Landmark },
+    { segment: 'claims', label: 'Resources', icon: GiAxeInStump },
+    { segment: 'companies', label: 'Companies', icon: Building2 },
 ];

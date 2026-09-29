@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
@@ -46,7 +47,7 @@ describe('ComposeMessageDialog', () => {
     });
 
     it('keeps send disabled until recipient, subject and body are set', async () => {
-        render(<ComposeMessageDialog />);
+        renderWithIntl(<ComposeMessageDialog />);
         await openDialog();
 
         const send = screen.getByRole('button', { name: 'Send' });
@@ -63,7 +64,7 @@ describe('ComposeMessageDialog', () => {
     });
 
     it('sends a trimmed message and closes the dialog', async () => {
-        render(<ComposeMessageDialog />);
+        renderWithIntl(<ComposeMessageDialog />);
         await openDialog();
 
         await userEvent.click(screen.getByRole('button', { name: 'pick-recipient' }));
@@ -81,7 +82,7 @@ describe('ComposeMessageDialog', () => {
 
     it('shows an error toast when sending fails', async () => {
         h.mutate.mockImplementation((_input, options) => options.onError(new Error('boom')));
-        render(<ComposeMessageDialog />);
+        renderWithIntl(<ComposeMessageDialog />);
         await openDialog();
 
         await fillMessage();
@@ -91,7 +92,7 @@ describe('ComposeMessageDialog', () => {
     });
 
     it('clears the form when the dialog is closed', async () => {
-        render(<ComposeMessageDialog />);
+        renderWithIntl(<ComposeMessageDialog />);
         await openDialog();
 
         await fillMessage();

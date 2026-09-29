@@ -6,14 +6,17 @@ import {
     DECADE_WINDOW,
     YEAR_WINDOW,
     blendLive,
+    bucketAverageToDate,
     bucketProgress,
     decadeStart,
     decadeWindowAxis,
     formatMonthLabel,
+    monthShortName,
     yearStart,
     yearWindowAxis,
 } from '@/lib/historyChartAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
+import { computeNetIncome } from '@/simulation/financial/netIncome';
 import { useMemo } from 'react';
 import {
     Area,
@@ -30,7 +33,6 @@ import { FinancialTooltip } from './FinancialTooltip';
 import {
     MONTHLY_GRID_VALUES,
     MONTHLY_X_TICKS,
-    MONTH_NAMES,
     alignedYDomains,
     bucketDecadeMid,
     bucketYearMid,
@@ -41,6 +43,7 @@ import {
     type FinancialPoint,
     type Granularity,
 } from './financialChartLogic';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function BalanceFlowChart({
     data,
@@ -53,6 +56,8 @@ export function BalanceFlowChart({
     granularity: Granularity;
     live?: FinancialLive;
 }) {
+    const locale = useLocale();
+    const t = useTranslations('Financial');
     const liveRow = useMemo(() => {
         if (!live || live.tick <= 0) {
             return null;
@@ -63,7 +68,14 @@ export function BalanceFlowChart({
             cashBalance: live.avgNetBalance,
             assetValue: live.avgAssetValue,
             netPosition: live.avgNetBalance + live.avgAssetValue,
-            netIncome: live.avgMonthlyNetIncome - (live.avgWages + live.sumPurchases + live.sumClaimPayments),
+            netIncome: computeNetIncome({
+                revenue: live.avgMonthlyNetIncome,
+                wages: live.avgWages,
+                purchases: live.sumPurchases,
+                claimPayments: live.sumClaimPayments,
+                interestPaid: live.sumInterestPaid,
+                wealthTaxPaid: live.sumWealthTaxPaid,
+            }),
             ghostCashBalance: null,
             ghostAssetValue: null,
             ghostNetPosition: null,
@@ -86,10 +98,24 @@ export function BalanceFlowChart({
                     const ghost = ghostByMonthIdx.get(monthIdx);
                     const year = curr ? tickToDate(curr.bucket).year : ghost ? tickToDate(ghost.bucket).year : 0;
                     const netIncome = curr
-                        ? curr.avgMonthlyNetIncome - (curr.avgWages + curr.sumPurchases + curr.sumClaimPayments)
+                        ? computeNetIncome({
+                              revenue: curr.avgMonthlyNetIncome,
+                              wages: curr.avgWages,
+                              purchases: curr.sumPurchases,
+                              claimPayments: curr.sumClaimPayments,
+                              interestPaid: curr.sumInterestPaid,
+                              wealthTaxPaid: curr.sumWealthTaxPaid,
+                          })
                         : null;
                     const ghostNetIncome = ghost
-                        ? ghost.avgMonthlyNetIncome - (ghost.avgWages + ghost.sumPurchases + ghost.sumClaimPayments)
+                        ? computeNetIncome({
+                              revenue: ghost.avgMonthlyNetIncome,
+                              wages: ghost.avgWages,
+                              purchases: ghost.sumPurchases,
+                              claimPayments: ghost.sumClaimPayments,
+                              interestPaid: ghost.sumInterestPaid,
+                              wealthTaxPaid: ghost.sumWealthTaxPaid,
+                          })
                         : null;
                     return {
                         monthIdx,
@@ -124,9 +150,14 @@ export function BalanceFlowChart({
                     cashBalance: p.avgNetBalance,
                     assetValue: p.avgAssetValue,
                     netPosition: p.avgNetBalance + p.avgAssetValue,
-                    netIncome:
-                        p.avgMonthlyNetIncome -
-                        (p.avgWages + p.sumPurchases / monthsPerBucket + p.sumClaimPayments / monthsPerBucket),
+                    netIncome: computeNetIncome({
+                        revenue: p.avgMonthlyNetIncome,
+                        wages: p.avgWages,
+                        purchases: p.sumPurchases / monthsPerBucket,
+                        claimPayments: p.sumClaimPayments / monthsPerBucket,
+                        interestPaid: p.sumInterestPaid / monthsPerBucket,
+                        wealthTaxPaid: p.sumWealthTaxPaid / monthsPerBucket,
+                    }),
                     ghostCashBalance: null,
                     ghostAssetValue: null,
                     ghostNetPosition: null,
@@ -145,7 +176,7 @@ export function BalanceFlowChart({
                 cashBalance: blendLive(previous?.cashBalance, liveRow.cashBalance, progress),
                 assetValue: blendLive(previous?.assetValue, liveRow.assetValue, progress),
                 netPosition: blendLive(previous?.netPosition, liveRow.netPosition, progress),
-                netIncome: blendLive(previous?.netIncome, liveRow.netIncome, progress),
+                netIncome: bucketAverageToDate(previous?.netIncome, liveRow.netIncome, live.tick, granularity),
             },
         ];
     }, [data, ghostData, granularity, live, liveRow]);
@@ -165,7 +196,7 @@ export function BalanceFlowChart({
                 type: 'number' as const,
                 domain: [0, 12] as [number, number],
                 ticks: MONTHLY_X_TICKS,
-                tickFormatter: (v: number) => MONTH_NAMES[(Math.ceil(v) + 11) % 12] ?? '',
+                tickFormatter: (v: number) => monthShortName(locale, (Math.ceil(v) + 11) % 12),
                 gridVertical: true,
                 gridValues: MONTHLY_GRID_VALUES,
             };
@@ -201,23 +232,25 @@ export function BalanceFlowChart({
             gridVertical: true,
             gridValues: decade.gridValues,
         };
-    }, [granularity, data, liveRow]);
+    }, [granularity, data, liveRow, locale]);
 
     const tooltipLabelFormatter = useMemo(() => {
         if (granularity === 'monthly') {
             const byMonthIdx = new Map(
                 chartData
                     .filter((p): p is { monthIdx: number; year: number } & typeof p => 'monthIdx' in p)
-                    .map((p) => [p.monthIdx, formatMonthLabel(p.monthIdx, p.year)]),
+                    .map((p) => [p.monthIdx, formatMonthLabel(locale, p.monthIdx, p.year)]),
             );
             return (label: number) => byMonthIdx.get(label) ?? '';
         }
-        return granularity === 'decade' ? formatDecadeLabel : formatYearLabel;
-    }, [granularity, chartData]);
+        return granularity === 'decade'
+            ? (v: number) => formatDecadeLabel(locale, v)
+            : (v: number) => formatYearLabel(locale, v);
+    }, [granularity, chartData, locale]);
 
     return (
         <div className='flex flex-col items-start gap-1'>
-            <p className='text-xs font-semibold text-muted-foreground mb-2'>Cash Balance & Net Position</p>
+            <p className='text-xs font-semibold text-muted-foreground mb-2'>{t('balanceFlowTitle')}</p>
             <div style={{ width: '100%', height: 200 }}>
                 <ResponsiveContainer width='100%' height='100%'>
                     <AreaChart data={chartData} margin={{ top: 0, right: -20, left: 0, bottom: 0 }}>
@@ -262,7 +295,7 @@ export function BalanceFlowChart({
                             axisLine={false}
                             tickLine={false}
                             width={56}
-                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
+                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency', undefined, locale)}
                         />
                         <YAxis
                             yAxisId='right'
@@ -273,7 +306,7 @@ export function BalanceFlowChart({
                             axisLine={false}
                             tickLine={false}
                             width={56}
-                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
+                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency', undefined, locale)}
                         />
                         <Tooltip content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} />} />
                         <ReferenceLine
@@ -289,7 +322,7 @@ export function BalanceFlowChart({
                             yAxisId='left'
                             type='monotone'
                             dataKey='cashBalance'
-                            name='Cash Balance'
+                            name={t('cashBalance')}
                             stroke='#4f46e5'
                             strokeWidth={2}
                             fill='url(#gradCashBalance2)'
@@ -302,7 +335,7 @@ export function BalanceFlowChart({
                             yAxisId='left'
                             type='monotone'
                             dataKey='netPosition'
-                            name='Net Position'
+                            name={t('netPosition')}
                             stroke='#10b981'
                             strokeWidth={2}
                             fill='url(#gradNetPosition2)'
@@ -315,7 +348,7 @@ export function BalanceFlowChart({
                             yAxisId='right'
                             type='monotone'
                             dataKey='netIncome'
-                            name='Net Income'
+                            name={t('netIncome')}
                             stroke='#06b6d4'
                             strokeWidth={2}
                             fill='url(#gradIncome2)'

@@ -1,14 +1,17 @@
 'use client';
 
+import { formatNumberWithUnit } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useErrorMessage } from '@/i18n/errors';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { PlanetDestinationSelect } from './PlanetDestinationSelect';
 import { useShipDispatch } from './useShipDispatch';
+import { useLocale, useTranslations } from 'next-intl';
 
 type Props = {
     agentId: string;
@@ -27,6 +30,10 @@ export function DispatchPassengerShipDialog({
     passengerCapacity,
     children,
 }: Props) {
+    const locale = useLocale();
+    const t = useTranslations('Ships');
+    const tc = useTranslations('Common');
+    const showError = useErrorMessage();
     const trpc = useTRPC();
     const markDispatched = useShipDispatch(agentId, planetId, shipId);
     const [open, setOpen] = useState(false);
@@ -61,30 +68,30 @@ export function DispatchPassengerShipDialog({
             <DialogTrigger asChild>{children}</DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Dispatch {shipName}</DialogTitle>
+                    <DialogTitle>{t('dispatch.title', { shipName })}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className='space-y-4'>
                     <PlanetDestinationSelect fromPlanetId={planetId} value={toPlanetId} onChange={setToPlanetId} />
                     <div className='space-y-1.5'>
-                        <Label>Passengers to Board</Label>
+                        <Label>{t('dispatch.passengersToBoard')}</Label>
                         <Input
                             type='number'
                             min={0}
                             max={passengerCapacity}
                             value={passengerCount}
                             onChange={(e) => setPassengerCount(e.target.value)}
-                            placeholder={`0 – ${passengerCapacity.toLocaleString()}`}
+                            placeholder={`0 – ${formatNumberWithUnit(passengerCapacity, 'persons', undefined, locale)}`}
                         />
                         <p className='text-xs text-muted-foreground'>
-                            Max capacity: {passengerCapacity.toLocaleString()}
+                            {t('dispatch.maxCapacity', {
+                                capacity: formatNumberWithUnit(passengerCapacity, 'persons', undefined, locale),
+                            })}
                         </p>
                     </div>
-                    {mutation.isError && (
-                        <p className='text-sm text-destructive'>{(mutation.error as unknown as Error).message}</p>
-                    )}
+                    {mutation.isError && <p className='text-sm text-destructive'>{showError(mutation.error)}</p>}
                     <DialogFooter>
                         <Button type='submit' disabled={!toPlanetId || mutation.isPending}>
-                            {mutation.isPending ? 'Dispatching…' : 'Dispatch'}
+                            {mutation.isPending ? t('dispatch.dispatching') : tc('dispatch')}
                         </Button>
                     </DialogFooter>
                 </form>

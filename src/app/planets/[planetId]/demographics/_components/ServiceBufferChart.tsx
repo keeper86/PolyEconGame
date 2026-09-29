@@ -9,9 +9,10 @@ import type { ServiceName } from '@/simulation/population/population';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import React, { useMemo } from 'react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
+import { EDU_COLORS, OCC_COLORS, useCohortLabels } from './CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { GV_FOOD, GV_POP, GV_WEALTH } from './demographicsTypes';
+import { useLocale, useTranslations } from 'next-intl';
 
 type ChartRow = Record<string, number>;
 
@@ -60,6 +61,8 @@ function makeTooltip(
         payload?: { payload: ChartRow }[];
         label?: number;
     }) {
+        const locale = useLocale();
+        const t = useTranslations('Demographics');
         if (!active || !payload || payload.length === 0) {
             return null;
         }
@@ -67,7 +70,7 @@ function makeTooltip(
         const age = label ?? 0;
         return (
             <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[160px]'>
-                <div className='font-medium mb-1'>Age {age}</div>
+                <div className='font-medium mb-1'>{t('tooltipAge', { age: String(age) })}</div>
                 {keys.map((key) => {
                     const pop = row[`${key}_pop`] ?? 0;
                     if (pop === 0) {
@@ -85,7 +88,7 @@ function makeTooltip(
                             </span>
                             <span className='ml-auto pl-2 text-muted-foreground'>
                                 {(ratio * 100).toFixed(0)}%{' · '}
-                                {formatNumberWithUnit(ratio * bufferTargetTicks, 'days')}
+                                {formatNumberWithUnit(ratio * bufferTargetTicks, 'days', undefined, locale)}
                             </span>
                         </div>
                     );
@@ -172,21 +175,24 @@ type Props = {
 };
 
 function EmptyChart({ height = 180 }: { height?: number }) {
+    const t = useTranslations('Demographics');
     return (
         <div
             className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
             style={{ height }}
         >
-            No data
+            {t('noData')}
         </div>
     );
 }
 
 export default function ServiceBufferChart({ rows, groupMode, serviceKey }: Props): React.ReactElement {
+    const locale = useLocale();
     const isVerySmall = useIsSmallScreen();
 
+    const { edu: eduLabels, occ: occLabels } = useCohortLabels();
     const keys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
-    const labels: Record<string, string> = groupMode === 'occupation' ? OCC_LABELS : EDU_LABELS;
+    const labels: Record<string, string> = groupMode === 'occupation' ? occLabels : eduLabels;
     const colors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
     const targetPerPerson = SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks;
 
@@ -257,7 +263,7 @@ export default function ServiceBufferChart({ rows, groupMode, serviceKey }: Prop
                 <YAxis
                     width={40}
                     tick={{ fontSize: 10 }}
-                    tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                    tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons', undefined, locale)}
                     domain={yDomain}
                 />
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}

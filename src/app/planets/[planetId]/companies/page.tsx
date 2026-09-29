@@ -17,6 +17,7 @@ import type { AgentListSummary } from '@/simulation/snapshotRepository';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useIsSmallScreen } from '@/hooks/useMobile';
+import { useLocale, useTranslations } from 'next-intl';
 
 type AgentRow = AgentListSummary & { normalizedBalance: number; rank: number };
 
@@ -31,6 +32,9 @@ function sortAgents(agents: AgentRow[], key: SortKey, dir: SortDir): AgentRow[] 
 }
 
 export default function PlanetAgentsLeaderboardPage() {
+    const locale = useLocale();
+    const t = useTranslations('Companies');
+    const tCommon = useTranslations('Common');
     const params = useParams();
     const planetId = (params?.planetId as string) ?? '';
     const smallScreen = useIsSmallScreen();
@@ -77,21 +81,21 @@ export default function PlanetAgentsLeaderboardPage() {
     });
 
     if (isLoading) {
-        return <div className='text-sm text-muted-foreground'>Waiting for simulation data…</div>;
+        return <div className='text-sm text-muted-foreground'>{tCommon('waitingForData')}</div>;
     }
 
     if (agentsWithBalance.length === 0) {
-        return <div className='text-sm text-muted-foreground'>No companies found.</div>;
+        return <div className='text-sm text-muted-foreground'>{t('none')}</div>;
     }
 
     return (
         <Page
-            title='Companies'
+            title={t('title')}
             headerComponent={
                 <span className='flex flex-col items-end gap-2'>
                     <span className='flex items-center gap-2'>
                         <Label htmlFor='show-all-companies' className='text-xs text-muted-foreground cursor-pointer'>
-                            {smallScreen ? 'All planets' : 'Show from all planets'}
+                            {smallScreen ? t('allPlanets') : t('showFromAllPlanets')}
                         </Label>
                         <Switch id='show-all-companies' checked={showAll} onCheckedChange={setShowAll} />{' '}
                     </span>
@@ -100,7 +104,7 @@ export default function PlanetAgentsLeaderboardPage() {
                             htmlFor='hide-automated-companies'
                             className='text-xs text-muted-foreground cursor-pointer text-right'
                         >
-                            {smallScreen ? 'Hide automated' : 'Hide automated agents'}
+                            {smallScreen ? t('hideAutomated') : t('hideAutomatedAgents')}
                         </Label>
                         <Switch
                             id='hide-automated-companies'
@@ -117,15 +121,15 @@ export default function PlanetAgentsLeaderboardPage() {
                     <TableRow>
                         <TableHead className='w-10 text-right'>#</TableHead>
                         <TableHead className='w-10' />
-                        <TableHead>Company</TableHead>
+                        <TableHead>{t('company')}</TableHead>
                         <TableHead className='text-right'>
                             <DataTableColumnHeader
-                                title='Net Worth'
+                                title={smallScreen ? t('netWorthShort') : t('netWorth')}
                                 className='justify-end'
                                 {...col('normalizedBalance')}
                             />
                         </TableHead>
-                        <TableHead className='w-8 text-right'>Home</TableHead>
+                        <TableHead className='w-8 text-right'>{t('home')}</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -155,7 +159,7 @@ export default function PlanetAgentsLeaderboardPage() {
                                 </Link>
                             </TableCell>
                             <TableCell className='tabular-nums text-right'>
-                                {formatNumberWithUnit(agent.normalizedBalance, 'currency', planetId)}
+                                {formatNumberWithUnit(agent.normalizedBalance, 'currency', planetId, locale)}
                             </TableCell>
                             <TableCell className='tabular-nums text-right'>
                                 <PlanetIcon planetId={agent.associatedPlanetId} size={28} />

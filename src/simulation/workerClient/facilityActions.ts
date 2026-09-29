@@ -40,7 +40,7 @@ export function handleBuildFacility(
         safePostMessage({
             type: 'facilityBuildFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -50,7 +50,7 @@ export function handleBuildFacility(
         safePostMessage({
             type: 'facilityBuildFailed',
             requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -62,7 +62,7 @@ export function handleBuildFacility(
         safePostMessage({
             type: 'facilityBuildFailed',
             requestId,
-            reason: `Unknown facility '${facilityKey}'`,
+            error: { code: 'unknownFacility', params: { facilityName: facilityKey } },
             processedAtTick: state.tick,
         });
         return;
@@ -82,7 +82,7 @@ export function handleBuildFacility(
         safePostMessage({
             type: 'facilityBuildFailed',
             requestId,
-            reason: `Facility '${facilityKey}' already exists on planet '${planetId}'`,
+            error: { code: 'facilityAlreadyExists', params: { facilityKey: facilityKey, planetId: planetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -122,7 +122,7 @@ export function handleExpandFacility(
         safePostMessage({
             type: 'facilityExpandFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -132,7 +132,7 @@ export function handleExpandFacility(
         safePostMessage({
             type: 'facilityExpandFailed',
             requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -146,7 +146,7 @@ export function handleExpandFacility(
         safePostMessage({
             type: 'facilityExpandFailed',
             requestId,
-            reason: `Facility '${facilityId}' not found`,
+            error: { code: 'facilityNotFound', params: { facilityId: facilityId } },
             processedAtTick: state.tick,
         });
         return;
@@ -155,7 +155,7 @@ export function handleExpandFacility(
         safePostMessage({
             type: 'facilityExpandFailed',
             requestId,
-            reason: 'Facility is already under construction',
+            error: { code: 'facilityAlreadyUnderConstruction', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -164,7 +164,10 @@ export function handleExpandFacility(
         safePostMessage({
             type: 'facilityExpandFailed',
             requestId,
-            reason: `Target scale ${targetScale} must be greater than current max scale ${facility.maxScale}`,
+            error: {
+                code: 'targetScaleNotAboveCurrent',
+                params: { targetScale: targetScale, maxScale: facility.maxScale },
+            },
             processedAtTick: state.tick,
         });
         return;
@@ -196,7 +199,7 @@ export function handleSetFacilityScale(
         safePostMessage({
             type: 'facilityScaleSetFailed',
             requestId,
-            reason: `scaleFraction must be between 0 and 1`,
+            error: { code: 'scaleFractionOutOfRange', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -206,7 +209,7 @@ export function handleSetFacilityScale(
         safePostMessage({
             type: 'facilityScaleSetFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -216,7 +219,7 @@ export function handleSetFacilityScale(
         safePostMessage({
             type: 'facilityScaleSetFailed',
             requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -231,7 +234,7 @@ export function handleSetFacilityScale(
         safePostMessage({
             type: 'facilityScaleSetFailed',
             requestId,
-            reason: `Facility '${facilityId}' not found`,
+            error: { code: 'facilityNotFound', params: { facilityId: facilityId } },
             processedAtTick: state.tick,
         });
         return;
@@ -254,7 +257,7 @@ export function handleContractFacility(
         safePostMessage({
             type: 'facilityContractFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -264,7 +267,7 @@ export function handleContractFacility(
         safePostMessage({
             type: 'facilityContractFailed',
             requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -279,7 +282,7 @@ export function handleContractFacility(
         safePostMessage({
             type: 'facilityContractFailed',
             requestId,
-            reason: `Facility '${facilityId}' not found`,
+            error: { code: 'facilityNotFound', params: { facilityId: facilityId } },
             processedAtTick: state.tick,
         });
         return;
@@ -288,7 +291,7 @@ export function handleContractFacility(
         safePostMessage({
             type: 'facilityContractFailed',
             requestId,
-            reason: 'Facility is under construction',
+            error: { code: 'facilityUnderConstruction', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -297,7 +300,10 @@ export function handleContractFacility(
         safePostMessage({
             type: 'facilityContractFailed',
             requestId,
-            reason: `Target scale ${targetScale} must be less than current max scale ${facility.maxScale}`,
+            error: {
+                code: 'targetScaleNotBelowCurrent',
+                params: { targetScale: targetScale, maxScale: facility.maxScale },
+            },
             processedAtTick: state.tick,
         });
         return;
@@ -307,7 +313,7 @@ export function handleContractFacility(
         safePostMessage({
             type: 'facilityContractFailed',
             requestId,
-            reason: `Planet '${planetId}' not found`,
+            error: { code: 'planetNotFound', params: { planetId: planetId } },
             processedAtTick: state.tick,
         });
         return;
@@ -318,7 +324,7 @@ export function handleContractFacility(
         safePostMessage({
             type: 'facilityContractFailed',
             requestId,
-            reason: 'Recycler declined the contraction',
+            error: { code: 'recyclerDeclinedContraction', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -395,7 +401,7 @@ function handleBuildShipConstructionFacility(
         safePostMessage({
             type: 'shipConstructionFacilityBuildFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -405,7 +411,7 @@ function handleBuildShipConstructionFacility(
         safePostMessage({
             type: 'shipConstructionFacilityBuildFailed',
             requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -415,7 +421,10 @@ function handleBuildShipConstructionFacility(
         safePostMessage({
             type: 'shipConstructionFacilityBuildFailed',
             requestId,
-            reason: `Ship construction facility '${facilityName}' already exists on planet '${planetId}'`,
+            error: {
+                code: 'shipConstructionFacilityAlreadyExists',
+                params: { facilityName: facilityName, planetId: planetId },
+            },
             processedAtTick: state.tick,
         });
         return;
@@ -459,7 +468,7 @@ function handleExpandShipConstructionFacility(
         safePostMessage({
             type: 'shipConstructionFacilityExpandFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -469,7 +478,7 @@ function handleExpandShipConstructionFacility(
         safePostMessage({
             type: 'shipConstructionFacilityExpandFailed',
             requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -479,7 +488,7 @@ function handleExpandShipConstructionFacility(
         safePostMessage({
             type: 'shipConstructionFacilityExpandFailed',
             requestId,
-            reason: `Ship construction facility '${facilityId}' not found`,
+            error: { code: 'shipConstructionFacilityNotFound', params: { facilityId: facilityId } },
             processedAtTick: state.tick,
         });
         return;
@@ -488,7 +497,7 @@ function handleExpandShipConstructionFacility(
         safePostMessage({
             type: 'shipConstructionFacilityExpandFailed',
             requestId,
-            reason: 'Facility is already under construction',
+            error: { code: 'facilityAlreadyUnderConstruction', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -497,7 +506,10 @@ function handleExpandShipConstructionFacility(
         safePostMessage({
             type: 'shipConstructionFacilityExpandFailed',
             requestId,
-            reason: `Target scale ${targetScale} must be greater than current max scale ${facility.maxScale}`,
+            error: {
+                code: 'targetScaleNotAboveCurrent',
+                params: { targetScale: targetScale, maxScale: facility.maxScale },
+            },
             processedAtTick: state.tick,
         });
         return;
@@ -535,7 +547,7 @@ function handleSetShipConstructionTarget(
         safePostMessage({
             type: 'shipConstructionTargetSetFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -545,7 +557,7 @@ function handleSetShipConstructionTarget(
         safePostMessage({
             type: 'shipConstructionTargetSetFailed',
             requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -555,7 +567,7 @@ function handleSetShipConstructionTarget(
         safePostMessage({
             type: 'shipConstructionTargetSetFailed',
             requestId,
-            reason: `Ship construction facility '${facilityId}' not found`,
+            error: { code: 'shipConstructionFacilityNotFound', params: { facilityId: facilityId } },
             processedAtTick: state.tick,
         });
         return;
@@ -564,7 +576,7 @@ function handleSetShipConstructionTarget(
         safePostMessage({
             type: 'shipConstructionTargetSetFailed',
             requestId,
-            reason: 'Facility is under construction',
+            error: { code: 'facilityUnderConstruction', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -585,7 +597,7 @@ function handleSetShipConstructionTarget(
             safePostMessage({
                 type: 'shipConstructionTargetSetFailed',
                 requestId,
-                reason: `Unknown ship type '${shipTypeName}'`,
+                error: { code: 'unknownShipType', params: { shipType: shipTypeName } },
                 processedAtTick: state.tick,
             });
             return;
@@ -611,7 +623,7 @@ export function handleCancelConstruction(
         safePostMessage({
             type: 'constructionCancelFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -621,7 +633,7 @@ export function handleCancelConstruction(
         safePostMessage({
             type: 'constructionCancelFailed',
             requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -644,7 +656,7 @@ export function handleCancelConstruction(
         safePostMessage({
             type: 'constructionCancelFailed',
             requestId,
-            reason: `Facility '${facilityId}' not found`,
+            error: { code: 'facilityNotFound', params: { facilityId: facilityId } },
             processedAtTick: state.tick,
         });
         return;
@@ -656,7 +668,7 @@ export function handleCancelConstruction(
             safePostMessage({
                 type: 'constructionCancelFailed',
                 requestId,
-                reason: 'Facility is not under construction',
+                error: { code: 'facilityNotUnderConstruction', params: {} },
                 processedAtTick: state.tick,
             });
             return;
@@ -681,7 +693,7 @@ export function handleCancelConstruction(
             safePostMessage({
                 type: 'constructionCancelFailed',
                 requestId,
-                reason: 'Facility is not under construction',
+                error: { code: 'facilityNotUnderConstruction', params: {} },
                 processedAtTick: state.tick,
             });
             return;
@@ -705,7 +717,7 @@ export function handleCancelConstruction(
         safePostMessage({
             type: 'constructionCancelFailed',
             requestId,
-            reason: 'Facility is not under construction',
+            error: { code: 'facilityNotUnderConstruction', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -739,7 +751,7 @@ export function handleSetConstructionSuspended(
         safePostMessage({
             type: 'constructionSuspensionSetFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -749,7 +761,7 @@ export function handleSetConstructionSuspended(
         safePostMessage({
             type: 'constructionSuspensionSetFailed',
             requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -766,7 +778,7 @@ export function handleSetConstructionSuspended(
         safePostMessage({
             type: 'constructionSuspensionSetFailed',
             requestId,
-            reason: `Facility '${facilityId}' not found`,
+            error: { code: 'facilityNotFound', params: { facilityId: facilityId } },
             processedAtTick: state.tick,
         });
         return;
@@ -775,7 +787,7 @@ export function handleSetConstructionSuspended(
         safePostMessage({
             type: 'constructionSuspensionSetFailed',
             requestId,
-            reason: 'Facility is not under construction',
+            error: { code: 'facilityNotUnderConstruction', params: {} },
             processedAtTick: state.tick,
         });
         return;

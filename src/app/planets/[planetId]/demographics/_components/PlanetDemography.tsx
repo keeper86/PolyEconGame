@@ -6,8 +6,9 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import React from 'react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
+import { EDU_COLORS, OCC_COLORS, useCohortLabels } from './CohortFilter';
 import type { GroupMode } from './demographicsTypes';
+import { useLocale, useTranslations } from 'next-intl';
 
 type DemographyRow = {
     age: number;
@@ -27,18 +28,22 @@ function safeNumber(v: unknown): number {
 }
 
 function EmptyChart({ height = 180 }: { height?: number }) {
+    const t = useTranslations('Demographics');
     return (
         <div
             className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
             style={{ height }}
         >
-            No data
+            {t('noData')}
         </div>
     );
 }
 
 export default function PlanetDemography({ rows, group }: Props): React.ReactElement {
+    const locale = useLocale();
+    const t = useTranslations('Demographics');
     const isVerySmall = useIsSmallScreen();
+    const { edu: eduLabels, occ: occLabels } = useCohortLabels();
     if (!rows || rows.length === 0) {
         return <EmptyChart />;
     }
@@ -76,7 +81,7 @@ export default function PlanetDemography({ rows, group }: Props): React.ReactEle
     const keys = group === 'education' ? educationLevelKeys : OCCUPATIONS;
     const finalChartData = isVerySmall ? mergePairs(chartData, keys) : chartData;
     const colors = group === 'education' ? EDU_COLORS : OCC_COLORS;
-    const labels = group === 'education' ? EDU_LABELS : OCC_LABELS;
+    const labels = group === 'education' ? eduLabels : occLabels;
 
     return (
         <ResponsiveContainer width='100%' height={240}>
@@ -85,7 +90,7 @@ export default function PlanetDemography({ rows, group }: Props): React.ReactEle
                 <YAxis
                     width={40}
                     tick={{ fontSize: 10 }}
-                    tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                    tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons', undefined, locale)}
                 />
                 <Tooltip
                     content={({ active, payload, label }) => {
@@ -94,10 +99,11 @@ export default function PlanetDemography({ rows, group }: Props): React.ReactEle
                         }
                         return (
                             <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[140px]'>
-                                <div className='font-medium mb-1'>Age {label}</div>
+                                <div className='font-medium mb-1'>{t('tooltipAge', { age: String(label) })}</div>
                                 {payload.map((entry) => (
                                     <div key={entry.dataKey as string} style={{ color: entry.color }}>
-                                        {entry.name}: {formatNumberWithUnit(entry.value as number, 'persons')}
+                                        {entry.name}:{' '}
+                                        {formatNumberWithUnit(entry.value as number, 'persons', undefined, locale)}
                                     </div>
                                 ))}
                             </div>

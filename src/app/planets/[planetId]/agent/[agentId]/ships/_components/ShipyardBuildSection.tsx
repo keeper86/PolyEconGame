@@ -8,8 +8,11 @@ import { Separator } from '@/components/ui/separator';
 import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
+import { useErrorMessage } from '@/i18n/errors';
+import { termFor } from '@/i18n/terms';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { ActionPendingOverlay } from '../../_component/ActionPendingOverlay';
@@ -19,7 +22,11 @@ import { FacilityCardShell } from '../../production/_component/FacilityCardShell
 import { FacilityConstructionPanel } from '../../production/_component/FacilityConstructionPanel';
 import { selectPendingShipyardBuilds } from './shipyardHelpers';
 
-function PendingShipyardCard({ name }: { name: string }): React.ReactElement {
+function PendingShipyardCard({ name }: { name: string | null }): React.ReactElement {
+    const tc = useTranslations('Common');
+    const tt = useTranslations('Toasts');
+    const ts = useTranslations('Ships');
+    const locale = useLocale();
     return (
         <FacilityCardShell
             className='max-w-[600px]'
@@ -27,7 +34,7 @@ function PendingShipyardCard({ name }: { name: string }): React.ReactElement {
             icon={<FacilityOrShipIcon facilityOrShipName='Shipyard' buildProgress={0} />}
             headerContent={
                 <CardHeaderBlock
-                    title={name}
+                    title={name ? termFor(locale, name) : ts('newShipyard')}
                     titleClassName='text-amber-600 dark:text-amber-400'
                     badge={
                         <Badge
@@ -35,7 +42,7 @@ function PendingShipyardCard({ name }: { name: string }): React.ReactElement {
                             className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
                         >
                             <HardHat className='h-3.5 w-3.5' />
-                            Under Construction
+                            {tc('underConstruction')}
                         </Badge>
                     }
                     details={null}
@@ -44,7 +51,7 @@ function PendingShipyardCard({ name }: { name: string }): React.ReactElement {
         >
             <div className='relative mt-auto space-y-2'>
                 <Separator />
-                <ActionPendingOverlay message='Awaiting next day…' />
+                <ActionPendingOverlay message={tt('awaitingNextDay')} />
             </div>
         </FacilityCardShell>
     );
@@ -63,6 +70,10 @@ function ShipyardBuildForm({
 }): React.ReactElement {
     const trpc = useTRPC();
     const addPending = useAddPendingAction();
+    const t = useTranslations('Toasts');
+    const ts = useTranslations('Ships');
+    const tc = useTranslations('Common');
+    const showError = useErrorMessage();
     const [shipyardName, setShipyardName] = useState('');
 
     const { data: financials } = useSimulationQuery(
@@ -80,11 +91,11 @@ function ShipyardBuildForm({
                     facilityName: shipyardName.trim(),
                     triggerTick: data.processedAtTick,
                 });
-                toast.success('Shipyard construction ordered. Changes take effect on the next day.');
+                toast.success(t('shipyardOrdered'));
                 onCancel();
             },
             onError: (err) => {
-                toast.error(err instanceof Error ? err.message : 'Shipyard build failed');
+                toast.error(err instanceof Error ? showError(err) : t('shipyardBuildFailed'));
             },
         }),
     );
@@ -97,12 +108,12 @@ function ShipyardBuildForm({
             headerContent={
                 <span className='flex flex-col gap-2' style={{ minHeight: `${defaultHeight}px` }}>
                     <div className='flex flex-col gap-1 mb-auto'>
-                        <h3 className='font-semibold leading-tight'>New Shipyard</h3>
+                        <h3 className='font-semibold leading-tight'>{ts('build.newShipyard')}</h3>
                         <div className='flex flex-col gap-1'>
-                            <Label className='text-xs text-muted-foreground'>Shipyard name</Label>
+                            <Label className='text-xs text-muted-foreground'>{ts('build.shipyardName')}</Label>
                             <Input
                                 className='h-8 text-xs'
-                                placeholder='Enter a unique name, e.g. "Shipyard Alpha"'
+                                placeholder={ts('build.shipyardNamePlaceholder')}
                                 value={shipyardName}
                                 maxLength={50}
                                 onChange={(e) => setShipyardName(e.target.value)}
@@ -119,15 +130,15 @@ function ShipyardBuildForm({
                     fromScale={0}
                     constructionServicePrice={constructionServicePrice}
                     planetId={planetId}
-                    label='Build at scale'
-                    confirmLabel='Build'
-                    pendingLabel='Sending build…'
+                    label={tc('buildAtScale')}
+                    confirmLabel={tc('build')}
+                    pendingLabel={ts('build.sendingBuild')}
                     isPending={buildMutation.isPending}
                     financials={financials}
                     onCancel={onCancel}
                     onConfirm={(targetScale) => {
                         if (!shipyardName.trim()) {
-                            toast.error('Please enter a shipyard name');
+                            toast.error(t('shipyardNameRequired'));
                             return;
                         }
                         buildMutation.mutate({
@@ -138,7 +149,7 @@ function ShipyardBuildForm({
                         });
                     }}
                 />
-                {buildMutation.isPending && <ActionPendingOverlay message='Sending build…' />}
+                {buildMutation.isPending && <ActionPendingOverlay message={ts('build.sendingBuild')} />}
             </div>
         </FacilityCardShell>
     );
@@ -154,6 +165,7 @@ export function ShipyardBuildSection({
     constructionServicePrice: number;
 }): React.ReactElement {
     const pendingActions = usePendingActions(agentId, planetId);
+    const ts = useTranslations('Ships');
     const pendingBuilds = selectPendingShipyardBuilds(pendingActions);
     const [configuring, setConfiguring] = useState(false);
 
@@ -178,7 +190,7 @@ export function ShipyardBuildSection({
     return (
         <>
             {pendingCards}
-            <BuildPlaceholderCard label='Build shipyard' onClick={() => setConfiguring(true)} />
+            <BuildPlaceholderCard label={ts('build.buildShipyard')} onClick={() => setConfiguring(true)} />
         </>
     );
 }

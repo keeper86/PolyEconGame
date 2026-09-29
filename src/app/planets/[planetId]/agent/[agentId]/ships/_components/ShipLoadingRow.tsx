@@ -2,11 +2,13 @@
 
 import { ProductIcon } from '@/components/client/ProductIcon';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
+import { termFor } from '@/i18n/terms';
 import type { TransportShipStatusLoading } from '@/simulation/ships/ships';
 import { ArrowRight } from 'lucide-react';
 import React from 'react';
 import { ShipCargoProgress } from './ShipCargoProgress';
 import { planetName, type PlanetSummary } from './shipFormatting';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function ShipLoadingRow({
     state,
@@ -15,6 +17,8 @@ export function ShipLoadingRow({
     state: TransportShipStatusLoading;
     planetSummaries: PlanetSummary[];
 }): React.ReactElement {
+    const locale = useLocale();
+    const t = useTranslations('Ships');
     const cargo =
         state.cargoGoal && state.currentCargo && state.cargoGoal.quantity !== 0
             ? {
@@ -31,19 +35,19 @@ export function ShipLoadingRow({
                     <>
                         <ProductIcon productName={cargo.goal.resource.name} />
                         <span>
-                            Loading{' '}
+                            {t('status.loading')}{' '}
                             <span className='tabular-nums text-foreground'>
-                                {formatNumberWithUnit(cargo.current.quantity, cargo.unit)}
+                                {formatNumberWithUnit(cargo.current.quantity, cargo.unit, undefined, locale)}
                             </span>
                             {' / '}
                             <span className='tabular-nums'>
-                                {formatNumberWithUnit(cargo.goal.quantity, cargo.unit)}
+                                {formatNumberWithUnit(cargo.goal.quantity, cargo.unit, undefined, locale)}
                             </span>{' '}
-                            {cargo.goal.resource.name}
+                            {termFor(locale, cargo.goal.resource.name)}
                         </span>
                     </>
                 ) : (
-                    <span>Repositioning (empty)</span>
+                    <span>{t('status.repositioningEmpty')}</span>
                 )}
                 <ArrowRight className='h-3 w-3' />
                 <span>{planetName(planetSummaries, state.to)}</span>

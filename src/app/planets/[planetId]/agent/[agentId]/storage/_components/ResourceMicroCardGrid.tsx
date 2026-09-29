@@ -3,12 +3,20 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { getWholeStorage, queryStorageFacility } from '@/simulation/planet/facility';
-import { RESOURCES_BY_NAME, RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
+import { RESOURCES_BY_NAME } from '@/simulation/planet/resourceCatalog';
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { type MicroCardEntry, ResourceMicroCard } from './ResourceMicroCard';
 import { computeResourceFlowData, elapsedTicksThisMonth } from './resourceFlowNormalizer';
 
-const LEVEL_ORDER: string[] = ['raw', 'refined', 'manufactured', 'services'];
+const LEVEL_ORDER = ['raw', 'refined', 'manufactured', 'services'] as const;
+
+const LEVEL_LABEL_KEYS = {
+    raw: 'resourceRaw',
+    refined: 'resourceRefined',
+    manufactured: 'resourceManufactured',
+    services: 'resourceServices',
+} as const;
 
 function aggregateProduction(assets: AgentPlanetAssets): Record<string, number> {
     const result: Record<string, number> = {};
@@ -203,20 +211,23 @@ type Props = {
 
 // TODO: consolidate and unify storage related functions. Use same logic anywhere.
 export function ResourceMicroCardGrid({ assets, tick }: Props): React.ReactElement {
+    const tr = useTranslations('Storage');
+    const tl = useTranslations('Levels');
+    const tc = useTranslations('Common');
     const entries = useMemo(() => buildMicroCardEntries(assets, tick), [assets, tick]);
 
     const resourceGroups = useMemo(() => {
         const groups = groupEntriesByLevel(entries);
         const levelGroups = LEVEL_ORDER.map((level) => ({
             level,
-            label: RESOURCE_LEVEL_LABELS[level as keyof typeof RESOURCE_LEVEL_LABELS] ?? level,
+            label: tl(LEVEL_LABEL_KEYS[level]),
             resources: groups.get(level) ?? [],
         }));
         if (entries.length > 0) {
-            return [{ level: 'all', label: 'All', resources: entries }, ...levelGroups];
+            return [{ level: 'all', label: tc('all'), resources: entries }, ...levelGroups];
         }
         return levelGroups;
-    }, [entries]);
+    }, [entries, tl, tc]);
 
     const [activeTab, setActiveTab] = useState<string>('all');
 
@@ -242,7 +253,7 @@ export function ResourceMicroCardGrid({ assets, tick }: Props): React.ReactEleme
                 {resourceGroups.map(({ level }) => (
                     <TabsContent key={level} value={level} className='mt-0'>
                         {displayEntries.length === 0 ? (
-                            <p className='text-sm text-muted-foreground py-4 text-center'>-empty-</p>
+                            <p className='text-sm text-muted-foreground py-4 text-center'>{tr('empty')}</p>
                         ) : (
                             <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5'>
                                 {displayEntries.map((entry) => (

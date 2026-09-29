@@ -14,6 +14,7 @@ import React, { useMemo } from 'react';
 import { PlanetCostOfLivingChart, type CostOfLivingPoint } from './PlanetCostOfLivingChart';
 import { PlanetMacroChart, type EconomyPoint } from './PlanetMacroChart';
 import type { CostOfLivingLive, MacroLive } from './financialChartLogic';
+import { useLocale, useTranslations } from 'next-intl';
 
 const pct = (n: number): string => `${(n * 100).toFixed(2)} %`;
 
@@ -24,6 +25,8 @@ type Props = {
 };
 
 export default function BankPanel({ bank, planetId, governmentBalance }: Props): React.ReactElement | null {
+    const locale = useLocale();
+    const t = useTranslations('CentralBank');
     const trpc = useTRPC();
     const { granularity, setGranularity, currentTick } = useGranularity();
 
@@ -102,48 +105,53 @@ export default function BankPanel({ bank, planetId, governmentBalance }: Props):
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2' data-tour='bank-panel'>
                 <div className='grid grid-cols-1 gap-y-1'>
                     <Stat
-                        label='Outstanding loans'
-                        value={formatNumberWithUnit(bank.loans, 'currency', planetId)}
+                        label={t('outstandingLoans')}
+                        value={formatNumberWithUnit(bank.loans, 'currency', planetId, locale)}
                         icon={<TrendingDown className='h-3 w-3' />}
                         valueClassName={bank.loans > 0 ? 'text-amber-500' : ''}
                     />
                     <Stat
-                        label='Firm deposits'
-                        value={formatNumberWithUnit(bank.deposits - bank.householdDeposits, 'currency', planetId)}
+                        label={t('firmDeposits')}
+                        value={formatNumberWithUnit(
+                            bank.deposits - bank.householdDeposits,
+                            'currency',
+                            planetId,
+                            locale,
+                        )}
                         icon={<Wallet className='h-3 w-3' />}
                     />
                     <Stat
-                        label='Household deposits'
-                        value={formatNumberWithUnit(bank.householdDeposits, 'currency', planetId)}
+                        label={t('householdDeposits')}
+                        value={formatNumberWithUnit(bank.householdDeposits, 'currency', planetId, locale)}
                         icon={<Users className='h-3 w-3' />}
                     />
                     <Stat
-                        label='Government balance'
-                        value={formatNumberWithUnit(governmentBalance, 'currency', planetId)}
+                        label={t('governmentBalance')}
+                        value={formatNumberWithUnit(governmentBalance, 'currency', planetId, locale)}
                         icon={<Landmark className='h-3 w-3' />}
                     />
                 </div>
                 <div className='grid grid-cols-1 gap-y-1'>
                     <Stat
-                        label='Bank equity'
-                        value={formatNumberWithUnit(equity, 'currency', planetId)}
+                        label={t('bankEquity')}
+                        value={formatNumberWithUnit(equity, 'currency', planetId, locale)}
                         icon={<Scale className='h-3 w-3' />}
                         valueClassName={equityColor}
                     />
                     <Stat
-                        label='Written-off debt (total)'
-                        value={formatNumberWithUnit(bank.writeOffs, 'currency', planetId)}
+                        label={t('writtenOffDebt')}
+                        value={formatNumberWithUnit(bank.writeOffs, 'currency', planetId, locale)}
                         icon={<FileX className='h-3 w-3' />}
                         valueClassName={bank.writeOffs > 0 ? 'text-red-500' : ''}
                     />
                     <Stat
-                        label='Loan rate (new loans, p.a.)'
+                        label={t('loanRateNewLoans')}
                         value={pct(bank.loanRatePerYear)}
                         icon={<Percent className='h-3 w-3' />}
                     />
                     <Stat
-                        label='Interest collected'
-                        value={formatNumberWithUnit(bank.interestCollected, 'currency', planetId)}
+                        label={t('interestCollected')}
+                        value={formatNumberWithUnit(bank.interestCollected, 'currency', planetId, locale)}
                         icon={<Percent className='h-3 w-3' />}
                     />
                 </div>
@@ -151,7 +159,7 @@ export default function BankPanel({ bank, planetId, governmentBalance }: Props):
 
             <Separator />
             <GranularityHeader
-                title='Details'
+                title={t('details')}
                 icon={<Search className='h-4 w-4 text-muted-foreground' />}
                 granularity={granularity}
                 onGranularityChange={setGranularity}

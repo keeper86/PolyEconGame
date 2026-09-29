@@ -5,10 +5,12 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAddPendingAction } from '@/hooks/useActionOverlay';
+import { useErrorMessage } from '@/i18n/errors';
 import { useTRPC } from '@/lib/trpc';
 import type { TransportShip } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 type Offer = {
     id: string;
@@ -31,6 +33,8 @@ export function AcceptShipBuyingOfferDialog({ agentId, planetId, offer, idleMatc
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const addPending = useAddPendingAction();
+    const t = useTranslations('Ships');
+    const showError = useErrorMessage();
     const [shipId, setShipId] = useState('');
 
     const mutation = useMutation(
@@ -70,22 +74,22 @@ export function AcceptShipBuyingOfferDialog({ agentId, planetId, offer, idleMatc
         <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Sell Ship</DialogTitle>
+                    <DialogTitle>{t('offer.sellTitle')}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className='space-y-4'>
                     <div className='text-sm space-y-1'>
                         <p>
-                            <span className='text-muted-foreground'>Ship type wanted:</span> {offer.shipType}
+                            <span className='text-muted-foreground'>{t('offer.shipTypeWanted')}</span> {offer.shipType}
                         </p>
                         <p>
-                            <span className='text-muted-foreground'>Offered price:</span> {offer.price}
+                            <span className='text-muted-foreground'>{t('offer.offeredPrice')}</span> {offer.price}
                         </p>
                     </div>
                     <div className='space-y-1.5'>
-                        <Label>Select ship to sell</Label>
+                        <Label>{t('offer.selectShipToSell')}</Label>
                         <Select value={shipId} onValueChange={setShipId} required>
                             <SelectTrigger>
-                                <SelectValue placeholder='Select idle matching ship…' />
+                                <SelectValue placeholder={t('offer.selectIdleShip')} />
                             </SelectTrigger>
                             <SelectContent>
                                 {idleMatchingShips.map((s) => (
@@ -96,10 +100,10 @@ export function AcceptShipBuyingOfferDialog({ agentId, planetId, offer, idleMatc
                             </SelectContent>
                         </Select>
                     </div>
-                    {mutation.error && <p className='text-xs text-destructive'>{mutation.error.message}</p>}
+                    {mutation.error && <p className='text-xs text-destructive'>{showError(mutation.error)}</p>}
                     <DialogFooter>
                         <Button type='submit' disabled={mutation.isPending || !shipId}>
-                            {mutation.isPending ? 'Selling…' : 'Sell Ship'}
+                            {mutation.isPending ? t('offer.selling') : t('offer.sellTitle')}
                         </Button>
                     </DialogFooter>
                 </form>

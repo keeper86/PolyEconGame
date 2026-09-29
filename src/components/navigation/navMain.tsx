@@ -3,6 +3,7 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/c
 import type { RouteMetadata } from '@/lib/appRoutes';
 import { APP_ROUTES, isRoute, isRouteManifest } from '@/lib/appRoutes';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import type { ElementType, JSX } from 'react';
 import React from 'react';
@@ -14,6 +15,7 @@ function RenderNavEntry(route: RouteMetadata, opts?: { isSub?: boolean }): JSX.E
     const { isSub } = opts || {};
     const { isMobile, setOpenMobile } = useSidebar();
     const loggedIn = useSession().status === 'authenticated';
+    const t = useTranslations('Nav');
 
     const handleClick = () => {
         if (isMobile) {
@@ -36,14 +38,14 @@ function RenderNavEntry(route: RouteMetadata, opts?: { isSub?: boolean }): JSX.E
                         {route.icon && !isSub
                             ? React.createElement(route.icon as ElementType, { width: 16, height: 16 })
                             : null}
-                        <span>{route.label}</span>
+                        <span>{t(route.label)}</span>
                     </Link>
                 ) : (
                     <span className='flex items-center gap-2 opacity-50 cursor-not-allowed' aria-disabled='true'>
                         {route.icon && !isSub
                             ? React.createElement(route.icon as ElementType, { width: 16, height: 16 })
                             : null}
-                        <span>{route.label}</span>
+                        <span>{t(route.label)}</span>
                     </span>
                 )}
             </SidebarMenuButton>

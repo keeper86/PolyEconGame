@@ -418,9 +418,7 @@ export type BankruptcyRecord = {
     agentName: string;
     planetId: string;
     tick: number;
-    outcome: 'restructured' | 'liquidated';
-    message: string;
-};
+} & ({ outcome: 'restructured'; successorAgentName: string } | { outcome: 'liquidated' });
 
 export type Agent = {
     id: string;
@@ -453,9 +451,9 @@ export interface GameState {
     nextEventId: number;
 }
 
-export function pushTickerEvent(gameState: GameState, event: Omit<TickerEvent, 'id'>): void {
-    const tickerEvent: TickerEvent = { ...event, id: gameState.nextEventId++ };
-    gameState.tickerEvents.push(tickerEvent);
+export function pushTickerEvent(gameState: GameState, event: Omit<TickerEvent, 'id' | 'agentLogo'>): void {
+    const agentLogo = event.agentId ? (gameState.agents.get(event.agentId)?.logo ?? '') : '';
+    gameState.tickerEvents.push({ ...event, agentLogo, id: gameState.nextEventId++ });
 }
 
 const MAX_BANKRUPTCY_RECORDS = 2000;

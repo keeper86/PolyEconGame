@@ -3,8 +3,10 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Spinner } from '@/components/ui/spinner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useErrorMessage } from '@/i18n/errors';
 import { useTRPC } from '@/lib/trpc';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import * as React from 'react';
 
 type Props = {
@@ -15,6 +17,8 @@ type Props = {
 
 export default function UserAvatar({ userId, large = false, src = null }: Props) {
     const trpc = useTRPC();
+    const t = useTranslations('Common');
+    const showError = useErrorMessage();
 
     const queryOptions = trpc.getUser.queryOptions({ userId });
     const { data, isLoading, isError, error } = useQuery({ ...queryOptions, enabled: !src });
@@ -55,7 +59,7 @@ export default function UserAvatar({ userId, large = false, src = null }: Props)
                         </Avatar>
                     </span>
                 </TooltipTrigger>
-                <TooltipContent>{error?.message}</TooltipContent>
+                <TooltipContent>{error ? showError(error) : null}</TooltipContent>
             </Tooltip>
         );
     }
@@ -70,7 +74,7 @@ export default function UserAvatar({ userId, large = false, src = null }: Props)
 
     return (
         <Avatar className={large ? 'w-32 h-32' : undefined}>
-            <AvatarImage src={avatarSrc} alt={'User Avatar'} className='rounded-lg' />
+            <AvatarImage src={avatarSrc} alt={t('userAvatarAlt')} className='rounded-lg' />
         </Avatar>
     );
 }

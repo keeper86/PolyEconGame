@@ -1,13 +1,33 @@
 export const LABEL_COLUMN_WIDTH = 145;
 
+export type MarketColumnLabelKey =
+    | 'colStock'
+    | 'colPrice'
+    | 'colProd'
+    | 'colCons'
+    | 'colSupply'
+    | 'colDemand'
+    | 'colSold'
+    | 'colPriceCost';
+
+export type MarketColumnTitleKey =
+    | 'colStockTitle'
+    | 'colPriceTitle'
+    | 'colProdTitle'
+    | 'colConsTitle'
+    | 'colSupplyTitle'
+    | 'colDemandTitle'
+    | 'colSoldTitle'
+    | 'colPriceCostTitle';
+
 export interface ColumnConfig {
     id: string;
 
-    label: string;
+    labelKey: MarketColumnLabelKey;
 
     widthClass: string;
 
-    title: string;
+    titleKey: MarketColumnTitleKey;
 
     align: 'text-left' | 'text-center' | 'text-right';
 
@@ -19,72 +39,72 @@ export interface ColumnConfig {
 export const MARKET_COLUMNS: ColumnConfig[] = [
     {
         id: 'currentStorage',
-        label: 'Stock',
+        labelKey: 'colStock',
         widthClass: 'w-[72px]',
-        title: 'Current storage quantity',
+        titleKey: 'colStockTitle',
         align: 'text-right',
         enabled: true,
         priority: 2,
     },
     {
         id: 'clearingPrice',
-        label: 'Price',
+        labelKey: 'colPrice',
         widthClass: 'w-[72px]',
-        title: 'Clearing price',
+        titleKey: 'colPriceTitle',
         align: 'text-right',
         enabled: true,
         priority: 3,
     },
     {
         id: 'totalProduction',
-        label: 'Prod',
+        labelKey: 'colProd',
         widthClass: 'w-[72px]',
-        title: 'Total production',
+        titleKey: 'colProdTitle',
         align: 'text-right',
         enabled: true,
         priority: 7,
     },
     {
         id: 'totalConsumption',
-        label: 'Cons',
+        labelKey: 'colCons',
         widthClass: 'w-[72px]',
-        title: 'Total consumption',
+        titleKey: 'colConsTitle',
         align: 'text-right',
         enabled: true,
         priority: 8,
     },
     {
         id: 'totalSupply',
-        label: 'Supply',
+        labelKey: 'colSupply',
         widthClass: 'w-[72px]',
-        title: 'Total supply',
+        titleKey: 'colSupplyTitle',
         align: 'text-right',
         enabled: true,
         priority: 6,
     },
     {
         id: 'totalDemand',
-        label: 'Demand',
+        labelKey: 'colDemand',
         widthClass: 'w-[72px]',
-        title: 'Total demand',
+        titleKey: 'colDemandTitle',
         align: 'text-right',
         enabled: true,
         priority: 5,
     },
     {
         id: 'totalSold',
-        label: 'Sold',
+        labelKey: 'colSold',
         widthClass: 'w-[72px]',
-        title: 'Total sold',
+        titleKey: 'colSoldTitle',
         align: 'text-right',
         enabled: true,
         priority: 4,
     },
     {
         id: 'priceCostRatio',
-        label: 'Price/Cost',
+        labelKey: 'colPriceCost',
         widthClass: 'w-[72px]',
-        title: 'Revenue / cost',
+        titleKey: 'colPriceCostTitle',
         align: 'text-right',
         enabled: true,
         priority: 1,

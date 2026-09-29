@@ -2,9 +2,11 @@
 
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { Progress } from '@/components/ui/progress';
+import { termFor } from '@/i18n/terms';
 import type { ConstructionShipStatusLoading } from '@/simulation/ships/ships';
 import { ArrowRight } from 'lucide-react';
 import React from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { planetName, type PlanetSummary } from './shipFormatting';
 
 export function ShipPreFabricationRow({
@@ -14,6 +16,8 @@ export function ShipPreFabricationRow({
     state: ConstructionShipStatusLoading;
     planetSummaries: PlanetSummary[];
 }): React.ReactElement {
+    const t = useTranslations('Ships');
+    const locale = useLocale();
     const construction = state.buildingTarget?.construction ?? null;
     const pct =
         construction && construction.totalConstructionServiceRequired > 0
@@ -26,10 +30,10 @@ export function ShipPreFabricationRow({
                 {state.buildingTarget ? (
                     <>
                         <FacilityOrShipIcon facilityOrShipName={state.buildingTarget.name} size={18} />
-                        <span className='text-foreground'>{state.buildingTarget.name}</span>
+                        <span className='text-foreground'>{termFor(locale, state.buildingTarget.name)}</span>
                     </>
                 ) : (
-                    <span>Repositioning</span>
+                    <span>{t('status.repositioning')}</span>
                 )}
                 <ArrowRight className='h-3 w-3' />
                 <span>{planetName(planetSummaries, state.to)}</span>
@@ -37,7 +41,7 @@ export function ShipPreFabricationRow({
             {construction && (
                 <div>
                     <div className='flex justify-between text-xs text-muted-foreground mb-1'>
-                        <span>Prefabrication</span>
+                        <span>{t('status.prefabrication')}</span>
                         <span className='tabular-nums font-medium text-foreground'>{pct.toFixed(0)}%</span>
                     </div>
                     <Progress value={pct} className='h-1.5 bg-amber-100 dark:bg-amber-950/40 [&>div]:bg-amber-500' />

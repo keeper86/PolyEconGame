@@ -4,6 +4,7 @@ import { Lock } from 'lucide-react';
 import { assetManifest } from '@/lib/assetManifest';
 import { CATEGORY_ORDER, getCategoryForLogoKey } from '@/lib/companyLogoCategorization';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { CompanyLogo } from './CompanyLogo';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -31,7 +32,24 @@ export function CompanyLogoChooser({
     usedLogos?: string[];
 }) {
     const usedLogosSet = new Set(usedLogos);
+    const t = useTranslations('Agent');
+    const tc = useTranslations('Common');
     const [open, setOpen] = useState(false);
+
+    const labelForCategory = (category: (typeof CATEGORY_ORDER)[number]): string => {
+        switch (category) {
+            case 'Raw':
+                return tc('logoCategories.raw');
+            case 'Refinement':
+                return tc('logoCategories.refinement');
+            case 'Manufacturing':
+                return tc('logoCategories.manufacturing');
+            case 'Services':
+                return tc('logoCategories.services');
+            default:
+                return tc('logoCategories.general');
+        }
+    };
 
     return (
         <div className='grid gap-2'>
@@ -39,7 +57,7 @@ export function CompanyLogoChooser({
                 <DialogTrigger asChild>
                     <button
                         type='button'
-                        aria-label='Choose company logo'
+                        aria-label={t('chooseCompanyLogoAria')}
                         className={`relative rounded-lg transition-all cursor-pointer ${showPrompt ? 'ring-2 ring-destructive animate-pulse' : ''}`}
                     >
                         <CompanyLogo logoKey={selectedLogo} size={36} className='hover:scale-115' />
@@ -55,13 +73,13 @@ export function CompanyLogoChooser({
                 </DialogTrigger>
                 <DialogContent className='max-w-2xl max-h-[80vh] flex flex-col'>
                     <DialogHeader>
-                        <DialogTitle>Choose Company Logo</DialogTitle>
+                        <DialogTitle>{t('chooseCompanyLogo')}</DialogTitle>
                     </DialogHeader>
                     <Tabs defaultValue={CATEGORY_ORDER[0]} className='flex flex-col min-h-0 flex-1'>
                         <TabsList className='flex-wrap h-auto'>
                             {CATEGORY_ORDER.map((category) => (
                                 <TabsTrigger key={category} value={category} className='text-xs'>
-                                    {category}
+                                    {labelForCategory(category)}
                                     <span className='ml-1 text-muted-foreground'>
                                         ({LOGOS_BY_CATEGORY[category].length})
                                     </span>
@@ -79,7 +97,7 @@ export function CompanyLogoChooser({
                                                 key={key}
                                                 type='button'
                                                 disabled={isTaken}
-                                                title={isTaken ? 'Already taken by another company' : undefined}
+                                                title={isTaken ? t('alreadyTaken') : undefined}
                                                 onClick={() => {
                                                     if (!isTaken) {
                                                         onSelect(key);

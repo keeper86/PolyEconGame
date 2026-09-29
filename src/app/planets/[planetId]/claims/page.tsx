@@ -10,12 +10,14 @@ import { ActiveClaimCard } from './_components/ActiveClaimCard';
 import { LeaseClaimCard } from './_components/LeaseClaimCard';
 import { ReadOnlyClaimCard } from './_components/ReadOnlyClaimCard';
 import { Page } from '@/components/client/Page';
+import { useTranslations } from 'next-intl';
 
 const STICKY_HEADER_OFFSET = 72;
 
 function ClaimsContent({ planetId }: { planetId: string }) {
     const trpc = useTRPC();
     const { agentId } = useAgentId();
+    const t = useTranslations('Claims');
 
     useEffect(() => {
         const slug = window.location.hash.slice(1);
@@ -40,13 +42,13 @@ function ClaimsContent({ planetId }: { planetId: string }) {
     );
 
     if (planetClaimsLoading || agentClaimsLoading) {
-        return <div className='text-sm text-muted-foreground'>Loading claims data…</div>;
+        return <div className='text-sm text-muted-foreground'>{t('loading')}</div>;
     }
 
     const resources = planetClaimsData?.resources ?? [];
 
     if (resources.length === 0) {
-        return <div className='text-sm text-muted-foreground'>No land-bound claims on this planet.</div>;
+        return <div className='text-sm text-muted-foreground'>{t('none')}</div>;
     }
 
     const agentClaimsMap = new Map<string, AgentClaimEntry>();
@@ -88,9 +90,10 @@ function ClaimsContent({ planetId }: { planetId: string }) {
 export default function PlanetClaimsPage() {
     const params = useParams();
     const planetId = (params?.planetId as string) ?? '';
+    const t = useTranslations('Claims');
 
     return (
-        <Page title={`Land Claims`}>
+        <Page title={t('title')}>
             <ClaimsContent planetId={planetId} />
         </Page>
     );

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import { TourJoyride } from './TourJoyride';
 import { useTour } from './TourContext';
 import { useAgentId } from '@/hooks/useAgentId';
@@ -125,7 +125,7 @@ afterEach(() => {
 // ── Test helpers ───────────────────────────────────────────────────
 function renderTourJoyride() {
     capturedOnEvent = null;
-    const result = render(<TourJoyride />);
+    const result = renderWithIntl(<TourJoyride />);
     return {
         ...result,
         get onEvent() {
@@ -393,7 +393,7 @@ describe('TourJoyride', () => {
     // ── getStepsForPage called correctly ───────────────────────────────
     it('calls getStepsForPage with correct arguments without routerPush', () => {
         renderTourJoyride();
-        expect(getStepsForPage).toHaveBeenCalledWith('financial', 'planet-1', 'agent-1', []);
+        expect(getStepsForPage).toHaveBeenCalledWith(expect.any(Function), 'financial', 'planet-1', 'agent-1', []);
     });
 
     // ── safeStepIndex clamping ────────────────────────────────────────
@@ -434,5 +434,37 @@ describe('TourJoyride', () => {
                 expect(container.innerHTML).toBe('');
             }
         }
+    });
+
+    // ── Missing target: skip the step instead of freezing on it ─────────
+    it('skips to the next step when a step target never appears', () => {
+        vi.useFakeTimers();
+        mockQuerySelector(false);
+        (getStepsForPage as ReturnType<typeof vi.fn>).mockReturnValue([
+            { target: '[data-tour="missing"]', content: 'Missing', title: 'Missing' },
+            { target: 'body', content: 'Next', title: 'Next' },
+        ]);
+
+        renderTourJoyride();
+        vi.advanceTimersByTime(30000);
+
+        expect(mockCompleteTour).not.toHaveBeenCalled();
+        expect(mockSetCurrentStepIndex).toHaveBeenCalledWith(1);
+        vi.useRealTimers();
+    });
+
+    it('completes the tour when the last step target never appears', () => {
+        vi.useFakeTimers();
+        mockQuerySelector(false);
+        (getStepsForPage as ReturnType<typeof vi.fn>).mockReturnValue([
+            { target: '[data-tour="missing"]', content: 'Missing', title: 'Missing' },
+        ]);
+
+        renderTourJoyride();
+        vi.advanceTimersByTime(30000);
+
+        expect(mockCompleteTour).toHaveBeenCalled();
+        expect(mockSetCurrentStepIndex).not.toHaveBeenCalled();
+        vi.useRealTimers();
     });
 });

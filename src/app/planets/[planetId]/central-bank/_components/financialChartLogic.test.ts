@@ -181,17 +181,17 @@ describe('bucket interval midpoints', () => {
 
 describe('year tooltip labels', () => {
     it('names the year the interval covers', () => {
-        expect(formatYearLabel(2200.5)).toBe('Year 2200');
-        expect(formatYearLabel(2201.5)).toBe('Year 2201');
+        expect(formatYearLabel('en', 2200.5)).toBe('Year 2200');
+        expect(formatYearLabel('en', 2201.5)).toBe('Year 2201');
     });
 
     it('floors fractional live positions to their year', () => {
-        expect(formatYearLabel(2201.997)).toBe('Year 2201');
+        expect(formatYearLabel('en', 2201.997)).toBe('Year 2201');
     });
 
     it('names the decade the interval covers', () => {
-        expect(formatDecadeLabel(2205)).toBe('2200s');
-        expect(formatDecadeLabel(2215)).toBe('2210s');
+        expect(formatDecadeLabel('en', 2205)).toBe('2200s');
+        expect(formatDecadeLabel('en', 2215)).toBe('2210s');
     });
 });
 

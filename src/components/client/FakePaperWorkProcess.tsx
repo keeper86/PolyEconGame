@@ -1,87 +1,27 @@
 import { Check, ChevronRight, Loader2 } from 'lucide-react';
+import { useMessages } from 'next-intl';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-const SERIOUS_POOL = [
-    'Analyzing planetary macro-economic liquidity corridors.',
-    'Syncing sub-orbital supply chain telemetry.',
-    'Verifying multi-signature cryptographic escrow vaults.',
-    'Establishing secure, quantum-encrypted planetary VPN pipelines.',
-    'Structuring corporate bond collateralization frameworks.',
-    'Conducting deep-space market penetration feasibility sweeps.',
-    'Registering with local planetary labor unions.',
-    'Signing digital ownership deeds.',
-    'Evaluating market conditions.',
-];
-
-const FUNNY_POOL = [
-    'Bribing planetary customs officials (allocating slush fund).',
-    'Optimizing corporate liability waivers for accidental airlock depressurization.',
-    'Routing initial capital through three different offshore asteroid belts.',
-    'Filing planetary environmental impact forms in triplicate.',
-    'Negotiating minimum nutrient-paste requirements with local union reps.',
-    'Purging space-barnacles from the corporate servers.',
-    'Drafting non-disclosure agreements for sentient planetary flora.',
-    'Scheduling mandatory, unpaid virtual synergy seminars.',
-    'Sourcing unpaid interns from regional cryogenic storage facilities.',
-    'Bathing the mainframe server racks in holy incense to appease the machine spirit.',
-    'Anesthetizing the legal department.',
-    'Translating corporate bylaws into Neo-Sumerian for local magistrates.',
-    'Re-calibrating the quantum breakroom microwave.',
-    'Filing form 1040-Z (Interstellar Tax Return for Non-Biological Entities).',
-    'Plausibly denying initial insider trading allegations.',
-    'Rerouting toxic waste pipelines away from executive parking lots.',
-    'Ensuring minimum carbon-footprint violations are met.',
-    'Replacing Board of Directors with slightly more cooperative synthetic clones.',
-    'Pumping fresh oxygen (95% air, 5% loyalty blend) into offices.',
-    'Paying off local space-pirate protection syndicates.',
-    'Generating synergistic, paradigm-shifting corporate buzzwords.',
-    'Securing insurance policy against localized temporal anomalies.',
-    'Covering up minor atmospheric ignition incident during server startup.',
-];
-
-const META_POOL = [
-    'Consulting an authentic, adaptive AI collaborator with a touch of wit.',
-    'Injecting CSS resets directly into the local fabric of space-time.',
-    'Checking if the developer accidentally committed the API keys to GitHub.',
-    'Blaming the database. It’s always the database.',
-    'Garbage collecting unused existential consciousness threads.',
-    'Running npm install --force on the planetary infrastructure.',
-    'Trying to figure out why useEffect is running twice on startup.',
-    'Parsing stringified JSON payloads with mild existential dread.',
-    "Applying emergency hotfixes directly in production (don't tell anyone).",
-];
-
-const STATIC_FIRST_STEPS = [
-    'Registering Corporate Entity.',
-    'Securing initial financial rights.',
-    'Opening reserve accounts with Central Bank.',
-    'Securing initial labor rights.',
-    'Submitting corporate charter to planetary administration.',
-];
-
-const STATIC_LAST_STEPS = [
-    'Awaiting final planetary registry approval (this may take a while)...',
-    'But usually...',
-    '...not that long.',
-    'Still awaiting final planetary registry approval (this may take a while)...',
-    'Maybe you try to reload the page?',
-    'At this point, I cannot promise that something will happen.',
-    'Waiting... Waiting... Waiting...',
-];
+type LoadingPools = {
+    serious: string[];
+    funny: string[];
+    meta: string[];
+    firstSteps: string[];
+    lastSteps: string[];
+};
 
 const STATIC_LAST_STEP_DELAYS = [10000, 2000, 3000, 10000, 10000, 20000];
 
-function getRegistrySteps(): string[] {
-    // Shufflers
+function getRegistrySteps(pools: LoadingPools): string[] {
     const drawRandom = (arr: string[], count: number) => {
         return [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
     };
 
-    const seriousLogs = drawRandom(SERIOUS_POOL, 6);
-    const funnyLogs = drawRandom(FUNNY_POOL, 7);
-    const metaLogs = drawRandom(META_POOL, 3);
+    const seriousLogs = drawRandom(pools.serious, 6);
+    const funnyLogs = drawRandom(pools.funny, 7);
+    const metaLogs = drawRandom(pools.meta, 3);
 
-    return [...STATIC_FIRST_STEPS, ...seriousLogs, ...funnyLogs, ...metaLogs, ...STATIC_LAST_STEPS];
+    return [...pools.firstSteps, ...seriousLogs, ...funnyLogs, ...metaLogs, ...pools.lastSteps];
 }
 
 interface TypewriterStepProps {
@@ -201,11 +141,13 @@ function TypewriterStep({
 }
 
 export function InteractivePaperworkProcess() {
+    const messages = useMessages();
+    const loading = messages.Founding.loading;
     const [currentStep, setCurrentStep] = useState(0);
-    const steps = useMemo(() => getRegistrySteps(), []);
+    const steps = useMemo(() => getRegistrySteps(loading), [loading]);
     const cardRef = useRef<HTMLSpanElement>(null);
 
-    const stepsBeforeLast = steps.length - STATIC_LAST_STEPS.length;
+    const stepsBeforeLast = steps.length - loading.lastSteps.length;
 
     // Only render steps that have already been reached
     const visibleSteps = steps.slice(0, currentStep + 1);

@@ -4,7 +4,6 @@ import { useIsSmallScreen } from '@/hooks/useMobile';
 import type { Units } from '@/lib/utils';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import type { PlanetMarketSnapshot } from '@/server/controller/planet';
-import { formatNumbers } from '@/simulation/utils/numberFormat';
 import { useMemo } from 'react';
 import type { TooltipProps } from 'recharts';
 import {
@@ -20,6 +19,7 @@ import {
     YAxis,
 } from 'recharts';
 import { clampArea, getResourceByName } from './marketHelpers';
+import { useLocale, useTranslations } from 'next-intl';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -68,6 +68,8 @@ function AgentInfoCard({
     color: string;
     small?: boolean;
 }) {
+    const locale = useLocale();
+    const t = useTranslations('Market');
     const minW = small ? 'auto' : '140px';
     const labelFs = small ? '10px' : '11px';
     const nameFs = small ? '11px' : '13px';
@@ -89,7 +91,7 @@ function AgentInfoCard({
         return (
             <div style={{ minWidth: minW }}>
                 <div style={{ fontWeight: 600, fontSize: labelFs, color, marginBottom: '2px' }}>{sideLabel}</div>
-                <div style={{ fontWeight: 600, fontSize: nameFs, color: '#e2e8f0' }}>Population</div>
+                <div style={{ fontWeight: 600, fontSize: nameFs, color: '#e2e8f0' }}>{t('population')}</div>
                 <div
                     style={{
                         display: 'flex',
@@ -99,8 +101,8 @@ function AgentInfoCard({
                         color: '#94a3b8',
                     }}
                 >
-                    <span>{formatNumberWithUnit(meta.quantity, qtyUnit)}</span>
-                    <span>{formatNumberWithUnit(meta.price, 'currency', planetId)}</span>
+                    <span>{formatNumberWithUnit(meta.quantity, qtyUnit, undefined, locale)}</span>
+                    <span>{formatNumberWithUnit(meta.price, 'currency', planetId, locale)}</span>
                 </div>
                 <div
                     style={{
@@ -110,8 +112,8 @@ function AgentInfoCard({
                     }}
                 >
                     {meta.fillRate >= 0.99
-                        ? `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit)} (100%)`
-                        : `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit)} (${(meta.fillRate * 100).toFixed(1)}%)`}
+                        ? `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit, undefined, locale)} (100%)`
+                        : `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit, undefined, locale)} (${(meta.fillRate * 100).toFixed(1)}%)`}
                 </div>
             </div>
         );
@@ -135,7 +137,7 @@ function AgentInfoCard({
                             letterSpacing: '0.03em',
                         }}
                     >
-                        ← You
+                        {t('youMarker')}
                     </span>
                 )}
             </div>
@@ -150,8 +152,12 @@ function AgentInfoCard({
                     color: '#94a3b8',
                 }}
             >
-                <span>{meta.quantity === 0 ? 'Out of stock' : `${formatNumberWithUnit(meta.quantity, qtyUnit)}`}</span>
-                <span>{formatNumberWithUnit(meta.price, 'currency', planetId)}</span>
+                <span>
+                    {meta.quantity === 0
+                        ? t('outOfStock')
+                        : `${formatNumberWithUnit(meta.quantity, qtyUnit, undefined, locale)}`}
+                </span>
+                <span>{formatNumberWithUnit(meta.price, 'currency', planetId, locale)}</span>
             </div>
 
             {/* Fill rate */}
@@ -163,19 +169,19 @@ function AgentInfoCard({
                 }}
             >
                 {meta.fillRate >= 0.99
-                    ? `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit)} (100%)`
-                    : `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit)} (${(meta.fillRate * 100).toFixed(1)}%)`}
+                    ? `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit, undefined, locale)} (100%)`
+                    : `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit, undefined, locale)} (${(meta.fillRate * 100).toFixed(1)}%)`}
             </div>
 
             {/* Clearing indicator for own position */}
             {meta.isOwn && meta.fillRate >= 0.99 && (
-                <div style={{ fontSize: clearFs, color: '#4ade80', fontWeight: 600 }}>✓ Fully cleared</div>
+                <div style={{ fontSize: clearFs, color: '#4ade80', fontWeight: 600 }}>{t('fullyCleared')}</div>
             )}
             {meta.isOwn && meta.fillRate > 0 && meta.fillRate < 0.99 && (
-                <div style={{ fontSize: clearFs, color: '#fbbf24', fontWeight: 600 }}>⏳ Partially cleared</div>
+                <div style={{ fontSize: clearFs, color: '#fbbf24', fontWeight: 600 }}>{t('partiallyCleared')}</div>
             )}
             {meta.isOwn && meta.fillRate === 0 && (
-                <div style={{ fontSize: clearFs, color: '#ef4444', fontWeight: 600 }}>✗ Not cleared</div>
+                <div style={{ fontSize: clearFs, color: '#ef4444', fontWeight: 600 }}>{t('notCleared')}</div>
             )}
         </div>
     );
@@ -190,6 +196,8 @@ function ChartTooltip({
     planetId,
     resourceName,
 }: TooltipProps<number, string> & { planetId: string; resourceName: string }) {
+    const locale = useLocale();
+    const t = useTranslations('Market');
     const isSmallScreen = useIsSmallScreen();
 
     if (!active || !payload || payload.length === 0) {
@@ -220,7 +228,7 @@ function ChartTooltip({
                 }}
             >
                 <div>
-                    Volume: {formatNumberWithUnit(vol, 'none')} {qtyUnit}
+                    {t('volumeLabel')} {formatNumberWithUnit(vol, 'none', undefined, locale)} {qtyUnit}
                 </div>
             </div>
         );
@@ -243,7 +251,7 @@ function ChartTooltip({
                     textAlign: 'center' as const,
                 }}
             >
-                Volume: {formatNumberWithUnit(vol, 'none')} {qtyUnit}
+                {t('volumeLabel')} {formatNumberWithUnit(vol, 'none', undefined, locale)} {qtyUnit}
             </div>
 
             {/* Layout: side-by-side on desktop, stacked on small screens */}
@@ -296,6 +304,8 @@ function ChartTooltip({
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function MarketStepChart({ market, agentId, planetId }: MarketStepChartProps) {
+    const locale = useLocale();
+    const t = useTranslations('Market');
     const isLoading = !market;
 
     const { chartData, xDomain, xTicks, ownSupplyArea, ownDemandArea } = useMemo(() => {
@@ -401,7 +411,7 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                 cumDemand += entry.quantity;
                 const meta: AgentMeta = {
                     agentId: entry.agentId ?? 'population',
-                    agentName: entry.agentName ?? 'Population',
+                    agentName: entry.agentName ?? t('population'),
                     isOwn: entry.isOwn ?? false,
                     kind: entry.kind,
                     price: entry.price,
@@ -506,7 +516,7 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
         }
 
         return { chartData: croppedData, xDomain, xTicks, ownSupplyArea, ownDemandArea };
-    }, [market, agentId]);
+    }, [market, agentId, t]);
 
     const resource = market ? getResourceByName(market.resourceName) : undefined;
     const qtyUnit = resource ? resourceFormToUnit(resource.form) : 'units';
@@ -527,10 +537,10 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
             return null;
         }
         const entries = [
-            { label: 'Supply', stroke: '#38bdf8', strokeWidth: 2, disabled: !hasSupply },
-            { label: 'Demand', stroke: '#ef444496', strokeWidth: 2, disabled: !hasDemand },
-            { label: 'Total sold', stroke: '#22c55e', strokeWidth: 2, disabled: !market || totalSold <= 0 },
-            { label: 'Own', stroke: '#fbbf24', strokeWidth: 2, disabled: !hasOwn },
+            { label: t('supply'), stroke: '#38bdf8', strokeWidth: 2, disabled: !hasSupply },
+            { label: t('demand'), stroke: '#ef444496', strokeWidth: 2, disabled: !hasDemand },
+            { label: t('totalSold'), stroke: '#22c55e', strokeWidth: 2, disabled: !market || totalSold <= 0 },
+            { label: t('own'), stroke: '#fbbf24', strokeWidth: 2, disabled: !hasOwn },
         ];
         return (
             <div
@@ -580,7 +590,7 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                         tick={{ fontSize: 10, fill: '#94a3b8' }}
                         axisLine={{ stroke: '#334155' }}
                         tickLine={false}
-                        tickFormatter={(v) => `${formatNumberWithUnit(v, qtyUnit)}`}
+                        tickFormatter={(v) => `${formatNumberWithUnit(v, qtyUnit, undefined, locale)}`}
                     />
                     <YAxis
                         type='number'
@@ -589,7 +599,7 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                         axisLine={false}
                         tickLine={false}
                         width={52}
-                        tickFormatter={(v) => `${formatNumberWithUnit(v, 'currency', planetId)}`}
+                        tickFormatter={(v) => `${formatNumberWithUnit(v, 'currency', planetId, locale)}`}
                     />
                     {market && (
                         <Tooltip
@@ -604,7 +614,9 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                             stroke='#22c55e'
                             strokeWidth={4}
                             label={{
-                                value: `Cleared: ${formatNumbers(totalSold)} ${qtyUnit}`,
+                                value: t('clearedLabel', {
+                                    quantity: formatNumberWithUnit(totalSold, qtyUnit, undefined, locale),
+                                }),
                                 fill: '#22c55e',
                                 position: 'top',
                                 fontSize: 10,

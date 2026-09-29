@@ -1,3 +1,5 @@
+'use client';
+
 import { ProductIcon } from '@/components/client/ProductIcon';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
@@ -7,6 +9,8 @@ import { getColumnClasses } from './columnConfig';
 import { getResourceByName } from './marketHelpers';
 import type { ResourceTriggerProps } from './marketTypes';
 import { BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST } from './marketTypes';
+import { useLocale, useTranslations } from 'next-intl';
+import { termFor } from '@/i18n/terms';
 
 function getPriceCostRatioBand(ratio: number): (typeof BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST)[number] {
     for (const band of BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST) {
@@ -29,6 +33,8 @@ export default function ResourceTrigger({
     visibleColumns,
     planetId,
 }: ResourceTriggerProps): React.ReactElement {
+    const locale = useLocale();
+    const t = useTranslations('Market');
     const hasActiveBid = bid?.bidPrice !== undefined || bid?.bidStorageTarget !== undefined;
     const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
 
@@ -37,25 +43,33 @@ export default function ResourceTrigger({
         const qtyUnit = resource ? resourceFormToUnit(resource.form) : 'units';
         switch (columnId) {
             case 'currentStorage':
-                return storageQuantity !== undefined ? formatNumberWithUnit(storageQuantity, qtyUnit) : null;
+                return storageQuantity !== undefined
+                    ? formatNumberWithUnit(storageQuantity, qtyUnit, undefined, locale)
+                    : null;
             case 'clearingPrice':
-                return overviewRow ? formatNumberWithUnit(overviewRow.clearingPrice, 'currency', planetId) : null;
+                return overviewRow
+                    ? formatNumberWithUnit(overviewRow.clearingPrice, 'currency', planetId, locale)
+                    : null;
             case 'totalProduction':
                 if (name.startsWith(CURRENCY_RESOURCE_PREFIX)) {
                     return null;
                 }
-                return overviewRow ? formatNumberWithUnit(overviewRow.totalProduction, qtyUnit) : null;
+                return overviewRow
+                    ? formatNumberWithUnit(overviewRow.totalProduction, qtyUnit, undefined, locale)
+                    : null;
             case 'totalConsumption':
                 if (name.startsWith(CURRENCY_RESOURCE_PREFIX)) {
                     return null;
                 }
-                return overviewRow ? formatNumberWithUnit(overviewRow.totalConsumption, qtyUnit) : null;
+                return overviewRow
+                    ? formatNumberWithUnit(overviewRow.totalConsumption, qtyUnit, undefined, locale)
+                    : null;
             case 'totalSupply':
-                return overviewRow ? formatNumberWithUnit(overviewRow.totalSupply, qtyUnit) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.totalSupply, qtyUnit, undefined, locale) : null;
             case 'totalDemand':
-                return overviewRow ? formatNumberWithUnit(overviewRow.totalDemand, qtyUnit) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.totalDemand, qtyUnit, undefined, locale) : null;
             case 'totalSold':
-                return overviewRow ? formatNumberWithUnit(overviewRow.totalSold, qtyUnit) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.totalSold, qtyUnit, undefined, locale) : null;
             case 'priceCostRatio': {
                 if (!overviewRow) {
                     return null;
@@ -64,7 +78,7 @@ export default function ResourceTrigger({
                 const band = getPriceCostRatioBand(ratio);
                 return (
                     <Badge variant='outline' className={`text-[9px] px-1.5 py-0 h-5 ${band.className}`}>
-                        {band.label}
+                        {t(band.labelKey)}
                     </Badge>
                 );
             }
@@ -117,12 +131,14 @@ export default function ResourceTrigger({
         }
     };
 
+    const displayLabel = termFor(locale, displayName ?? name);
+
     return (
         <div className='flex flex-1 items-center gap-2 min-w-0 overflow-hidden'>
-            <ProductIcon productName={name} label={displayName ?? name} />
+            <ProductIcon productName={name} label={displayLabel} />
 
             <div className={cn('flex-1 min-w-0 flex items-center gap-1')}>
-                <span className='text-sm font-medium truncate'>{displayName ?? name}</span>
+                <span className='text-sm font-medium truncate'>{displayLabel}</span>
                 {(hasActiveBid ||
                     hasActiveOffer ||
                     bid?.automated ||
@@ -133,18 +149,18 @@ export default function ResourceTrigger({
                         {hasActiveBid && (
                             <span
                                 className='h-1.5 w-1.5 rounded-full bg-blue-500'
-                                title={bid?.automated ? 'Buying' : 'Active buy bid'}
+                                title={bid?.automated ? t('buying') : t('activeBuyBid')}
                             />
                         )}
                         {hasActiveOffer && (
                             <span
                                 className='h-1.5 w-1.5 rounded-full bg-green-500'
-                                title={offer?.automated ? 'Selling' : 'Active sell offer'}
+                                title={offer?.automated ? t('selling') : t('activeSellOffer')}
                             />
                         )}
                         {bid?.storageFullWarning && (
                             <Badge variant='destructive' className='text-[9px] px-1 py-0 h-3.5'>
-                                full
+                                {t('full')}
                             </Badge>
                         )}
                         {bid?.storageScaleWarning && (
@@ -152,7 +168,7 @@ export default function ResourceTrigger({
                                 variant='outline'
                                 className='text-[9px] px-1 py-0 h-3.5 bg-amber-500 text-amber-950 border-amber-600'
                             >
-                                {bid.storageScaleWarning === 'scaled' ? 'storage' : 'no space'}
+                                {bid.storageScaleWarning === 'scaled' ? t('storageScaled') : t('noSpace')}
                             </Badge>
                         )}
                         {bid?.depositScaleWarning && (
@@ -160,7 +176,7 @@ export default function ResourceTrigger({
                                 variant='outline'
                                 className='text-[9px] px-1 py-0 h-3.5 bg-amber-500 text-amber-950 border-amber-600'
                             >
-                                {bid.depositScaleWarning === 'scaled' ? 'deposit' : 'no funds'}
+                                {bid.depositScaleWarning === 'scaled' ? t('depositScaled') : t('noFunds')}
                             </Badge>
                         )}
                     </div>
@@ -176,7 +192,7 @@ export default function ResourceTrigger({
                     <div
                         key={column.id}
                         className={cn(getColumnClasses(column.id), 'flex justify-end')}
-                        title={column.title + ' ' + overviewRow?.priceCostRatio.toFixed(2)}
+                        title={`${t(column.titleKey)} ${overviewRow?.priceCostRatio.toFixed(2)}`}
                     >
                         {value}
                     </div>
@@ -188,7 +204,7 @@ export default function ResourceTrigger({
                             'text-[11px] tabular-nums',
                             getTextColorClass(column.id, numericValue),
                         )}
-                        title={column.title}
+                        title={t(column.titleKey)}
                     >
                         {value || (overviewRow ? '—' : '')}
                     </span>

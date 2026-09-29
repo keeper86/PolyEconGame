@@ -98,7 +98,7 @@ export function processBankruptcy(gameState: GameState, planet: Planet, agent: A
             planetId: planet.id,
             tick,
             outcome: 'restructured',
-            message: `${agent.name} bankrupt; restructured as ${refound.name} under automated administration`,
+            successorAgentName: refound.name,
         });
 
         return refound;
@@ -165,17 +165,17 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
     repointAgentReferences(refound.ships, oldId, newId);
     repointAgentReferences(planet.resources, oldId, newId);
 
-    gameState.agents.delete(oldId);
-    gameState.agents.set(newId, refound);
-
     pushTickerEvent(gameState, {
         category: 'agentBankrupt',
         planetId: planet.id,
         agentId: oldId,
         agentName: agent.name,
-        message: `${agent.name} bankrupt; refounded as ${refound.name}`,
+        details: { kind: 'companyRefounded', successorName: refound.name },
         tick,
     });
+
+    gameState.agents.delete(oldId);
+    gameState.agents.set(newId, refound);
 
     return refound;
 }

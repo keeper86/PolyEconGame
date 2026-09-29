@@ -15,7 +15,7 @@ export function handleSetSellOffers(
         safePostMessage({
             type: 'sellOffersFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -25,7 +25,7 @@ export function handleSetSellOffers(
         safePostMessage({
             type: 'sellOffersFailed',
             requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -80,7 +80,7 @@ function handleCancelSellOffer(
         safePostMessage({
             type: 'sellOfferCancelFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -90,7 +90,7 @@ function handleCancelSellOffer(
         safePostMessage({
             type: 'sellOfferCancelFailed',
             requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -113,7 +113,7 @@ function handleCancelBuyBid(
         safePostMessage({
             type: 'buyBidCancelFailed',
             requestId,
-            reason: 'Agent not found',
+            error: { code: 'agentNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -123,7 +123,7 @@ function handleCancelBuyBid(
         safePostMessage({
             type: 'buyBidCancelFailed',
             requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -151,7 +151,12 @@ export function handleSetBuyBids(
     const { requestId, agentId, planetId, bids } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'buyBidsFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'buyBidsFailed',
+            requestId,
+            error: { code: 'agentNotFound', params: {} },
+            processedAtTick: state.tick,
+        });
         return;
     }
     const assets = agent.assets[planetId];
@@ -159,7 +164,7 @@ export function handleSetBuyBids(
         safePostMessage({
             type: 'buyBidsFailed',
             requestId,
-            reason: `Agent has no assets on planet '${planetId}'`,
+            error: { code: 'agentHasNoAssets', params: {} },
             processedAtTick: state.tick,
         });
         return;

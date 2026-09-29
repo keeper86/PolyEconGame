@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithIntl as render } from 'tests/vitest/renderWithIntl';
 import { describe, expect, it } from 'vitest';
 import type { Planet } from '@/simulation/planet/planet';
 import { createShip, shiptypes } from '@/simulation/ships/ships';

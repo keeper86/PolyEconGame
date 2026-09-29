@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BankruptcyNotice } from './BankruptcyNotice';
 
@@ -53,13 +54,13 @@ describe('BankruptcyNotice', () => {
                     planetName: 'Test Planet',
                     tick: 30,
                     outcome: 'restructured',
-                    message: 'Gone Co bankrupt; restructured as Gone Co ♻1',
+                    successorAgentName: 'Gone Co ♻1',
                 },
             },
             isLoading: false,
         });
 
-        render(<BankruptcyNotice />);
+        renderWithIntl(<BankruptcyNotice />);
 
         expect(screen.getByText('You are bankrupt')).toBeDefined();
         expect(screen.getByText('Gone Co')).toBeDefined();
@@ -76,14 +77,13 @@ describe('BankruptcyNotice', () => {
                     planetName: 'Test Planet',
                     tick: 30,
                     outcome: 'liquidated',
-                    message: 'Gone Co bankrupt; company dissolved',
                 },
             },
             isLoading: false,
         });
 
         const user = userEvent.setup();
-        render(<BankruptcyNotice />);
+        renderWithIntl(<BankruptcyNotice />);
 
         await user.click(screen.getByText('Found a new company'));
 
@@ -96,7 +96,7 @@ describe('BankruptcyNotice', () => {
             isLoading: false,
         });
 
-        render(<BankruptcyNotice />);
+        renderWithIntl(<BankruptcyNotice />);
 
         expect(screen.getByText('You are bankrupt')).toBeDefined();
         expect(screen.getByRole('status')).toBeDefined();

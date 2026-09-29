@@ -1,5 +1,15 @@
 import { AC_ID } from '@/simulation/initialUniverse';
 
+export const PLANET_NAMES: Record<string, string> = {
+    earth: 'Earth',
+    [AC_ID]: 'Alpha Centauri',
+    gune: 'Gune',
+    icedonia: 'Icedonia',
+    pandara: 'Pandara',
+    paradies: 'Paradies',
+    suerte: 'Suerte',
+};
+
 export const PLANET_LARGE_IMAGES: Record<string, string> = {
     earth: '/images/planets/earth_large.webp',
     gune: '/images/planets/gune_large.webp',

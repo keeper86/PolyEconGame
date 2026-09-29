@@ -54,7 +54,10 @@ describe('handleDispatchShip', () => {
     it('fails when agent not found', () => {
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], []);
         dispatch(state, { agentId: 'missing', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: 'ship-1' });
-        expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', reason: 'Agent not found' });
+        expect(messages[0]).toMatchObject({
+            type: 'shipDispatchFailed',
+            error: { code: 'agentNotFound', params: {} },
+        });
     });
 
     it('fails when destination planet not found', () => {
@@ -78,7 +81,7 @@ describe('handleDispatchShip', () => {
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
         dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id });
-        expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', reason: 'Ship is not idle' });
+        expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', error: { code: 'shipNotIdle', params: {} } });
     });
 
     it('fails when ship is not on departure planet', () => {
@@ -133,7 +136,10 @@ describe('handleDispatchShip', () => {
             shipId: ship.id,
             cargoGoal: { resource: steelResourceType, quantity: 100 },
         });
-        expect(messages[0]).toMatchObject({ type: 'shipDispatchFailed', reason: expect.stringContaining('Steel') });
+        expect(messages[0]).toMatchObject({
+            type: 'shipDispatchFailed',
+            error: { code: 'unknownResource', params: { resourceName: 'Steel' } },
+        });
     });
 
     it('dispatches even when requested quantity exceeds storage (loading phase handles shortfall)', () => {

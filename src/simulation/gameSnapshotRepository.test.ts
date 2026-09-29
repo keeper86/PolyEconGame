@@ -2,10 +2,12 @@ import { getDb } from 'tests/vitest/setupTestcontainer';
 import { describe, expect, it } from 'vitest';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from './constants';
 import {
+    getAgentFinancialHistoryAggregated,
     getGameSnapshotByTick,
     getLatestGameSnapshot,
     getPlanetPopulationHistoryAggregated,
     getProductPriceHistory,
+    insertAgentMonthlyHistory,
     insertGameSnapshot,
     insertPlanetPopulationHistory,
     insertProductPriceHistory,
@@ -410,5 +412,57 @@ describe('yearly history buckets align with game years', () => {
         expect(year2200!.avg_population).toBeCloseTo(1_000_000);
         expect(year2201).toBeDefined();
         expect(year2201!.avg_population).toBeCloseTo(2_000_000);
+    });
+});
+
+describe('agent financial history: write-refresh-read', () => {
+    async function refreshFinancialMonthly(upToTick: number): Promise<void> {
+        const db = getDb();
+        const refreshStartTick = Math.max(0, upToTick - 60);
+        await db.raw(`CALL refresh_continuous_aggregate(?, ?::bigint, ?::bigint)`, [
+            'agent_monthly_summary',
+            refreshStartTick,
+            upToTick,
+        ]);
+    }
+
+    it('sums interest and wealth tax into the monthly financial summary', async () => {
+        const db = getDb();
+
+        const PLANET = 'test-planet-afh';
+        const AGENT = 'test-agent-afh';
+        const TICK = 30;
+
+        await insertAgentMonthlyHistory(db, [
+            {
+                tick: TICK,
+                planet_id: PLANET,
+                agent_id: AGENT,
+                net_balance: 1000,
+                asset_value: 500,
+                monthly_net_income: 400,
+                total_workers: 4,
+                wages: 200,
+                production_value: 0,
+                consumption_value: 0,
+                facility_count: 2,
+                storage_value: 0,
+                purchases: 50,
+                claim_payments: 10,
+                interest_paid: 20,
+                wealth_tax_paid: 5,
+            },
+        ]);
+
+        await refreshFinancialMonthly(TICK + TICKS_PER_MONTH);
+
+        const rows = await getAgentFinancialHistoryAggregated(db, AGENT, PLANET, 'monthly', 13);
+        const bucket = rows.find((r) => Number(r.bucket) === monthBucket(TICK));
+
+        expect(bucket).toBeDefined();
+        expect(bucket!.sum_purchases).toBeCloseTo(50);
+        expect(bucket!.sum_claim_payments).toBeCloseTo(10);
+        expect(bucket!.sum_interest_paid).toBeCloseTo(20);
+        expect(bucket!.sum_wealth_tax_paid).toBeCloseTo(5);
     });
 });

@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import React from 'react';
+import { useTranslations } from 'next-intl';
 
 export function PlanetDestinationSelect({
     fromPlanetId,
@@ -17,15 +18,16 @@ export function PlanetDestinationSelect({
     onChange: (value: string) => void;
 }): React.ReactElement {
     const trpc = useTRPC();
+    const t = useTranslations('Ships');
     const { data: planetSummaries } = useSimulationQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
     const planets = (planetSummaries?.planets ?? []).filter((p) => p.planetId !== fromPlanetId);
 
     return (
         <div className='space-y-1.5'>
-            <Label>Destination Planet</Label>
+            <Label>{t('destination')}</Label>
             <Select value={value} onValueChange={onChange} required>
                 <SelectTrigger>
-                    <SelectValue placeholder='Select destination…' />
+                    <SelectValue placeholder={t('selectDestination')} />
                 </SelectTrigger>
                 <SelectContent>
                     {planets.map((p) => (

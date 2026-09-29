@@ -162,6 +162,15 @@ export function liquidateAgent(gameState: GameState, planet: Planet, agent: Agen
     transferCashToBank(gameState, agent);
     settleCounterpartyPostings(gameState, agent.id);
 
+    pushTickerEvent(gameState, {
+        category: 'agentBankrupt',
+        planetId: planet.id,
+        agentId: agent.id,
+        agentName: agent.name,
+        details: { kind: 'companyDissolved' },
+        tick,
+    });
+
     gameState.agents.delete(agent.id);
 
     pushBankruptcyRecord(gameState, {
@@ -170,16 +179,6 @@ export function liquidateAgent(gameState: GameState, planet: Planet, agent: Agen
         planetId: planet.id,
         tick,
         outcome: 'liquidated',
-        message: `${agent.name} bankrupt; company dissolved and assets liquidated by the receiver`,
-    });
-
-    pushTickerEvent(gameState, {
-        category: 'agentBankrupt',
-        planetId: planet.id,
-        agentId: agent.id,
-        agentName: agent.name,
-        message: `${agent.name} bankrupt; company dissolved`,
-        tick,
     });
 
     return null;

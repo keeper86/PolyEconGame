@@ -4,6 +4,7 @@ import { ProductQuantity } from '@/components/client/ProductQuantity';
 import type { ShipType } from '@/simulation/ships/ships';
 import { Clock, Users } from 'lucide-react';
 import React from 'react';
+import { useTranslations } from 'next-intl';
 
 function totalCrew(requiredCrew: ShipType['requiredCrew']): number {
     return Object.values(requiredCrew).reduce((sum, n) => sum + n, 0);
@@ -18,16 +19,17 @@ export function ShipBuildPlanPanel({
     planetId: string;
     agentId: string;
 }): React.ReactElement {
+    const t = useTranslations('Ships');
     return (
         <div className='rounded-md border bg-muted/30 p-3 space-y-2'>
             <div className='flex flex-wrap items-center gap-3 text-xs text-muted-foreground'>
                 <span className='flex items-center gap-1'>
                     <Clock className='h-3.5 w-3.5' />
-                    <span className='text-foreground'>{shipType.buildingTime} days</span> build time
+                    {t('build.buildTimeLine', { days: shipType.buildingTime })}
                 </span>
                 <span className='flex items-center gap-1'>
                     <Users className='h-3.5 w-3.5' />
-                    <span className='text-foreground'>{totalCrew(shipType.requiredCrew)}</span> crew
+                    {t('build.crewLine', { count: totalCrew(shipType.requiredCrew) })}
                 </span>
             </div>
             <div className='flex flex-wrap gap-1.5'>

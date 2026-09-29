@@ -12,6 +12,8 @@ import { ShipConditionRow } from './ShipConditionRow';
 import { ShipStatusBadge } from './ShipStatusBadge';
 import { ShipStatusDetail } from './ShipStatusDetail';
 import type { ShipListing, ShipPlanetSummary } from './shipTypes';
+import { termFor } from '@/i18n/terms';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function MyShipsTab({
     agentId,
@@ -31,6 +33,10 @@ export function MyShipsTab({
     planetSummaries: ShipPlanetSummary[];
 }): React.ReactElement {
     const pendingActions = usePendingActions(agentId, planetId);
+    const t = useTranslations('Ships');
+    const tc = useTranslations('Common');
+    const tt = useTranslations('Toasts');
+    const locale = useLocale();
 
     const shipsHere = ships
         .filter(
@@ -44,13 +50,11 @@ export function MyShipsTab({
     return (
         <div className='space-y-4 mt-3'>
             <h3 className='text-sm font-medium text-muted-foreground'>
-                {shipsLoading
-                    ? 'Loading…'
-                    : `${shipsHere.length} ship${shipsHere.length === 1 ? '' : 's'} on this planet`}
+                {shipsLoading ? tc('loading') : t('myShips.count', { count: shipsHere.length })}
             </h3>
 
             {!shipsLoading && shipsHere.length === 0 && (
-                <p className='text-sm text-muted-foreground'>No ships currently stationed on this planet.</p>
+                <p className='text-sm text-muted-foreground'>{t('myShips.none')}</p>
             )}
 
             <div className='flex flex-row gap-3 flex-wrap'>
@@ -70,12 +74,17 @@ export function MyShipsTab({
                                     details={
                                         <>
                                             <span>
-                                                {ship.type.name} · speed {ship.type.speed}
+                                                {t('myShips.summary', {
+                                                    name: termFor(locale, ship.type.name),
+                                                    speed: ship.type.speed,
+                                                })}
                                             </span>
                                             {ship.type.type === 'transport' && (
                                                 <span className='flex flex-wrap'>
-                                                    {ship.type.cargoSpecification.volume} m³ ·{' '}
-                                                    {ship.type.cargoSpecification.type}
+                                                    {t('myShips.cargo', {
+                                                        volume: ship.type.cargoSpecification.volume,
+                                                        cargoType: termFor(locale, ship.type.cargoSpecification.type),
+                                                    })}
                                                 </span>
                                             )}
                                             <ShipConditionRow ship={ship} />
@@ -97,7 +106,7 @@ export function MyShipsTab({
 
                             <ShipActions agentId={agentId} planetId={planetId} ship={ship} listings={listings} />
 
-                            {pending && <ActionPendingOverlay message='Awaiting next day…' />}
+                            {pending && <ActionPendingOverlay message={tt('awaitingNextDay')} />}
                         </FacilityCardShell>
                     );
                 })}

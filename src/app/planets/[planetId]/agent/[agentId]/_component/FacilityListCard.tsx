@@ -1,6 +1,8 @@
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { Card, CardHeader } from '@/components/ui/card';
+import { termFor } from '@/i18n/terms';
 import { cn } from '@/lib/utils';
+import { useLocale } from 'next-intl';
 
 export function FacilityOrShipListCard({
     name,
@@ -15,7 +17,8 @@ export function FacilityOrShipListCard({
     className?: string;
     unknown?: boolean;
 }): React.ReactElement {
-    const displayName = name.replace(/_/g, ' ');
+    const locale = useLocale();
+    const displayName = termFor(locale, name).replace(/_/g, ' ');
     return (
         <Card className={cn('overflow-hidden flex flex-col min-w-[155px]', className)}>
             <CardHeader className='p-1 pb-2'>
