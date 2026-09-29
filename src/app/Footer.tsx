@@ -5,7 +5,7 @@ import { renderTickerEvent, tickerEventText } from '@/i18n/tickerEventMessage';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { TickerEvent } from '@/server/controller/simulation';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Maximize, Minimize } from 'lucide-react';
 import { mapTickToDate } from '@/components/client/TickDisplay';
 import { PlanetIcon } from '@/components/client/PlanetIcon';
@@ -89,12 +89,6 @@ export default function Footer() {
     const { data } = useSimulationQuery({
         ...trpc.simulation.getTickerEvents.queryOptions({ lastSeenId }),
     });
-
-    const { data: logoData } = useSimulationQuery({
-        ...trpc.simulation.getAgentLogos.queryOptions(),
-    });
-
-    const companyLogos = useMemo(() => new Map(Object.entries(logoData?.logos ?? {})), [logoData]);
 
     useEffect(() => {
         const newEvents =
@@ -202,7 +196,11 @@ export default function Footer() {
         const message = tickerEventText(
             renderTickerEvent(nextEvent.details, nextEvent.agentName ?? '', tEvents, locale),
         );
-        const width = measureTextWidth(dateStr, message, PLANET_ICON_ALLOWANCE_PX + COMPANY_LOGO_ALLOWANCE_PX);
+        const width = measureTextWidth(
+            dateStr,
+            message,
+            PLANET_ICON_ALLOWANCE_PX + (nextEvent.agentLogo ? COMPANY_LOGO_ALLOWANCE_PX : 0),
+        );
         const containerWidth = containerWidthRef.current;
         const speed = speedRef.current;
         const prevSpeed = lastSpawnSpeedRef.current;
@@ -288,7 +286,7 @@ export default function Footer() {
                     {displayedEvents.map(({ id, event, duration, startX }) => (
                         <div
                             key={id}
-                            className='ticker-item absolute top-0 left-0 h-full flex items-center whitespace-nowrap will-change-transform'
+                            className='ticker-item absolute top-1 left-0 h-full flex items-center whitespace-nowrap will-change-transform'
                             style={
                                 {
                                     '--ticker-start': `${startX}px`,
@@ -300,11 +298,7 @@ export default function Footer() {
                             <span className='inline-flex items-center gap-1.5 text-md select-none'>
                                 <PlanetIcon planetId={event.planetId} size={PLANET_ICON_SIZE_PX} />
                                 <CompanyLogo
-                                    logoKey={
-                                        event.agentId && companyLogos.has(event.agentId)
-                                            ? companyLogos.get(event.agentId)!
-                                            : ''
-                                    }
+                                    logoKey={event.agentLogo}
                                     size={COMPANY_LOGO_SIZE_PX}
                                     className='align-middle mr-1'
                                 />

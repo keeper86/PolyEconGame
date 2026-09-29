@@ -20,7 +20,10 @@ function assertConserved(gameState: GameState, planet: Planet, tolerance = 1e-9)
 
 describe('processBankruptcy', () => {
     it('restructures a player company above 1 per mille of the market into an automated NPC', () => {
-        const player = makeAgent('player-co', 'p', 'Player Co', { automated: false });
+        const player = makeAgent('player-co', 'p', 'Player Co', {
+            automated: false,
+            logo: 'company_icon_agricultural_facility_00',
+        });
         player.assets.p!.lastMonthAcc.productionValue = 100;
         const { gameState, planet } = setupWorld(player);
 
@@ -32,6 +35,13 @@ describe('processBankruptcy', () => {
         expect(refound!.automateWorkerAllocation).toBe(true);
         expect(refound!.logo).toBe('ai_company');
         expect(refound!.name).toBe('Player Co ♻1');
+        expect(gameState.tickerEvents).toHaveLength(1);
+        expect(gameState.tickerEvents[0]).toMatchObject({
+            category: 'agentBankrupt',
+            agentId: 'player-co',
+            agentLogo: 'company_icon_agricultural_facility_00',
+            details: { kind: 'companyRefounded', successorName: 'Player Co ♻1' },
+        });
         expect(gameState.bankruptcies).toHaveLength(1);
         expect(gameState.bankruptcies[0]).toMatchObject({
             agentId: 'player-co',
@@ -43,7 +53,10 @@ describe('processBankruptcy', () => {
     });
 
     it('liquidates a player company at or below 1 per mille of the market', () => {
-        const player = makeAgent('small-co', 'p', 'Small Co', { automated: false });
+        const player = makeAgent('small-co', 'p', 'Small Co', {
+            automated: false,
+            logo: 'company_icon_clothing_factory_01',
+        });
         player.assets.p!.lastMonthAcc.productionValue = 1;
         const big = makeAgent('big-co', 'p', 'Big Co', { automated: true });
         big.assets.p!.lastMonthAcc.productionValue = 10_000;
@@ -53,6 +66,12 @@ describe('processBankruptcy', () => {
 
         expect(refound).toBeNull();
         expect(gameState.agents.has('small-co')).toBe(false);
+        const dissolved = gameState.tickerEvents.find((event) => event.details.kind === 'companyDissolved');
+        expect(dissolved).toMatchObject({
+            category: 'agentBankrupt',
+            agentId: 'small-co',
+            agentLogo: 'company_icon_clothing_factory_01',
+        });
         expect(gameState.bankruptcies).toHaveLength(1);
         expect(gameState.bankruptcies[0]).toMatchObject({
             agentId: 'small-co',

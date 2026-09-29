@@ -750,19 +750,6 @@ export const getUsedLogos = () =>
             return { usedLogos };
         });
 
-export const getAgentLogos = () =>
-    protectedProcedure
-        .input(z.void())
-        .output(z.object({ logos: z.record(z.string(), z.string()) }))
-        .query(async () => {
-            const { agents } = getAllAgentsSync();
-            const logos: Record<string, string> = {};
-            for (const agent of agents) {
-                logos[agent.id] = agent.logo;
-            }
-            return { logos };
-        });
-
 const bankruptcyBaseSchema = z.object({
     agentId: z.string(),
     agentName: z.string(),
@@ -962,6 +949,7 @@ const baseTickerEventSchema = z.object({
     id: z.number(),
     planetId: z.string(),
     tick: z.number(),
+    agentLogo: z.string(),
 });
 
 const tickerEventSchema = baseTickerEventSchema.extend(

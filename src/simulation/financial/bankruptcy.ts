@@ -165,9 +165,6 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
     repointAgentReferences(refound.ships, oldId, newId);
     repointAgentReferences(planet.resources, oldId, newId);
 
-    gameState.agents.delete(oldId);
-    gameState.agents.set(newId, refound);
-
     pushTickerEvent(gameState, {
         category: 'agentBankrupt',
         planetId: planet.id,
@@ -176,6 +173,9 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
         details: { kind: 'companyRefounded', successorName: refound.name },
         tick,
     });
+
+    gameState.agents.delete(oldId);
+    gameState.agents.set(newId, refound);
 
     return refound;
 }

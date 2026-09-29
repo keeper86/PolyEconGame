@@ -58,6 +58,16 @@ describe('message catalogs', () => {
         expect(mismatches).toEqual([]);
     });
 
+    it('keeps rich text tags in sync across locales', () => {
+        const english = flatten(en);
+        const german = flatten(de);
+        const mismatches = Object.keys(english).filter(
+            (key) => JSON.stringify(tags(english[key])) !== JSON.stringify(tags(german[key] ?? '')),
+        );
+
+        expect(mismatches).toEqual([]);
+    });
+
     it('interpolates every placeholder instead of printing it literally', () => {
         const offenders: string[] = [];
         for (const [locale, catalog] of [

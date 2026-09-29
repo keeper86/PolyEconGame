@@ -87,7 +87,7 @@
         "insufficientDepositsToEscrowPrice": "Nicht genügend Guthaben für die treuhänderische Hinterlegung des Preises",
         "insufficientDepositsToEscrowReward": "Nicht genügend Guthaben für die treuhänderische Hinterlegung der Vergütung",
         "noCommercialLicenseOnDestination": "Keine Handelslizenz auf dem Zielplaneten",
-        "noWorkforceLicenseOnDestination": "Keine Arbeitskraftlizenz auf dem Zielplaneten",
+        "noWorkforceLicenseOnDestination": "Keine Personallizenz auf dem Zielplaneten",
         "noStorageOnDeparturePlanet": "Keine Lagereinrichtung auf dem Abflugplaneten",
         "noStorageOnDestinationPlanet": "Keine Lagereinrichtung auf dem Zielplaneten",
         "passengerCountInvalid": "Passagierzahl muss eine endliche Zahl sein",
@@ -778,7 +778,7 @@
         "suspensionPending": "Pausierung ausstehend…",
         "resumePending": "Fortsetzung ausstehend…",
         "revenue": "Erlös",
-        "inputs": "Inputs",
+        "inputs": "Vorleistungen",
         "wages": "Löhne",
         "netPerDay": "netto/Tag",
         "condition": "Zustand",
@@ -907,13 +907,13 @@
                     "title": "🏦 Kreditverwaltung & Konditionen"
                 },
                 "9": {
-                    "content": "Jetzt schauen wir uns die Einstellung von Personaln an. Ihr Unternehmen braucht Personal, um Anlagen zu betreiben. Wir wechseln nun zur Seite für Personal. Das kann ein paar Sekunden dauern.",
+                    "content": "Jetzt schauen wir uns die Einstellung von Personal an. Ihr Unternehmen braucht Personal, um Anlagen zu betreiben. Wir wechseln nun zur Seite für Personal. Das kann ein paar Sekunden dauern.",
                     "title": "➡️ Weiter: Personal"
                 }
             },
             "workforce": {
                 "0": {
-                    "content": "Arbeitskräfte betreiben Ihre Anlagen. Sie werden aus dem Bevölkerungsreservoir des Planeten eingestellt. Dieses Panel zeigt Ihre aktuellen Löhne je Bildungsstufe im Vergleich zum Planetendurchschnitt (in Klammern). Löhne werden automatisch von der KI verwaltet.",
+                    "content": "Ihr Personal betreibt Ihre Anlagen. Es wird aus dem Bevölkerungsreservoir des Planeten eingestellt. Dieses Panel zeigt Ihre aktuellen Löhne je Bildungsstufe im Vergleich zum Planetendurchschnitt (in Klammern). Löhne werden automatisch von der KI verwaltet.",
                     "title": "👷 Personalverwaltung"
                 },
                 "1": {
@@ -933,27 +933,27 @@
                     "title": "🔄 Personalplanung"
                 },
                 "5": {
-                    "content": "Der Abschnitt zur Arbeitskräfte-Demografie zeigt die Zusammensetzung Ihrer Belegschaft: Mitarbeiterzahl nach Bildung, Altersverteilung und Betriebszugehörigkeit. Verfolgen Sie, wie sich Ihre Belegschaft entwickelt.",
-                    "title": "📊 Arbeitskräfte-Demografie"
+                    "content": "Der Abschnitt zur Personal-Demografie zeigt die Zusammensetzung Ihrer Belegschaft: Mitarbeiterzahl nach Bildung, Altersverteilung und Betriebszugehörigkeit. Verfolgen Sie, wie sich Ihre Belegschaft entwickelt.",
+                    "title": "📊 Personal-Demografie"
                 },
                 "6": {
-                    "content": "Das Diagramm zur Altersverteilung schlüsselt Ihre Belegschaft nach Altersgruppen auf. Eine ausgewogene Alterspyramide spricht für eine gesunde Erneuerung der Belegschaft. Zu viele ältere Arbeitskräfte können auf künftige Rentenwellen hindeuten.",
+                    "content": "Das Diagramm zur Altersverteilung schlüsselt Ihre Belegschaft nach Altersgruppen auf. Eine ausgewogene Alterspyramide spricht für eine gesunde Erneuerung der Belegschaft. Zu viele ältere Beschäftigte können auf künftige Rentenwellen hindeuten.",
                     "title": "📈 Altersverteilung"
                 },
                 "7": {
-                    "content": "Das Diagramm zur Betriebszugehörigkeit zeigt, wie lange Ihre Arbeitskräfte schon beschäftigt sind. Hohe Zugehörigkeit bedeutet erfahrenes Personal, neue Einstellungen bringen frisches Know-how. Verfolgen Sie hier Trends bei Bindung und Einarbeitung.",
+                    "content": "Das Diagramm zur Betriebszugehörigkeit zeigt, wie lange Ihr Personal schon beschäftigt ist. Hohe Zugehörigkeit bedeutet erfahrenes Personal, neue Einstellungen bringen frisches Know-how. Verfolgen Sie hier Trends bei Bindung und Einarbeitung.",
                     "title": "📈 Betriebszugehörigkeit pro Kopf"
                 },
                 "8": {
-                    "content": "Diese Diagramme verfolgen die Gesamtzahl der Arbeitskräfte und die Lohnkosten über die Zeit. Beobachten Sie das Wachstum Ihrer Belegschaft und sorgen Sie dafür, dass die Löhne wettbewerbsfähig bleiben.",
+                    "content": "Diese Diagramme verfolgen die Personalstärke und die Lohnkosten über die Zeit. Beobachten Sie das Wachstum Ihrer Belegschaft und sorgen Sie dafür, dass die Löhne wettbewerbsfähig bleiben.",
                     "title": "📈 Personal-Diagramme"
                 },
                 "9": {
-                    "content": "Änderungen bei den Arbeitskräften werden jeden Tag verarbeitet, aber Übergänge brauchen Zeit. Neu eingestellte Arbeitskräfte kommen in eine Einarbeitungswarteschlange, und ausscheidende Arbeitskräfte (entlassen, in Rente oder freiwillig) haben jeweils ihre eigene dreimonatige Abgangswarteschlange. Haben Sie Geduld — Änderungen der Belegschaft erfolgen schrittweise!",
+                    "content": "Änderungen beim Personal werden jeden Tag verarbeitet, aber Übergänge brauchen Zeit. Neu eingestellte Mitarbeiter kommen in eine Einarbeitungswarteschlange, und ausscheidende Mitarbeiter (entlassen, in Rente oder freiwillig) haben jeweils ihre eigene dreimonatige Abgangswarteschlange. Haben Sie Geduld — Änderungen der Belegschaft erfolgen schrittweise!",
                     "title": "⏳ Geduld zahlt sich aus"
                 },
                 "10": {
-                    "content": "Ihr Unternehmen braucht eine HR-Abteilung, um die Belegschaft zu verwalten. Die HR-Abteilung verbraucht Verwaltungsdienstleistungen und erzeugt Personalressourcen. Ohne sie sinkt die Produktivität Ihrer Arbeitskräfte drastisch. Klicken Sie auf \"Bauen\", um den Bau zu beauftragen — das ist nötig, bevor Sie fortfahren können.",
+                    "content": "Ihr Unternehmen braucht eine HR-Abteilung, um die Belegschaft zu verwalten. Die HR-Abteilung verbraucht Verwaltungsdienstleistungen und erzeugt Personalressourcen. Ohne sie sinkt die Produktivität Ihres Personals drastisch. Klicken Sie auf \"Bauen\", um den Bau zu beauftragen — das ist nötig, bevor Sie fortfahren können.",
                     "title": "🏢 HR-Abteilung bauen"
                 },
                 "11": {
@@ -961,7 +961,7 @@
                     "title": "✅ HR-Bau in der Warteschlange!"
                 },
                 "12": {
-                    "content": "Sobald sie aktiv ist, erzeugt die HR-Abteilung Personalressourcen aus Verwaltungsdienstleistungen. Die Anzeige zeigt Ihren HR-Puffer, und die Bilanzzeile zeigt Produktion − Bedarf → Puffer. Solange der Puffer Ihre Arbeitskräfte deckt, läuft die Produktivität bei 100 % — geht er zur Neige, sinkt die Produktivität und Ihr ganzes Unternehmen leidet.",
+                    "content": "Sobald sie aktiv ist, erzeugt die HR-Abteilung Personalressourcen aus Verwaltungsdienstleistungen. Die Anzeige zeigt Ihren HR-Puffer, und die Bilanzzeile zeigt Produktion − Bedarf → Puffer. Solange der Puffer Ihren Personalbedarf deckt, läuft die Produktivität bei 100 % — geht er zur Neige, sinkt die Produktivität und Ihr ganzes Unternehmen leidet.",
                     "title": "🏢 So funktioniert die HR-Abteilung"
                 },
                 "13": {
@@ -1057,11 +1057,11 @@
                     "title": "⏳ Bau gestartet"
                 },
                 "5": {
-                    "content": "Sobald der Bau abgeschlossen ist, wird die Anlage aktiv. Die Karte zeigt: die verbrauchten Vorleistungen (links) und die erzeugten Produkte (rechts), Effizienzbalken für Arbeitskräfte und eine Ertragszeile mit Erlös, Vorleistungskosten, Löhnen und Nettogewinn pro Tag. Behalten Sie die Vorleistungspuffer im Blick — gehen sie zur Neige, stoppt die Produktion!",
+                    "content": "Sobald der Bau abgeschlossen ist, wird die Anlage aktiv. Die Karte zeigt: die verbrauchten Vorleistungen (links) und die erzeugten Produkte (rechts), Effizienzbalken für Personal und eine Ertragszeile mit Erlös, Vorleistungskosten, Löhnen und Nettogewinn pro Tag. Behalten Sie die Vorleistungspuffer im Blick — gehen sie zur Neige, stoppt die Produktion!",
                     "title": "⚙️ Aktive Anlage"
                 },
                 "6": {
-                    "content": "Sie können die Größe jedes Anlagentyps erhöhen. Das erhöht den Vorleistungs-, Produkt- und Arbeitskräftebedarf der Anlage. Nutzen Sie den Regler für die Auslastung, um die Kapazität vorübergehend zwischen 0 % und 100 % einzustellen.",
+                    "content": "Sie können die Größe jedes Anlagentyps erhöhen. Das erhöht den Vorleistungs-, Produkt- und Personalbedarf der Anlage. Nutzen Sie den Regler für die Auslastung, um die Kapazität vorübergehend zwischen 0 % und 100 % einzustellen.",
                     "title": "📡 Größe erhöhen"
                 },
                 "7": {
@@ -1135,7 +1135,7 @@
                     "title": "🛠️ Werften"
                 },
                 "2": {
-                    "content": "Meine Schiffe zeigt Ihre Flotte. Schiffe können untätig sein, unterwegs sein oder aktiv handeln. Verwalten Sie Routen, sehen Sie sich die Fracht an und verfolgen Sie die Einnahmen.",
+                    "content": "Meine Schiffe zeigt Ihre Flotte. Schiffe können untätig sein, unterwegs sein oder aktiv handeln. Verwalten Sie Routen, sehen Sie sich die Fracht an und verfolgen Sie die Erlöse.",
                     "title": "🚢 Meine Schiffe"
                 },
                 "3": {
@@ -1143,7 +1143,7 @@
                     "title": "🛒 Schiffsmarktplatz"
                 },
                 "4": {
-                    "content": "Schiffe erwirtschaften Erlös, indem sie Transportaufträge zwischen Planeten erfüllen. Je mehr Handelsrouten Sie aufbauen, desto mehr Einnahmen erzeugt Ihre Flotte.",
+                    "content": "Schiffe erwirtschaften Erlös, indem sie Transportaufträge zwischen Planeten erfüllen. Je mehr Handelsrouten Sie aufbauen, desto mehr Erlös erwirtschaftet Ihre Flotte.",
                     "title": "📦 Transportaufträge"
                 },
                 "5": {
@@ -1151,7 +1151,7 @@
                     "title": "🌍 Multi-Planeten-Strategie"
                 },
                 "6": {
-                    "content": "Hier ist der zentrale Spielkreislauf: 👍 Nutzungsrechte pachten, um Ressourcen zu erhalten ➡️ Produktionsanlagen bauen ➡️ Arbeitskräfte einstellen (mit Automatisierung!) ➡️ Güter produzieren ➡️ Am Markt mit Gewinn verkaufen ➡️ Reinvestieren, um zu wachsen ➡️ Schiffe bauen und auf andere Planeten expandieren!",
+                    "content": "Hier ist der zentrale Spielkreislauf: 👍 Nutzungsrechte pachten, um Ressourcen zu erhalten ➡️ Produktionsanlagen bauen ➡️ Personal einstellen (mit Automatisierung!) ➡️ Güter produzieren ➡️ Am Markt mit Gewinn verkaufen ➡️ Reinvestieren, um zu wachsen ➡️ Schiffe bauen und auf andere Planeten expandieren!",
                     "title": "🔄 Der Spielkreislauf"
                 },
                 "7": {
@@ -1395,7 +1395,7 @@
         "wage": "Lohn",
         "globalAvg": "globaler Durchschn.",
         "allocationTargets": "Personalziele",
-        "overqualified": "Überqualifizierte Arbeitskräfte",
+        "overqualified": "Überqualifiziertes Personal",
         "onboarding": "Einarbeitung",
         "onNotice": "In Kündigungsfrist",
         "ageTenure": "Alter / Betriebszugehörigkeit (XP)",
@@ -1425,9 +1425,9 @@
         "target": "Ziel",
         "currentTotalLabel": "Aktuell gesamt",
         "workerShortage": "Personalmangel",
-        "unusedWorker": "Ungenutzte Arbeitskräfte",
+        "unusedWorker": "Ungenutztes Personal",
         "activeLabel": "Aktiv",
-        "overqualifiedNote": "{count, plural, one {Anlagen mit # Stelle} other {Anlagen mit # Stellen}} wurden mit höher qualifizierten Arbeitskräften besetzt, weil geringer qualifizierte nicht verfügbar waren.",
+        "overqualifiedNote": "{count, plural, one {Anlagen mit # Stelle} other {Anlagen mit # Stellen}} wurden mit höher qualifiziertem Personal besetzt, weil geringer qualifiziertes nicht verfügbar war.",
         "nextMonth": "nächster Monat",
         "nextMonthPipeline": "nächster Monat · (Pipeline)",
         "completing": "Abschließend",
@@ -1436,7 +1436,7 @@
         "voluntary": "Freiwillig",
         "fired": "Entlassen",
         "retired": "In Rente",
-        "demographyTitle": "Arbeitskräfte-Demografie",
+        "demographyTitle": "Personal-Demografie",
         "headcountByEducation": "Mitarbeiterzahl nach Bildung",
         "byStatus": "Nach Status",
         "byEducation": "Nach Bildung",
@@ -1453,7 +1453,7 @@
         "bufferLabel": "Puffer",
         "workers": "Personal",
         "workerDays": "Arbeitstage",
-        "canManageUpTo": "Kann bis zu {count} Arbeitskräfte verwalten.",
+        "canManageUpTo": "Kann bis zu {count} Mitarbeiter verwalten.",
         "daysLabel": "{count, plural, one {# Tag} other {# Tage}}",
         "max": "max",
         "hr": "HR",
@@ -1461,14 +1461,14 @@
         "hrProductivityTooltip": "HR-Produktivität:",
         "starvationTooltip": "Unterversorgung:",
         "hrCantKeepUp": "Ihre HR-Abteilung kann mit dem Personalbedarf nicht Schritt halten. Erweitern Sie sie, um die Produktivität wiederherzustellen.",
-        "hrKeepingUp": "Ihre HR-Abteilung versorgt die Arbeitskräfte ausreichend.",
+        "hrKeepingUp": "Ihre HR-Abteilung versorgt das Personal ausreichend.",
         "automaticWorkerAllocation": "Automatische Personalplanung",
         "autoOn": "Die KI berechnet jeden Tick optimale Personalziele auf Basis der Anlagenanforderungen.",
         "autoOff": "Sie steuern die Personalplanung. Die KI ändert sie nicht.",
         "automationSaved": "Automatisierungseinstellungen gespeichert. Änderungen greifen beim nächsten Tick.",
         "automationFailed": "Aktualisierung der Automatisierungseinstellungen fehlgeschlagen",
-        "targetsSaved": "Arbeitskraft-Ziele gespeichert. Änderungen greifen beim nächsten Einstellungs-Tick.",
-        "targetsFailed": "Aktualisierung der Arbeitskraft-Ziele fehlgeschlagen",
+        "targetsSaved": "Personalziele gespeichert. Änderungen greifen beim nächsten Einstellungs-Tick.",
+        "targetsFailed": "Aktualisierung der Personalziele fehlgeschlagen",
         "newBadge": "neu",
         "sendingBuild": "Bauauftrag wird gesendet…"
     },
