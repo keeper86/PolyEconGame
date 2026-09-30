@@ -2,7 +2,13 @@ import { SR_HOLDING_COST_PER_TON, TICKS_PER_MONTH } from '../../constants';
 import { PRODUCED_STORAGE_QUANTITY } from '../specialFacilities';
 import type { Resource } from '../claims';
 import type { ProductionFacility, ShipConstructionFacility, Storage, StorageFacility } from '../facility';
-import { STORAGE_SHELL_CAPACITY, shellFormOfResource, storageFormKeys, type StorageForm } from '../facility';
+import {
+    STORAGE_SHELL_CAPACITY,
+    computeCompartmentShare,
+    shellFormOfResource,
+    storageFormKeys,
+    type StorageForm,
+} from '../facility';
 import type { AgentPlanetAssets } from '../planet';
 import { STORAGE_CAPACITY_MONTHS } from './constants';
 import { getStorageCapacityMonths, getStorageTargetMonths } from './runtimeConfig';
@@ -254,16 +260,35 @@ export const storageSizingForFacilities = (
     };
 };
 
+export const scaleToHoldContents = (storage: Storage): Record<StorageForm, number> => {
+    const required: Record<StorageForm, number> = { solid: 1, liquid: 1, pieces: 1 };
+    for (const form of storageFormKeys()) {
+        const shell = storage.shells[form];
+        for (const entry of Object.values(shell.currentInStorage)) {
+            const share = computeCompartmentShare(shell, entry.resource);
+            if (share <= 0 || entry.quantity <= 0) {
+                continue;
+            }
+            const byVolume = (entry.quantity * entry.resource.volumePerQuantity) / (shell.capacity.volume * share);
+            const byMass = (entry.quantity * entry.resource.massPerQuantity) / (shell.capacity.mass * share);
+            required[form] = Math.max(required[form], Math.ceil(Math.max(byVolume, byMass)));
+        }
+    }
+    return required;
+};
+
 export const applyStorageSizingForFacilities = (
     storage: Storage,
     productionFacilities: ProductionFacility[],
     shipConstructionFacilities: ShipConstructionFacility[] = [],
 ): void => {
     const sizing = storageSizingForFacilities(productionFacilities, shipConstructionFacilities);
+    const stockFloor = scaleToHoldContents(storage);
     for (const form of storageFormKeys()) {
         const shell = storage.shells[form];
-        shell.scale = sizing.shells[form];
-        shell.maxScale = sizing.shells[form];
+        const target = Math.max(sizing.shells[form], stockFloor[form]);
+        shell.scale = target;
+        shell.maxScale = target;
     }
     const department = storage.department;
     if (department) {

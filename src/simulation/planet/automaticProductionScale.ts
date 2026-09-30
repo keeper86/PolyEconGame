@@ -76,7 +76,7 @@ import { computePidDelta, getDefaultPidState } from './automaticProductionScale/
 import { updateServiceFlowSignal } from './automaticProductionScale/serviceFlow';
 import { computeFacilityStorageSignal } from './automaticProductionScale/signalComputation';
 import { computeStorageExpansionTarget, computeStorageSignal } from './automaticProductionScale/storageAutoscale';
-import { updateAgentShellCompartments } from './automaticProductionScale/shellCompartments';
+import { updateAgentShellCompartments, scaleToHoldContents } from './automaticProductionScale/shellCompartments';
 
 export function applySoftFloorScale(currentScale: number, delta: number, minScale: number, maxScale: number): number {
     let newScale = currentScale + delta;
@@ -86,7 +86,7 @@ export function applySoftFloorScale(currentScale: number, delta: number, minScal
         } else if (delta < 0) {
             newScale = currentScale + delta * SOFT_FLOOR_RELAXATION;
         }
-        newScale = Math.max(0, newScale);
+        newScale = Math.max(1, newScale);
     }
     return Math.min(maxScale, newScale);
 }
@@ -118,9 +118,13 @@ export function reconcileShellScale(
         return remainingConstructionBudget;
     }
 
-    const bufferScale = Math.max(1, Math.ceil(requiredScale * SHELL_BUFFER_FRACTION));
+    const heldScale = scaleToHoldContents(assets.storage);
+    const heldForm = storageFormKeys().find((form) => assets.storage.shells[form] === shell);
+    const flooredRequired = heldForm ? Math.max(requiredScale, heldScale[heldForm]) : requiredScale;
 
-    if (shell.maxScale < requiredScale) {
+    const bufferScale = Math.max(1, Math.ceil(flooredRequired * SHELL_BUFFER_FRACTION));
+
+    if (shell.maxScale < flooredRequired) {
         const started = initiateCapacityExpansion(shell, assets, planet, true, bufferScale);
         if (!started) {
             return remainingConstructionBudget;
@@ -128,7 +132,7 @@ export function reconcileShellScale(
         return Math.max(0, remainingConstructionBudget - shell.construction!.maximumConstructionServiceConsumption);
     }
 
-    if (shell.maxScale > requiredScale * SHELL_OVERSHOOT_FRACTION && shell.maxScale > bufferScale) {
+    if (shell.maxScale > flooredRequired * SHELL_OVERSHOOT_FRACTION && shell.maxScale > bufferScale) {
         processFacilityContraction(planet, shell, agent, bufferScale, gameState, 0.5);
     }
 

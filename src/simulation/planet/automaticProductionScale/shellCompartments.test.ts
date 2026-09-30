@@ -17,6 +17,7 @@ import {
     resolveFormShell,
     applyStorageSizingForFacilities,
     storageSizingForFacilities,
+    scaleToHoldContents,
     type StorageResidency,
 } from './shellCompartments';
 
@@ -312,3 +313,25 @@ describe('updateAgentShellCompartments sizing', () => {
 function makeProdResource(name: string, form: 'solid' | 'liquid' | 'pieces', vol: number, mass: number): Resource {
     return { name, form, level: 'raw', volumePerQuantity: vol, massPerQuantity: mass } as unknown as Resource;
 }
+
+describe('shell stock floor', () => {
+    const stockShell = (
+        scalesHeld: number,
+    ): { storage: Storage; shell: Storage['shells']['solid']; resource: Resource } => {
+        const { storage, shell } = solidStorage();
+        const resource = makeProdResource('Ore', 'solid', 1, 1);
+        shell.compartments[resource.name] = 1;
+        shell.currentInStorage[resource.name] = { resource, quantity: scalesHeld * M0 };
+        return { storage, shell, resource };
+    };
+
+    it('sizes the shell to hold its contents instead of shrinking below them', () => {
+        const { storage, shell, resource } = stockShell(1.5);
+
+        applyStorageSizingForFacilities(storage, []);
+
+        expect(scaleToHoldContents(storage).solid).toBeGreaterThanOrEqual(2);
+        expect(shell.maxScale).toBeGreaterThanOrEqual(2);
+        expect(getStorageCapacityState(storage, resource).freeQuantity).toBeGreaterThan(0);
+    });
+});

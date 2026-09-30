@@ -8,6 +8,7 @@ import { STORAGE_TARGET_MONTHS } from '../../src/simulation/planet/automaticProd
 import {
     computeFacilityStorageSignal,
     inventoryTrend,
+    reachableTargetQuantity,
 } from '../../src/simulation/planet/automaticProductionScale/signalComputation';
 import { STORAGE_TREND_HORIZON_MONTHS } from '../../src/simulation/planet/automaticProductionScale/constants';
 
@@ -50,12 +51,13 @@ state.agents.forEach((agent: Agent) => {
             const capacity = getStorageCapacityState(assets.storage, resource);
             const monthly = TICKS_PER_MONTH * facility.maxScale * output.quantity;
             const target = STORAGE_TARGET_MONTHS * monthly;
+            const reachable = reachableTargetQuantity(assets.storage, resource, monthly);
             const trend = inventoryTrend(assets, resource.name);
             const predicted = inventory + STORAGE_TREND_HORIZON_MONTHS * TICKS_PER_MONTH * trend;
             console.log(
                 `  ${resource.name.padEnd(14)} stock=${month(inventory)} ` +
                     `shellCap12mo=${month(target)} physicalCap=${month(capacity.capacity.mass)} ` +
-                    `zoom=1mo(${month(monthly)}) predicted=${month(predicted)} ` +
+                    `reachable=${month(reachable)} predicted=${month(predicted)} ` +
                     `trend/tick=${trend.toFixed(0)} stockMonths=${(inventory / Math.max(1e-9, monthly)).toFixed(2)} ` +
                     `shellMonths=${(capacity.capacity.mass / Math.max(1e-9, monthly)).toFixed(2)}`,
             );

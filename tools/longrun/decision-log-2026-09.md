@@ -1579,3 +1579,24 @@ construction, so every goods producer is permanently squeezed to (or below) cost
 
 FIX: SELL_PRODUCTION_SMOOTHING 30 -> 3 (offer ~3 days). Sell-through ~1/3 ~= 33% (still below 60%
 but one order of magnitude less pathological), and price pressure becomes mild instead of floor-pinned.
+
+## Storage sizing: shell stock floor + never-zero operating scale (2026-09-30)
+- **Why:** with the current storage constants the 1-agent run `newstorage-s1001` went extinct at y159.75.
+  The sole coal mine's shell filled to its 13-month capacity; the storage signal (12-month target, one month
+  already reserved by `reachableTargetQuantity`) then sat permanently negative; contraction ratcheted `maxScale`
+  260 -> 1 and the operating scale to exactly 0, where the soft floor `Math.max(0, newScale)` plus the
+  ratio-preserving contraction made 0 an absorbing state. Downstream lost coal, coal demand fell to 0, and no
+  signal could rebuild the supplier. A shrinking shell also stranded its contents: 34.5M coal inside a
+  1.0M-capacity shell (`used > capacity`, free capacity 0, shell bricked).
+- **What:** (a) `applyStorageSizingForFacilities` and `reconcileShellScale` floor the required shell scale by
+  `scaleToHoldContents`, so a shell is never sized below what it holds; (b) `applySoftFloorScale` clamps at
+  `Math.max(1, newScale)` instead of `Math.max(0, newScale)`, so the operating scale is never 0 and can climb
+  back out of the floor.
+- **Rejected:** a contraction dead band (no-op - `reachableTargetQuantity` already reserves one month, so
+  12-month target + 1-month reserve = 13-month capacity) and stock trimming (makes the state consistent, but
+  the latch persists: extinct y186 vs y159). A hard floor at `MIN_SCALE_FRACTION` (25% of maxScale) is harmful:
+  the forced input bidding starved groceries (fill 1.0 -> 0.00, food price x4.3) and killed the population by y83.
+- **Evidence** (200y, singleAgent, seed 1001): no fix extinct y159.75; stock floor alone survives y200
+  (pop 30.3M, GDP 25.6B, coal mine 221/292 vs 165/165 baseline); stock + never-zero floor survives y200.
+- **Status:** DEFAULT (both unconditional; the `--fixes` override plus the trim and trend-gate flags were removed).
+
