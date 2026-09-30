@@ -61,18 +61,19 @@ export const PRODUCED_HR_QUANTITY = 2000;
 export const USED_QUANTITY = 20;
 export const ESTIMATED_HR_OVERHEAD = 1.025;
 export const HR_WORLD_BUFFER = 1.4;
-export const humanResourcesOfficeFacilityType = (planetId: string, id: string): HRFacility => (withDerivedWorkers(workerProfiles.administration, {
-    ...makeManagementFacilityDefaults(),
-    planetId,
-    id,
-    name: HR_DEPARTMENT_NAME,
-    powerConsumptionPerTick: 0.5,
-    needs: [{ resource: administrativeServiceResourceType, quantity: USED_QUANTITY }],
-    produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
-    hrBuffer: 0,
-    hrStarvation: 0,
-    wagePidState: nullWagePidState(),
-}));
+export const humanResourcesOfficeFacilityType = (planetId: string, id: string): HRFacility =>
+    withDerivedWorkers(workerProfiles.administration, {
+        ...makeManagementFacilityDefaults(),
+        planetId,
+        id,
+        name: HR_DEPARTMENT_NAME,
+        powerConsumptionPerTick: 0.5,
+        needs: [{ resource: administrativeServiceResourceType, quantity: USED_QUANTITY }],
+        produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
+        hrBuffer: 0,
+        hrStarvation: 0,
+        wagePidState: nullWagePidState(),
+    });
 
 export const LOGISTICS_DEPARTMENT_NAME = 'Logistics Department';
 export const STORAGE_DEPARTMENT_SERVICE_HEADROOM = 20 / 3;
@@ -82,52 +83,55 @@ export const PRODUCED_STORAGE_QUANTITY = Math.ceil(
         SR_HOLDING_COST_PER_TON *
         STORAGE_DEPARTMENT_SERVICE_HEADROOM,
 );
-export const logisticsDepartmentFacilityType = (planetId: string, id: string): StorageDepartment => (withDerivedWorkers(workerProfiles.logistics, {
-    ...makeManagementFacilityDefaults(),
-    planetId,
-    id,
-    name: LOGISTICS_DEPARTMENT_NAME,
-    powerConsumptionPerTick: 0.5,
-    needs: [
-        { resource: administrativeServiceResourceType, quantity: 5 },
-        { resource: logisticsServiceResourceType, quantity: 30 },
-    ],
-    produces: [{ resource: internalLogisticsServiceResourceType, quantity: PRODUCED_STORAGE_QUANTITY }],
+export const logisticsDepartmentFacilityType = (planetId: string, id: string): StorageDepartment =>
+    withDerivedWorkers(workerProfiles.logistics, {
+        ...makeManagementFacilityDefaults(),
+        planetId,
+        id,
+        name: LOGISTICS_DEPARTMENT_NAME,
+        powerConsumptionPerTick: 0.5,
+        needs: [
+            { resource: administrativeServiceResourceType, quantity: 5 },
+            { resource: logisticsServiceResourceType, quantity: 30 },
+        ],
+        produces: [{ resource: internalLogisticsServiceResourceType, quantity: PRODUCED_STORAGE_QUANTITY }],
 
-    transportBuffer: 0,
-    transportStarvation: 0,
-}));
+        transportBuffer: 0,
+        transportStarvation: 0,
+    });
 // service shield for production
 // increased buffer for storageServiceResourceType
 // KEEP. ONLY UNUSED UNTIL NEXT TICKET
 export const RESEARCH_DEPARTMENT_NAME = 'R&D Department';
-export const researchAndDevelopmentFacilityType = (planetId: string, id: string): ManagementFacility => (withDerivedWorkers(workerProfiles.research, {
-    ...makeManagementFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Research & Development',
-    powerConsumptionPerTick: 0.5,
-    needs: [
-        { resource: administrativeServiceResourceType, quantity: 1 },
-        { resource: educationServiceResourceType, quantity: 10 },
-    ],
-    produces: [{ resource: administrativeServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
-}));
+export const researchAndDevelopmentFacilityType = (planetId: string, id: string): ManagementFacility =>
+    withDerivedWorkers(workerProfiles.research, {
+        ...makeManagementFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Research & Development',
+        powerConsumptionPerTick: 0.5,
+        needs: [
+            { resource: administrativeServiceResourceType, quantity: 1 },
+            { resource: educationServiceResourceType, quantity: 10 },
+        ],
+        produces: [{ resource: administrativeServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
+    });
 // KEEP. ONLY UNUSED UNTIL NEXT TICKET
 export const TRAINING_CENTER_NAME = 'Training Center';
-export const trainingCenterFacilityType = (planetId: string, id: string): TrainingsDepartment => (withDerivedWorkers(workerProfiles.education, {
-    ...makeManagementFacilityDefaults(),
-    planetId,
-    id,
-    name: TRAINING_CENTER_NAME,
-    powerConsumptionPerTick: 0.5,
-    needs: [
-        { resource: administrativeServiceResourceType, quantity: 1 },
-        { resource: educationServiceResourceType, quantity: 10 },
-    ],
-    produces: [{ resource: trainingServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
-    trainingsBuffer: 0,
-}));
+export const trainingCenterFacilityType = (planetId: string, id: string): TrainingsDepartment =>
+    withDerivedWorkers(workerProfiles.education, {
+        ...makeManagementFacilityDefaults(),
+        planetId,
+        id,
+        name: TRAINING_CENTER_NAME,
+        powerConsumptionPerTick: 0.5,
+        needs: [
+            { resource: administrativeServiceResourceType, quantity: 1 },
+            { resource: educationServiceResourceType, quantity: 10 },
+        ],
+        produces: [{ resource: trainingServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
+        trainingsBuffer: 0,
+    });
 // shorten time for onbording
 // decrease productivity malus for onboarding
 // worker XP increase

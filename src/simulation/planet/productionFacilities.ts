@@ -108,530 +108,571 @@ const makeFacilityDefaults = () => ({
     },
 });
 
-const coalMine = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.extraction, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Coal Mine',
-    powerConsumptionPerTick: 0.8,
-    needs: [{ resource: coalDepositResourceType, quantity: 0.5 }],
-    produces: [{ resource: coalResourceType, quantity: 500 }],
-}));
+const coalMine = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.extraction, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Coal Mine',
+        powerConsumptionPerTick: 0.8,
+        needs: [{ resource: coalDepositResourceType, quantity: 0.5 }],
+        produces: [{ resource: coalResourceType, quantity: 500 }],
+    });
 
 export const oilWellName = 'Oil Well';
-export const oilWell = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.extraction, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: oilWellName,
-    powerConsumptionPerTick: 0.6,
-    needs: [{ resource: oilReservoirResourceType, quantity: 0.2 }],
-    produces: [{ resource: crudeOilResourceType, quantity: 200 }],
-}));
+export const oilWell = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.extraction, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: oilWellName,
+        powerConsumptionPerTick: 0.6,
+        needs: [{ resource: oilReservoirResourceType, quantity: 0.2 }],
+        produces: [{ resource: crudeOilResourceType, quantity: 200 }],
+    });
 
-const loggingCamp = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.extraction, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Logging Camp',
-    powerConsumptionPerTick: 0.3,
-    needs: [{ resource: forestResourceType, quantity: 200 }],
-    produces: [{ resource: logsResourceType, quantity: 200 }],
-}));
+const loggingCamp = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.extraction, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Logging Camp',
+        powerConsumptionPerTick: 0.3,
+        needs: [{ resource: forestResourceType, quantity: 200 }],
+        produces: [{ resource: logsResourceType, quantity: 200 }],
+    });
 
-const stoneQuarry = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.extraction, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Stone Quarry',
-    powerConsumptionPerTick: 0.7,
-    needs: [{ resource: stoneDepositResourceType, quantity: 0.2 }],
-    produces: [{ resource: stoneResourceType, quantity: 200 }],
-}));
+const stoneQuarry = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.extraction, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Stone Quarry',
+        powerConsumptionPerTick: 0.7,
+        needs: [{ resource: stoneDepositResourceType, quantity: 0.2 }],
+        produces: [{ resource: stoneResourceType, quantity: 200 }],
+    });
 
-const copperMine = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.extraction, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Copper Mine',
-    powerConsumptionPerTick: 0.9,
-    needs: [{ resource: copperDepositResourceType, quantity: 0.2 }],
-    produces: [{ resource: copperOreResourceType, quantity: 200 }],
-}));
+const copperMine = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.extraction, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Copper Mine',
+        powerConsumptionPerTick: 0.9,
+        needs: [{ resource: copperDepositResourceType, quantity: 0.2 }],
+        produces: [{ resource: copperOreResourceType, quantity: 200 }],
+    });
 
-const sandMine = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.extraction, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Sand Mine',
-    powerConsumptionPerTick: 0.4,
-    needs: [{ resource: sandDepositResourceType, quantity: 0.3 }],
-    produces: [{ resource: sandResourceType, quantity: 300 }],
-}));
+const sandMine = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.extraction, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Sand Mine',
+        powerConsumptionPerTick: 0.4,
+        needs: [{ resource: sandDepositResourceType, quantity: 0.3 }],
+        produces: [{ resource: sandResourceType, quantity: 300 }],
+    });
 
-const limestoneQuarry = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.extraction, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Limestone Quarry',
-    powerConsumptionPerTick: 0.5,
-    needs: [{ resource: limestoneDepositResourceType, quantity: 0.3 }],
-    produces: [{ resource: limestoneResourceType, quantity: 300 }],
-}));
+const limestoneQuarry = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.extraction, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Limestone Quarry',
+        powerConsumptionPerTick: 0.5,
+        needs: [{ resource: limestoneDepositResourceType, quantity: 0.3 }],
+        produces: [{ resource: limestoneResourceType, quantity: 300 }],
+    });
 
-export const ironSmelter = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.heavyIndustry, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Iron Smelter',
-    powerConsumptionPerTick: 1.2,
-    needs: [
-        { resource: ironOreResourceType, quantity: 150 },
-        { resource: coalResourceType, quantity: 30 },
-    ],
-    produces: [{ resource: steelResourceType, quantity: 100 }],
-}));
+export const ironSmelter = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.heavyIndustry, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Iron Smelter',
+        powerConsumptionPerTick: 1.2,
+        needs: [
+            { resource: ironOreResourceType, quantity: 150 },
+            { resource: coalResourceType, quantity: 30 },
+        ],
+        produces: [{ resource: steelResourceType, quantity: 100 }],
+    });
 
-const copperSmelter = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.heavyIndustry, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Copper Smelter',
-    powerConsumptionPerTick: 1.0,
-    needs: [
-        { resource: copperOreResourceType, quantity: 120 },
-        { resource: coalResourceType, quantity: 20 },
-    ],
-    produces: [{ resource: copperResourceType, quantity: 100 }],
-}));
+const copperSmelter = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.heavyIndustry, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Copper Smelter',
+        powerConsumptionPerTick: 1.0,
+        needs: [
+            { resource: copperOreResourceType, quantity: 120 },
+            { resource: coalResourceType, quantity: 20 },
+        ],
+        produces: [{ resource: copperResourceType, quantity: 100 }],
+    });
 
-export const fuelRefinery = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.heavyIndustry, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Fuel Refinery',
-    powerConsumptionPerTick: 1.5,
-    needs: [{ resource: crudeOilResourceType, quantity: 200 }],
-    produces: [{ resource: fuelResourceType, quantity: 200 }],
-}));
+export const fuelRefinery = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.heavyIndustry, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Fuel Refinery',
+        powerConsumptionPerTick: 1.5,
+        needs: [{ resource: crudeOilResourceType, quantity: 200 }],
+        produces: [{ resource: fuelResourceType, quantity: 200 }],
+    });
 
-export const chemicalRefinery = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.heavyIndustry, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Chemical Refinery',
-    powerConsumptionPerTick: 1.5,
-    needs: [{ resource: crudeOilResourceType, quantity: 200 }],
-    produces: [{ resource: chemicalResourceType, quantity: 200 }],
-}));
+export const chemicalRefinery = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.heavyIndustry, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Chemical Refinery',
+        powerConsumptionPerTick: 1.5,
+        needs: [{ resource: crudeOilResourceType, quantity: 200 }],
+        produces: [{ resource: chemicalResourceType, quantity: 200 }],
+    });
 
-export const PlasticsFactory = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.heavyIndustry, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Plastics Factory',
-    powerConsumptionPerTick: 1.5,
-    needs: [
-        { resource: chemicalResourceType, quantity: 100 },
-        { resource: waterResourceType, quantity: 100 },
-        { resource: coalResourceType, quantity: 10 },
-    ],
-    produces: [{ resource: plasticResourceType, quantity: 100 }],
-}));
+export const PlasticsFactory = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.heavyIndustry, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Plastics Factory',
+        powerConsumptionPerTick: 1.5,
+        needs: [
+            { resource: chemicalResourceType, quantity: 100 },
+            { resource: waterResourceType, quantity: 100 },
+            { resource: coalResourceType, quantity: 10 },
+        ],
+        produces: [{ resource: plasticResourceType, quantity: 100 }],
+    });
 
-const sawmill = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.lightIndustry, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Sawmill',
-    powerConsumptionPerTick: 0.8,
-    needs: [{ resource: logsResourceType, quantity: 300 }],
-    produces: [{ resource: lumberResourceType, quantity: 200 }],
-}));
+const sawmill = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.lightIndustry, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Sawmill',
+        powerConsumptionPerTick: 0.8,
+        needs: [{ resource: logsResourceType, quantity: 300 }],
+        produces: [{ resource: lumberResourceType, quantity: 200 }],
+    });
 
-const cementPlant = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.lightIndustry, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Cement Plant',
-    powerConsumptionPerTick: 1.2,
-    needs: [
-        { resource: limestoneResourceType, quantity: 60 },
-        { resource: coalResourceType, quantity: 10 },
-    ],
-    produces: [{ resource: cementResourceType, quantity: 50 }],
-}));
+const cementPlant = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.lightIndustry, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Cement Plant',
+        powerConsumptionPerTick: 1.2,
+        needs: [
+            { resource: limestoneResourceType, quantity: 60 },
+            { resource: coalResourceType, quantity: 10 },
+        ],
+        produces: [{ resource: cementResourceType, quantity: 50 }],
+    });
 
-const concretePlant = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.lightIndustry, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Concrete Plant',
-    powerConsumptionPerTick: 0.6,
-    needs: [
-        { resource: cementResourceType, quantity: 40 },
-        { resource: stoneResourceType, quantity: 80 },
-        { resource: sandResourceType, quantity: 40 },
-        { resource: waterResourceType, quantity: 20 },
-    ],
-    produces: [{ resource: concreteResourceType, quantity: 100 }],
-}));
+const concretePlant = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.lightIndustry, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Concrete Plant',
+        powerConsumptionPerTick: 0.6,
+        needs: [
+            { resource: cementResourceType, quantity: 40 },
+            { resource: stoneResourceType, quantity: 80 },
+            { resource: sandResourceType, quantity: 40 },
+            { resource: waterResourceType, quantity: 20 },
+        ],
+        produces: [{ resource: concreteResourceType, quantity: 100 }],
+    });
 
-const glassFactory = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.lightIndustry, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Glass Factory',
-    powerConsumptionPerTick: 1.0,
-    needs: [
-        { resource: sandResourceType, quantity: 150 },
-        { resource: limestoneResourceType, quantity: 40 },
-        { resource: chemicalResourceType, quantity: 10 },
-    ],
-    produces: [{ resource: glassResourceType, quantity: 100 }],
-}));
+const glassFactory = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.lightIndustry, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Glass Factory',
+        powerConsumptionPerTick: 1.0,
+        needs: [
+            { resource: sandResourceType, quantity: 150 },
+            { resource: limestoneResourceType, quantity: 40 },
+            { resource: chemicalResourceType, quantity: 10 },
+        ],
+        produces: [{ resource: glassResourceType, quantity: 100 }],
+    });
 
-const pesticidePlant = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.highTech, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Pesticide Plant',
-    powerConsumptionPerTick: 0.8,
-    needs: [
-        { resource: chemicalResourceType, quantity: 60 },
-        { resource: waterResourceType, quantity: 100 },
-    ],
-    produces: [{ resource: pesticideResourceType, quantity: 30 }],
-}));
+const pesticidePlant = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.highTech, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Pesticide Plant',
+        powerConsumptionPerTick: 0.8,
+        needs: [
+            { resource: chemicalResourceType, quantity: 60 },
+            { resource: waterResourceType, quantity: 100 },
+        ],
+        produces: [{ resource: pesticideResourceType, quantity: 30 }],
+    });
 
-const pharmaPlant = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.highTech, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Pharma Plant',
-    powerConsumptionPerTick: 0.7,
-    needs: [
-        { resource: produceResourceType, quantity: 30 },
-        { resource: chemicalResourceType, quantity: 120 },
-        { resource: waterResourceType, quantity: 100 },
-    ],
-    produces: [{ resource: pharmaceuticalResourceType, quantity: 10 }],
-}));
+const pharmaPlant = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.highTech, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Pharma Plant',
+        powerConsumptionPerTick: 0.7,
+        needs: [
+            { resource: produceResourceType, quantity: 30 },
+            { resource: chemicalResourceType, quantity: 120 },
+            { resource: waterResourceType, quantity: 100 },
+        ],
+        produces: [{ resource: pharmaceuticalResourceType, quantity: 10 }],
+    });
 
-const foodProcessor = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.lightIndustry, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Food Processor',
-    powerConsumptionPerTick: 0.5,
+const foodProcessor = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.lightIndustry, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Food Processor',
+        powerConsumptionPerTick: 0.5,
 
-    needs: [
-        { resource: produceResourceType, quantity: 60 },
-        { resource: chemicalResourceType, quantity: 5 },
-        { resource: waterResourceType, quantity: 100 },
-        { resource: packagingResourceType, quantity: 2 },
-    ],
-    produces: [{ resource: processedFoodResourceType, quantity: 80 }],
-}));
+        needs: [
+            { resource: produceResourceType, quantity: 60 },
+            { resource: chemicalResourceType, quantity: 5 },
+            { resource: waterResourceType, quantity: 100 },
+            { resource: packagingResourceType, quantity: 2 },
+        ],
+        produces: [{ resource: processedFoodResourceType, quantity: 80 }],
+    });
 
-const beveragePlant = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.lightIndustry, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Beverage Plant',
-    powerConsumptionPerTick: 0.4,
-    needs: [
-        { resource: waterResourceType, quantity: 110 },
-        { resource: produceResourceType, quantity: 20 },
-        { resource: chemicalResourceType, quantity: 10 },
-        { resource: glassResourceType, quantity: 5 },
-        { resource: packagingResourceType, quantity: 2 },
-    ],
-    produces: [{ resource: beverageResourceType, quantity: 100 }],
-}));
+const beveragePlant = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.lightIndustry, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Beverage Plant',
+        powerConsumptionPerTick: 0.4,
+        needs: [
+            { resource: waterResourceType, quantity: 110 },
+            { resource: produceResourceType, quantity: 20 },
+            { resource: chemicalResourceType, quantity: 10 },
+            { resource: glassResourceType, quantity: 5 },
+            { resource: packagingResourceType, quantity: 2 },
+        ],
+        produces: [{ resource: beverageResourceType, quantity: 100 }],
+    });
 
-const paperMill = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.lightIndustry, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Paper Mill',
-    powerConsumptionPerTick: 0.9,
-    needs: [
-        { resource: logsResourceType, quantity: 150 },
-        { resource: waterResourceType, quantity: 50 },
-    ],
-    produces: [{ resource: paperResourceType, quantity: 100 }],
-}));
+const paperMill = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.lightIndustry, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Paper Mill',
+        powerConsumptionPerTick: 0.9,
+        needs: [
+            { resource: logsResourceType, quantity: 150 },
+            { resource: waterResourceType, quantity: 50 },
+        ],
+        produces: [{ resource: paperResourceType, quantity: 100 }],
+    });
 
-const cottonFarm = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.extraction, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Cotton Farm',
-    powerConsumptionPerTick: 0.3,
-    needs: [
-        { resource: arableLandResourceType, quantity: 200 },
-        { resource: waterResourceType, quantity: 80 },
-    ],
-    produces: [{ resource: cottonResourceType, quantity: 100 }],
-}));
+const cottonFarm = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.extraction, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Cotton Farm',
+        powerConsumptionPerTick: 0.3,
+        needs: [
+            { resource: arableLandResourceType, quantity: 200 },
+            { resource: waterResourceType, quantity: 80 },
+        ],
+        produces: [{ resource: cottonResourceType, quantity: 100 }],
+    });
 
-const textileMill = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.lightIndustry, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Textile Mill',
-    powerConsumptionPerTick: 0.7,
-    needs: [
-        { resource: cottonResourceType, quantity: 120 },
-        { resource: waterResourceType, quantity: 30 },
-        { resource: plasticResourceType, quantity: 80 },
-    ],
-    produces: [{ resource: fabricResourceType, quantity: 100 }],
-}));
+const textileMill = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.lightIndustry, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Textile Mill',
+        powerConsumptionPerTick: 0.7,
+        needs: [
+            { resource: cottonResourceType, quantity: 120 },
+            { resource: waterResourceType, quantity: 30 },
+            { resource: plasticResourceType, quantity: 80 },
+        ],
+        produces: [{ resource: fabricResourceType, quantity: 100 }],
+    });
 
-const clothingFactory = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.lightIndustry, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Clothing Factory',
-    powerConsumptionPerTick: 0.5,
-    needs: [
-        { resource: waterResourceType, quantity: 100 },
-        { resource: fabricResourceType, quantity: 80 },
-        { resource: chemicalResourceType, quantity: 20 },
-    ],
-    produces: [{ resource: clothingResourceType, quantity: 60 }],
-}));
+const clothingFactory = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.lightIndustry, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Clothing Factory',
+        powerConsumptionPerTick: 0.5,
+        needs: [
+            { resource: waterResourceType, quantity: 100 },
+            { resource: fabricResourceType, quantity: 80 },
+            { resource: chemicalResourceType, quantity: 20 },
+        ],
+        produces: [{ resource: clothingResourceType, quantity: 60 }],
+    });
 
-const furnitureFactory = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.lightIndustry, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Furniture Factory',
-    powerConsumptionPerTick: 0.6,
-    needs: [
-        { resource: lumberResourceType, quantity: 100 },
-        { resource: steelResourceType, quantity: 20 },
-        { resource: fabricResourceType, quantity: 10 },
-        { resource: plasticResourceType, quantity: 30 },
-    ],
-    produces: [{ resource: furnitureResourceType, quantity: 50 }],
-}));
+const furnitureFactory = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.lightIndustry, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Furniture Factory',
+        powerConsumptionPerTick: 0.6,
+        needs: [
+            { resource: lumberResourceType, quantity: 100 },
+            { resource: steelResourceType, quantity: 20 },
+            { resource: fabricResourceType, quantity: 10 },
+            { resource: plasticResourceType, quantity: 30 },
+        ],
+        produces: [{ resource: furnitureResourceType, quantity: 50 }],
+    });
 
-const siliconWaferFactory = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.highTech, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Silicon Wafer Factory',
-    powerConsumptionPerTick: 0.9,
-    needs: [
-        { resource: sandResourceType, quantity: 300 },
-        { resource: chemicalResourceType, quantity: 60 },
-        { resource: waterResourceType, quantity: 50 },
-    ],
-    produces: [{ resource: siliconWaferResourceType, quantity: 80 }],
-}));
+const siliconWaferFactory = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.highTech, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Silicon Wafer Factory',
+        powerConsumptionPerTick: 0.9,
+        needs: [
+            { resource: sandResourceType, quantity: 300 },
+            { resource: chemicalResourceType, quantity: 60 },
+            { resource: waterResourceType, quantity: 50 },
+        ],
+        produces: [{ resource: siliconWaferResourceType, quantity: 80 }],
+    });
 
-const electronicsFactory = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.highTech, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Electronics Factory',
-    powerConsumptionPerTick: 0.8,
-    needs: [
-        { resource: siliconWaferResourceType, quantity: 40 },
-        { resource: copperResourceType, quantity: 40 },
-        { resource: plasticResourceType, quantity: 30 },
-    ],
-    produces: [{ resource: electronicsResourceType, quantity: 40 }],
-}));
+const electronicsFactory = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.highTech, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Electronics Factory',
+        powerConsumptionPerTick: 0.8,
+        needs: [
+            { resource: siliconWaferResourceType, quantity: 40 },
+            { resource: copperResourceType, quantity: 40 },
+            { resource: plasticResourceType, quantity: 30 },
+        ],
+        produces: [{ resource: electronicsResourceType, quantity: 40 }],
+    });
 
-const itDevicesFactory = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.highTech, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'IT Devices Factory',
-    powerConsumptionPerTick: 0.7,
-    needs: [
-        { resource: electronicsResourceType, quantity: 20 },
-        { resource: plasticResourceType, quantity: 30 },
-        { resource: glassResourceType, quantity: 30 },
-    ],
-    produces: [{ resource: itDevicesResourceType, quantity: 20 }],
-}));
+const itDevicesFactory = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.highTech, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'IT Devices Factory',
+        powerConsumptionPerTick: 0.7,
+        needs: [
+            { resource: electronicsResourceType, quantity: 20 },
+            { resource: plasticResourceType, quantity: 30 },
+            { resource: glassResourceType, quantity: 30 },
+        ],
+        produces: [{ resource: itDevicesResourceType, quantity: 20 }],
+    });
 
-export const machineryFactory = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.highTech, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Machinery Factory',
-    powerConsumptionPerTick: 1.0,
-    needs: [
-        { resource: steelResourceType, quantity: 90 },
-        { resource: chemicalResourceType, quantity: 10 },
-        { resource: plasticResourceType, quantity: 40 },
-    ],
-    produces: [{ resource: machineryResourceType, quantity: 40 }],
-}));
+export const machineryFactory = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.highTech, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Machinery Factory',
+        powerConsumptionPerTick: 1.0,
+        needs: [
+            { resource: steelResourceType, quantity: 90 },
+            { resource: chemicalResourceType, quantity: 10 },
+            { resource: plasticResourceType, quantity: 40 },
+        ],
+        produces: [{ resource: machineryResourceType, quantity: 40 }],
+    });
 
-const vehicleFactory = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.highTech, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Vehicle Factory',
-    powerConsumptionPerTick: 1.2,
-    needs: [
-        { resource: steelResourceType, quantity: 10 },
-        { resource: plasticResourceType, quantity: 10 },
-        { resource: glassResourceType, quantity: 2 },
-        { resource: fabricResourceType, quantity: 5 },
-        { resource: machineryResourceType, quantity: 10 },
-    ],
-    produces: [{ resource: vehicleResourceType, quantity: 10.5 }],
-}));
+const vehicleFactory = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.highTech, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Vehicle Factory',
+        powerConsumptionPerTick: 1.2,
+        needs: [
+            { resource: steelResourceType, quantity: 10 },
+            { resource: plasticResourceType, quantity: 10 },
+            { resource: glassResourceType, quantity: 2 },
+            { resource: fabricResourceType, quantity: 5 },
+            { resource: machineryResourceType, quantity: 10 },
+        ],
+        produces: [{ resource: vehicleResourceType, quantity: 10.5 }],
+    });
 
-export const agriculturalFacility = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.extraction, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Agricultural Facility',
-    powerConsumptionPerTick: 1.2,
-    needs: [
-        { resource: arableLandResourceType, quantity: 30 },
-        { resource: waterResourceType, quantity: 100 },
-        { resource: pesticideResourceType, quantity: 10 },
-    ],
-    produces: [{ resource: produceResourceType, quantity: 120 }],
-}));
+export const agriculturalFacility = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.extraction, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Agricultural Facility',
+        powerConsumptionPerTick: 1.2,
+        needs: [
+            { resource: arableLandResourceType, quantity: 30 },
+            { resource: waterResourceType, quantity: 100 },
+            { resource: pesticideResourceType, quantity: 10 },
+        ],
+        produces: [{ resource: produceResourceType, quantity: 120 }],
+    });
 
-export const waterFacility = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.extraction, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Water Facility',
-    powerConsumptionPerTick: 0.5,
+export const waterFacility = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.extraction, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Water Facility',
+        powerConsumptionPerTick: 0.5,
 
-    needs: [{ resource: waterSourceResourceType, quantity: 600 }],
-    produces: [{ resource: waterResourceType, quantity: 600 }],
-}));
+        needs: [{ resource: waterSourceResourceType, quantity: 600 }],
+        produces: [{ resource: waterResourceType, quantity: 600 }],
+    });
 
-const ironMine = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.extraction, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Iron Mine',
-    powerConsumptionPerTick: 0.8,
-    needs: [{ resource: ironOreDepositResourceType, quantity: 0.4 }],
-    produces: [{ resource: ironOreResourceType, quantity: 400 }],
-}));
+const ironMine = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.extraction, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Iron Mine',
+        powerConsumptionPerTick: 0.8,
+        needs: [{ resource: ironOreDepositResourceType, quantity: 0.4 }],
+        produces: [{ resource: ironOreResourceType, quantity: 400 }],
+    });
 
-const packagingPlant = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.lightIndustry, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Packaging Plant',
-    powerConsumptionPerTick: 0.7,
-    needs: [
-        { resource: paperResourceType, quantity: 10 },
-        { resource: plasticResourceType, quantity: 60 },
-    ],
-    produces: [{ resource: packagingResourceType, quantity: 40 }],
-}));
+const packagingPlant = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.lightIndustry, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Packaging Plant',
+        powerConsumptionPerTick: 0.7,
+        needs: [
+            { resource: paperResourceType, quantity: 10 },
+            { resource: plasticResourceType, quantity: 60 },
+        ],
+        produces: [{ resource: packagingResourceType, quantity: 40 }],
+    });
 
-const administrativeCenter = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.administration, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Administrative Center' as const,
-    powerConsumptionPerTick: 0.5,
-    needs: [
-        { resource: furnitureResourceType, quantity: 1 },
-        { resource: itDevicesResourceType, quantity: 0.1 },
-    ],
-    produces: [{ resource: administrativeServiceResourceType, quantity: 300 }],
-}));
+const administrativeCenter = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.administration, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Administrative Center' as const,
+        powerConsumptionPerTick: 0.5,
+        needs: [
+            { resource: furnitureResourceType, quantity: 1 },
+            { resource: itDevicesResourceType, quantity: 0.1 },
+        ],
+        produces: [{ resource: administrativeServiceResourceType, quantity: 300 }],
+    });
 
-const logisticsHub = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.logistics, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Logistics Hub' as const,
-    powerConsumptionPerTick: 0.2,
-    needs: [
-        { resource: vehicleResourceType, quantity: 1 },
-        { resource: fuelResourceType, quantity: 90 },
-    ],
-    produces: [{ resource: logisticsServiceResourceType, quantity: 300 }],
-}));
+const logisticsHub = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.logistics, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Logistics Hub' as const,
+        powerConsumptionPerTick: 0.2,
+        needs: [
+            { resource: vehicleResourceType, quantity: 1 },
+            { resource: fuelResourceType, quantity: 90 },
+        ],
+        produces: [{ resource: logisticsServiceResourceType, quantity: 300 }],
+    });
 
-const constructionFacility = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.construction, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Construction Facility' as const,
-    powerConsumptionPerTick: 0.3,
-    needs: [
-        { resource: concreteResourceType, quantity: 100 },
-        { resource: steelResourceType, quantity: 80 },
-        { resource: machineryResourceType, quantity: 15 },
-    ],
-    produces: [{ resource: constructionServiceResourceType, quantity: 300 }],
-}));
+const constructionFacility = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.construction, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Construction Facility' as const,
+        powerConsumptionPerTick: 0.3,
+        needs: [
+            { resource: concreteResourceType, quantity: 100 },
+            { resource: steelResourceType, quantity: 80 },
+            { resource: machineryResourceType, quantity: 15 },
+        ],
+        produces: [{ resource: constructionServiceResourceType, quantity: 300 }],
+    });
 
-const groceryChain = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.retail, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Grocery Chain' as const,
-    powerConsumptionPerTick: 0.4,
-    needs: [
-        { resource: processedFoodResourceType, quantity: 30 },
-        { resource: beverageResourceType, quantity: 20 },
-    ],
-    produces: [{ resource: groceryServiceResourceType, quantity: 300 }],
-}));
+const groceryChain = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.retail, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Grocery Chain' as const,
+        powerConsumptionPerTick: 0.4,
+        needs: [
+            { resource: processedFoodResourceType, quantity: 30 },
+            { resource: beverageResourceType, quantity: 20 },
+        ],
+        produces: [{ resource: groceryServiceResourceType, quantity: 300 }],
+    });
 
-const retailChain = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.retail, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Retail Chain' as const,
-    powerConsumptionPerTick: 0.4,
-    needs: [
-        { resource: itDevicesResourceType, quantity: 10 },
-        { resource: clothingResourceType, quantity: 10 },
-        { resource: furnitureResourceType, quantity: 10 },
-    ],
-    produces: [{ resource: retailServiceResourceType, quantity: 200 }],
-}));
+const retailChain = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.retail, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Retail Chain' as const,
+        powerConsumptionPerTick: 0.4,
+        needs: [
+            { resource: itDevicesResourceType, quantity: 10 },
+            { resource: clothingResourceType, quantity: 10 },
+            { resource: furnitureResourceType, quantity: 10 },
+        ],
+        produces: [{ resource: retailServiceResourceType, quantity: 200 }],
+    });
 
-const hospital = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.healthcare, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Hospital' as const,
-    powerConsumptionPerTick: 0.6,
-    needs: [
-        { resource: pharmaceuticalResourceType, quantity: 5 },
-        { resource: chemicalResourceType, quantity: 20 },
-        { resource: furnitureResourceType, quantity: 5 },
-    ],
-    produces: [{ resource: healthcareServiceResourceType, quantity: 200 }],
-}));
+const hospital = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.healthcare, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Hospital' as const,
+        powerConsumptionPerTick: 0.6,
+        needs: [
+            { resource: pharmaceuticalResourceType, quantity: 5 },
+            { resource: chemicalResourceType, quantity: 20 },
+            { resource: furnitureResourceType, quantity: 5 },
+        ],
+        produces: [{ resource: healthcareServiceResourceType, quantity: 200 }],
+    });
 
-const educationCenter = (planetId: string, id: string): ProductionFacility => (withDerivedWorkers(workerProfiles.education, {
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Education Center' as const,
-    powerConsumptionPerTick: 0.6,
-    needs: [
-        { resource: paperResourceType, quantity: 30 },
-        { resource: furnitureResourceType, quantity: 5 },
-    ],
-    produces: [{ resource: educationServiceResourceType, quantity: 300 }],
-}));
+const educationCenter = (planetId: string, id: string): ProductionFacility =>
+    withDerivedWorkers(workerProfiles.education, {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Education Center' as const,
+        powerConsumptionPerTick: 0.6,
+        needs: [
+            { resource: paperResourceType, quantity: 30 },
+            { resource: furnitureResourceType, quantity: 5 },
+        ],
+        produces: [{ resource: educationServiceResourceType, quantity: 300 }],
+    });
 
 const maintenanceFacility = (planetId: string, id: string): ProductionFacility => {
     return {

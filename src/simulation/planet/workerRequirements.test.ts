@@ -82,4 +82,3 @@ describe('headcountPerScaleFor', () => {
         expect(headcountPerScaleFor(facility)).toBe(MINIMUM_WORKERS_PER_SCALE);
     });
 });
-

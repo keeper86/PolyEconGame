@@ -119,7 +119,10 @@ describe('reconcileShellScale', () => {
         shell.maxScale = 500;
         shell.scale = 500;
         shell.compartments[coalResourceType.name] = 1;
-        shell.currentInStorage[coalResourceType.name] = { resource: coalResourceType, quantity: shell.capacity.mass * 300 };
+        shell.currentInStorage[coalResourceType.name] = {
+            resource: coalResourceType,
+            quantity: shell.capacity.mass * 300,
+        };
 
         reconcileShellScale(planet, agent, state, assets, shell, 10, 5000);
 
