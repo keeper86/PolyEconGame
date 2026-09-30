@@ -214,10 +214,6 @@ export type StorageFacility = FacilityBase &
         lastTickResults: LastManagementTickResults;
     };
 
-// Every tick a shell drains `usageOfShell.mass * SR_HOLDING_COST_PER_TON` from its storage buffer, so the
-// service the shell produces for itself must cover a completely full container with headroom: falling short
-// starves the shell and spoils the goods via storagePreservationFactor. The headroom also absorbs the
-// shell's own production inefficiency.
 export const SHELL_STORAGE_SERVICE_HEADROOM = 40;
 export const SHELL_STORAGE_SERVICE_QUANTITY =
     STORAGE_SHELL_CAPACITY.mass * SR_HOLDING_COST_PER_TON * SHELL_STORAGE_SERVICE_HEADROOM;

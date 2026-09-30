@@ -216,8 +216,6 @@ export type StorageSizing = {
     department: number;
 };
 
-// Shell scale per form so that every resource an agent touches holds `STORAGE_CAPACITY_MONTHS` of its
-// own flow in its own compartment. Empty forms stay at the minimum single scale.
 export const shellScalesForFootprint = (
     footprint: Partial<Record<StorageForm, StorageResidency[]>>,
 ): Record<StorageForm, number> => {
@@ -231,7 +229,6 @@ export const shellScalesForFootprint = (
     return scales;
 };
 
-// Logistics department scale is driven by the physical throughput it moves, not by how full any shell is.
 const logisticsScaleForFootprint = (footprint: Partial<Record<StorageForm, StorageResidency[]>>): number => {
     const monthsTicks = residencyMonthsTicks();
     let throughputPerTick = 0;

@@ -80,10 +80,6 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
 });
 
 export const LOGISTICS_DEPARTMENT_NAME = 'Logistics Department';
-// The department drains `totalStoredMass * SR_HOLDING_COST_PER_TON` from its transport buffer, so its own
-// service output must cover a completely full storage (every physical shell at its mass capacity) per shared
-// scale with headroom, or transport starves and services in storage decay. A full storage costs
-// 3 * 500k * 0.001 = 1.5k per scale, and 20/3 of that is the historical 10k calibration.
 export const STORAGE_DEPARTMENT_SERVICE_HEADROOM = 20 / 3;
 export const PRODUCED_STORAGE_QUANTITY = Math.ceil(
     storageFormKeys().length *
