@@ -229,7 +229,7 @@ describe('governmentSupportTick', () => {
         const govLoans = gov.assets[PLANET_ID]!.activeLoans;
         expect(govLoans).toHaveLength(1);
         expect(govLoans[0]!.type).toBe('governmentSupport');
-        expect(govLoans[0]!.annualInterestRate).toBe(0);
+        expect(govLoans[0]!.annualInterestRate).toBe(planet.bank.loanRatePerYear);
         expect(totalOutstandingLoans(govLoans)).toBeCloseTo(GOVERNMENT_SUPPORT_LOAN_TICKS * perTickSupport);
 
         expect(gov.assets[PLANET_ID]!.deposits).toBeCloseTo(GOVERNMENT_SUPPORT_LOAN_TICKS * perTickSupport - spent);

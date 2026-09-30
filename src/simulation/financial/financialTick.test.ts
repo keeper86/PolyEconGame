@@ -723,20 +723,41 @@ describe('loan interest and bankruptcy', () => {
         expect(rollover!.annualInterestRate).toBe(planet.bank!.loanRatePerYear);
     });
 
-    it('does not collect loan interest from the government (0% starter loan)', () => {
+    it('collects loan interest from the government like any other agent', () => {
         const gov = makeAgent('gov');
         const govPlanet = makePlanetWithPopulation({ none: 1000 }).planet;
         govPlanet.governmentId = gov.id;
-        gov.assets[govPlanet.id]!.activeLoans = [makeLoan('starter', 5_000_000_000, 0, 1, 1000, true)];
-        gov.assets[govPlanet.id]!.deposits = 5_000_000_000;
-        govPlanet.bank!.loans = 5_000_000_000;
-        govPlanet.bank!.deposits = 5_000_000_000;
+        govPlanet.bank!.loanRatePerYear = 0.05;
+        gov.assets[govPlanet.id]!.activeLoans = [makeLoan('governmentSupport', 3600, 0.05, 1, 1000, true)];
+        gov.assets[govPlanet.id]!.deposits = 3600;
+        govPlanet.bank!.loans = 3600;
+        govPlanet.bank!.deposits = 3600;
 
         maturesLoans(agentMap(gov), govPlanet, 1, makeGameState([govPlanet], [gov]));
 
-        expect(gov.assets[govPlanet.id]!.deposits).toBe(5_000_000_000);
-        expect(govPlanet.bank!.deposits).toBe(5_000_000_000);
-        expect(govPlanet.bank!.interestCollected).toBe(0);
+        expect(gov.assets[govPlanet.id]!.deposits).toBeCloseTo(3599.5, 6);
+        expect(govPlanet.bank!.deposits).toBeCloseTo(3599.5, 6);
+        expect(govPlanet.bank!.interestCollected).toBeCloseTo(0.5, 6);
+    });
+
+    it('capitalizes government interest instead of bankrupting the government', () => {
+        const gov = makeAgent('gov');
+        const govPlanet = makePlanetWithPopulation({ none: 1000 }).planet;
+        govPlanet.governmentId = gov.id;
+        govPlanet.bank!.loanRatePerYear = 0.05;
+        gov.assets[govPlanet.id]!.activeLoans = [makeLoan('governmentSupport', 3600, 0.05, 1, 1000, true)];
+        gov.assets[govPlanet.id]!.deposits = 0;
+        govPlanet.bank!.loans = 3600;
+        govPlanet.bank!.deposits = 0;
+        const agents = agentMap(gov);
+
+        maturesLoans(agents, govPlanet, 1, makeGameState([govPlanet], [gov]));
+
+        expect(agents.has(gov.id)).toBe(true);
+        const rollover = gov.assets[govPlanet.id]!.activeLoans.find((l) => l.type === 'rollover');
+        expect(rollover).toBeDefined();
+        expect(rollover!.remainingPrincipal).toBeCloseTo(0.5, 6);
+        expect(govPlanet.bank!.interestCollected).toBeCloseTo(0.5, 6);
     });
 
     it('keeps a wage loan within loan conditions as wageCoverage', () => {
