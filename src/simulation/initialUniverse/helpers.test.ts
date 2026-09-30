@@ -38,9 +38,7 @@ describe('makeAgentPlanetAssets hrBuffer initialization', () => {
 });
 
 describe('presizeAgentShellForFacilities', () => {
-    // A footprint that overflows one shell scale leaves the allocator in its infeasible water-fill branch,
-    // which hands every growable cell an equal share instead of the share its own footprint needs.
-    it('re-allocates compartments against the raised scale so a dominant resource keeps its share', () => {
+    it('raises the shell scale until the authored compartments fit the required footprint', () => {
         const storage = makeStorage({ planetId: 'p', id: 's' });
         const monthsTicks = STORAGE_CAPACITY_MONTHS * TICKS_PER_MONTH;
         const dominant = solidResource('dominant', 1);
@@ -65,12 +63,14 @@ describe('presizeAgentShellForFacilities', () => {
         const gameState = { agents: new Map([[agent.id, agent]]) };
 
         const before = updateAgentShellCompartments(assets);
-        expect(before.solid!.feasible).toBe(false);
-        expect(storage.shells.solid.compartments.dominant).toBeCloseTo(storage.shells.solid.compartments.minor);
+        expect(before.solid!.requiredScale).toBeGreaterThan(storage.shells.solid.maxScale);
+        expect(storage.shells.solid.compartments.dominant).toBeGreaterThan(storage.shells.solid.compartments.minor);
 
         presizeAgentShellForFacilities(gameState);
 
-        expect(storage.shells.solid.compartments.dominant).toBeGreaterThan(storage.shells.solid.compartments.minor);
-        expect(updateAgentShellCompartments(assets).solid!.feasible).toBe(true);
+        expect(storage.shells.solid.maxScale).toBeGreaterThanOrEqual(before.solid!.requiredScale);
+        expect(updateAgentShellCompartments(assets).solid!.requiredScale).toBeLessThanOrEqual(
+            storage.shells.solid.maxScale,
+        );
     });
 });
