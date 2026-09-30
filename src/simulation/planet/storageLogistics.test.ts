@@ -1,3 +1,4 @@
+import { SR_HOLDING_COST_PER_TON } from '../constants';
 import { describe, expect, it } from 'vitest';
 import { makeAgent, makePlanet, makeStorageFacility } from '../utils/testHelper';
 import type { Resource } from './claims';
@@ -8,12 +9,20 @@ import {
     inflowPreservation,
     putIntoStorageFacility,
     queryStorageFacility,
+    SHELL_STORAGE_SERVICE_HEADROOM,
+    SHELL_STORAGE_SERVICE_QUANTITY,
+    STORAGE_SHELL_CAPACITY,
     storageFormKeys,
     storagePreservationFactor,
 } from './facility';
 import type { AgentPlanetAssets } from './planet';
 import { createEmptyDemographicEventCounters } from './planet';
-import { internalLogisticsServiceResourceType, logisticsServiceResourceType } from './services';
+import { PRODUCED_STORAGE_QUANTITY } from './specialFacilities';
+import {
+    getStorageResourceByForm,
+    internalLogisticsServiceResourceType,
+    logisticsServiceResourceType,
+} from './services';
 import { storageLogisticsTick } from './storageLogistics';
 function makeResource(name: string, massPerQty = 1, volumePerQty = 0): Resource {
     return {
@@ -162,6 +171,68 @@ describe('per-form storage starvation', () => {
         expect(queryStorageFacility(storage, logisticsServiceResourceType.name)).toBeLessThan(1000);
     });
 });
+describe('storage service covers a completely full shell', () => {
+    it('produces at least the holding cost of a full shell', () => {
+        const fullShellHoldingCost = STORAGE_SHELL_CAPACITY.mass * SR_HOLDING_COST_PER_TON;
+        expect(SHELL_STORAGE_SERVICE_QUANTITY).toBeGreaterThanOrEqual(fullShellHoldingCost);
+        expect(SHELL_STORAGE_SERVICE_QUANTITY / fullShellHoldingCost).toBeCloseTo(SHELL_STORAGE_SERVICE_HEADROOM, 10);
+    });
+
+    it('covers a completely full storage from the logistics department', () => {
+        const fullStorageHoldingCost = storageFormKeys().length * STORAGE_SHELL_CAPACITY.mass * SR_HOLDING_COST_PER_TON;
+        expect(PRODUCED_STORAGE_QUANTITY).toBeGreaterThanOrEqual(fullStorageHoldingCost);
+    });
+
+    it('keeps a shell at 100% fill unstarved and intact', () => {
+        const assets = makeAssets();
+        const storage = assets.storage;
+        const shell = storage.shells.solid;
+        const bulk = makeResource('Bulk', 1);
+        shell.compartments[bulk.name] = 1;
+        const capacity = shell.capacity.mass * shell.scale;
+        putIntoStorageFacility(storage, bulk, capacity);
+        putIntoStorageFacility(
+            storage,
+            getStorageResourceByForm('solid'),
+            SHELL_STORAGE_SERVICE_QUANTITY * shell.scale * 50,
+        );
+
+        const planet = makePlanet();
+        const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });
+        for (let i = 0; i < 20; i++) {
+            storageLogisticsTick(new Map([['a', agent]]), planet);
+        }
+
+        expect(shell.storageStarvation).toBe(0);
+        expect(queryStorageFacility(storage, bulk.name)).toBeCloseTo(capacity, 6);
+    });
+    it('keeps a shell at 100% fill unstarved and intact when it is built beyond its operating scale', () => {
+        const assets = makeAssets();
+        const storage = assets.storage;
+        const shell = storage.shells.solid;
+        const bulk = makeResource('Bulk', 1);
+        shell.compartments[bulk.name] = 1;
+        shell.scale = 1;
+        shell.maxScale = 4;
+        const capacity = shell.capacity.mass * shell.maxScale;
+        putIntoStorageFacility(storage, bulk, capacity);
+        putIntoStorageFacility(
+            storage,
+            getStorageResourceByForm('solid'),
+            SHELL_STORAGE_SERVICE_QUANTITY * shell.maxScale * 50,
+        );
+
+        const planet = makePlanet();
+        const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });
+        for (let i = 0; i < 20; i++) {
+            storageLogisticsTick(new Map([['a', agent]]), planet);
+        }
+
+        expect(shell.storageStarvation).toBe(0);
+        expect(queryStorageFacility(storage, bulk.name)).toBeCloseTo(capacity, 6);
+    });
+});
+
 describe('transport buffer accounting on the logistics department', () => {
     it('relaxes transport starvation when buffer is not negative', () => {
         const assets = makeAssets();

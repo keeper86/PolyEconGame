@@ -7,8 +7,8 @@ import {
     makeStorage,
     prefillAgentStorageFromFacilities,
     presizeAgentShellForFacilities,
-    storageScaleForFacilities,
 } from '../../src/simulation/initialUniverse/helpers';
+import { applyStorageSizingForFacilities } from '../../src/simulation/planet/automaticProductionScale/shellCompartments';
 import { initialMarketPrices } from '../../src/simulation/initialUniverse/initialMarketPrices';
 import {
     buildBuyAutoConfigForResource,
@@ -69,6 +69,7 @@ export interface BenchmarkWorldConfig {
     bankruptcyWriteOffFraction?: number;
     costSpringStrength?: number;
     populationWealthTax?: boolean;
+    policyRateController?: boolean;
     refineryMinAskMultiplier?: number;
     refineryPriceAdjustMaxDown?: number;
     refineryTargetSellThrough?: number;
@@ -245,8 +246,8 @@ export function buildBenchmarkWorld(
             fac.maxScale = scale;
 
             const hrDepartment = humanResourcesOfficeFacilityType(BENCHMARK_PLANET_ID, `${id}-hr-department`);
-            const storageScale = storageScaleForFacilities([fac]);
-            const storage = makeStorage({ planetId: BENCHMARK_PLANET_ID, id: `${id}-storage`, scale: storageScale });
+            const storage = makeStorage({ planetId: BENCHMARK_PLANET_ID, id: `${id}-storage` });
+            applyStorageSizingForFacilities(storage, [fac]);
             const neededWorkers =
                 1.1 *
                 HR_WORLD_BUFFER *
@@ -362,6 +363,7 @@ export function buildBenchmarkWorld(
             writeOffs: 0,
             bankruptcies: 0,
             emergencyLoansGranted: 0,
+            policyEquityEma: 0,
         },
         wagePerEdu: { none: 10.0, primary: 10.0, secondary: 10.0, tertiary: 10.0 } as Record<EducationLevelType, number>,
         marketPrices: { ...initialMarketPrices },

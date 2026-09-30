@@ -68,7 +68,7 @@ describe('auxiliaryCostRates', () => {
         const expectedHrCostPerWorker =
             (ESTIMATED_HR_OVERHEAD * (hrInputCost + hrWageCost + hrUpkeep)) / PRODUCED_HR_QUANTITY;
         expect(rates.hrCostPerWorker).toBeCloseTo(expectedHrCostPerWorker, 10);
-        expect(rates.hrCostPerWorker).toBeCloseTo(0.044186468886765314, 10);
+        expect(rates.hrCostPerWorker).toBeCloseTo(0.03906146888676531, 10);
 
         const storageWorkerCount =
             (storageTemplate.workerRequirement.none ?? 0) +
@@ -97,7 +97,7 @@ describe('auxiliaryCostRates', () => {
         const expectedStorageCostPerScale =
             storageInputCost + storageWageCost + storageWorkerCount * expectedHrCostPerWorker + storageUpkeep;
         expect(rates.storageCostPerScale).toBeCloseTo(expectedStorageCostPerScale, 10);
-        expect(rates.storageCostPerScale).toBeCloseTo(128.01717239781559, 10);
+        expect(rates.storageCostPerScale).toBeCloseTo(84.75553311485703, 10);
     });
 
     it('does not divide the department cost by zero when service prices are missing', () => {

@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import { bankEquity } from '../planet/planet';
-import { automaticLoanRepayment, maturesLoans, preProductionFinancialTick } from './financialTick';
+import {
+    automaticLoanRepayment,
+    estimateWorkingCapitalCost,
+    maturesLoans,
+    preProductionFinancialTick,
+} from './financialTick';
 
 import { checkMonetaryConservation } from '../invariants';
 import { coalDepositResourceType } from '../planet/landBoundResources';
@@ -170,29 +175,28 @@ describe('preProductionFinancialTick', () => {
         expect(assets.deposits).toBe(10_000 - 25);
     });
 
-    it('grants buffer coverage loan when automated agent needs working capital for input buffer', () => {
+    it('grants a working-capital loan covering the automated agent input bids', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 1_000;
 
         addWorker(assets, 25, 'none', 10);
 
-        const facility = makeProductionFacility();
-        facility.needs = [
-            {
-                resource: ironOreResourceType,
-                quantity: 5,
-            },
-        ];
-        facility.scale = 2;
-        assets.productionFacilities = [facility];
+        assets.storage.shells.solid.maxScale = 100;
+        assets.storage.shells.solid.compartments[ironOreResourceType.name] = 1;
 
-        planet.marketPrices[ironOreResourceType.name] = 10;
+        assets.market.buy[ironOreResourceType.name] = {
+            resource: ironOreResourceType,
+            bidStorageTarget: 20,
+            bidPrice: 100,
+        };
 
         preProductionFinancialTick(agentMap(agent), planet, 1, makeGameState());
 
+        const workingCapital = estimateWorkingCapitalCost(assets);
         const bufferLoan = assets.activeLoans.find((l) => l.type === 'bufferCoverage');
+        expect(workingCapital).toBeGreaterThan(990);
         expect(bufferLoan).toBeDefined();
-        expect(bufferLoan!.remainingPrincipal).toBeCloseTo(2_010, -1);
+        expect(bufferLoan!.remainingPrincipal).toBeCloseTo(workingCapital - 990, -1);
     });
 
     it('does not grant buffer loan when agent is not automated', () => {

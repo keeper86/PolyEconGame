@@ -7,6 +7,7 @@ import { governmentSupportTick, governmentTick } from './agents/governmentAgent'
 import { shipbuilderTick } from './agents/shipbuilderTick';
 import { isFirstTickInMonth, isMonthBoundary, isYearBoundary } from './constants';
 import { maturesLoans, preProductionFinancialTick } from './financial/financialTick';
+import { updatePolicyRate } from './financial/policyRateController';
 import { checkMonetaryConservation, checkWealthBankConsistency } from './invariants';
 import { automaticPricing } from './market/automaticPricing';
 import { forexTick } from './market/forexTick';
@@ -139,13 +140,13 @@ export function advanceTick(gameState: GameState) {
             if (profile.isEnabled) {
                 t = profile.markAndAccum('preProdFinance', '  preProductionFinancialTick', t);
             }
-            governmentSupportTick(gameState, planet);
-            if (profile.isEnabled) {
-                t = profile.markAndAccum('govSupport', '  governmentSupportTick', t);
-            }
             intergenerationalTransfersForPlanet(planet, profile);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('intergenTransfers', '  intergenerationalTransfers', t);
+            }
+            governmentSupportTick(gameState, planet);
+            if (profile.isEnabled) {
+                t = profile.markAndAccum('govSupport', '  governmentSupportTick', t);
             }
 
             // ── Market (pricing + clearing) ──
@@ -187,6 +188,7 @@ export function advanceTick(gameState: GameState) {
             }
             if (isMonthBoundary(gameState.tick)) {
                 postProductionLaborMarketTick(gameState.agents, planet);
+                updatePolicyRate(planet.bank, gameState.tick);
             }
             if (profile.isEnabled) {
                 profile.markAndAccum('monthBoundary', 'monthBoundary (postProductionLaborMarketTick)', t);

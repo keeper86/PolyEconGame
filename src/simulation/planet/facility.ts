@@ -1,4 +1,8 @@
-import { FACILITY_CONDITION_EFFICIENCY_EXPONENT, STORAGE_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
+import {
+    FACILITY_CONDITION_EFFICIENCY_EXPONENT,
+    SR_HOLDING_COST_PER_TON,
+    STORAGE_BUFFER_CAPACITY_MULTIPLIER,
+} from '../constants';
 import type { EducationLevelType } from '../population/education';
 import type { ShipType } from '../ships/ships';
 import type { Resource, ResourceQuantity, TradableResourceProcessLevel } from './claims';
@@ -192,7 +196,7 @@ export const STORAGE_SHELL_FORM_NAMES: Record<StorageForm, string> = {
 
 // One shell-scale of physical container holds the same volume/mass whatever the shape; only the surface
 // topology differs. A shell's total capacity is this per-unit volume/mass scaled by its installed maxScale.
-export const STORAGE_SHELL_CAPACITY = { volume: 200000, mass: 50000 };
+export const STORAGE_SHELL_CAPACITY = { volume: 1_000_000, mass: 500_000 };
 
 export type StorageFacility = FacilityBase &
     ResourceAmountLedger & {
@@ -210,7 +214,13 @@ export type StorageFacility = FacilityBase &
         lastTickResults: LastManagementTickResults;
     };
 
-export const SHELL_STORAGE_SERVICE_QUANTITY = 20000;
+// Every tick a shell drains `usageOfShell.mass * SR_HOLDING_COST_PER_TON` from its storage buffer, so the
+// service the shell produces for itself must cover a completely full container with headroom: falling short
+// starves the shell and spoils the goods via storagePreservationFactor. The headroom also absorbs the
+// shell's own production inefficiency.
+export const SHELL_STORAGE_SERVICE_HEADROOM = 40;
+export const SHELL_STORAGE_SERVICE_QUANTITY =
+    STORAGE_SHELL_CAPACITY.mass * SR_HOLDING_COST_PER_TON * SHELL_STORAGE_SERVICE_HEADROOM;
 
 export const shellFormOfResource = (resource: Pick<Resource, 'form'>): StorageForm | null => {
     if (resource.form === 'solid' || resource.form === 'liquid' || resource.form === 'pieces') {
@@ -247,7 +257,7 @@ export const makeStorageShell = (planetId: string, id: string, form: StorageForm
         lastTickRestorationConsumption: 0,
         powerConsumptionPerTick: 0.5,
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
-        workerRequirement: { none: 5, primary: 5, secondary: 0, tertiary: 0 },
+        workerRequirement: { none: 2, primary: 2, secondary: 0, tertiary: 0 },
 
         needs: [{ resource: administrativeServiceResourceType, quantity: 1 }],
         produces: [{ resource, quantity: SHELL_STORAGE_SERVICE_QUANTITY }],

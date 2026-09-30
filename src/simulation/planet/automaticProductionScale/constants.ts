@@ -16,7 +16,7 @@ export const PID_IMAX = 0.0001;
 export const STORAGE_TARGET_MONTHS = 12;
 export const STORAGE_CAPACITY_MONTHS = 13;
 
-export const STORAGE_ERROR_ZOOM_MONTHS = STORAGE_TARGET_MONTHS;
+export const STORAGE_ERROR_ZOOM_MONTHS = 1;
 export const STORAGE_TREND_HORIZON_MONTHS = 1;
 
 export const PID_OUT_MAX_UP = 0.001;

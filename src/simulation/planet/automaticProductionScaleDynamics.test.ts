@@ -32,7 +32,7 @@ import {
     softClip,
     updateAgentProductionScale,
 } from './automaticProductionScale';
-import type { ProductionFacility } from './facility';
+import { STORAGE_SHELL_CAPACITY, type ProductionFacility } from './facility';
 import type { GameState, MarketResult, Planet } from './planet';
 import { coalResourceType } from './resources';
 import { constructionServiceResourceType, maintenanceServiceResourceType } from './services';
@@ -228,16 +228,22 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
 
     it('is positive when the storage is below the target and negative above', () => {
         const below = makeStorageFixture({ inventory: target / 2 });
-        expect(computeFacilityStorageSignal(below.facility, below.assets).maxError).toBeCloseTo(Math.tanh(0.5), 5);
+        expect(computeFacilityStorageSignal(below.facility, below.assets).maxError).toBeCloseTo(
+            Math.tanh(0.5 * STORAGE_TARGET_MONTHS),
+            5,
+        );
 
         const above = makeStorageFixture({ inventory: target * 2 });
-        expect(computeFacilityStorageSignal(above.facility, above.assets).maxError).toBeCloseTo(Math.tanh(-1), 5);
+        expect(computeFacilityStorageSignal(above.facility, above.assets).maxError).toBeCloseTo(
+            Math.tanh(-STORAGE_TARGET_MONTHS),
+            5,
+        );
     });
 
-    it('does not saturate for a 1-month deficit (stays in the linear band)', () => {
-        const oneMonthShort = makeStorageFixture({ inventory: target - 30 * 100 });
-        const signal = computeFacilityStorageSignal(oneMonthShort.facility, oneMonthShort.assets).maxError;
-        expect(signal).toBeCloseTo(Math.tanh(1 / STORAGE_TARGET_MONTHS), 5);
+    it('does not saturate for a sub-month deficit (stays in the linear band)', () => {
+        const tenthMonthShort = makeStorageFixture({ inventory: target - (30 * 100) / 10 });
+        const signal = computeFacilityStorageSignal(tenthMonthShort.facility, tenthMonthShort.assets).maxError;
+        expect(signal).toBeCloseTo(Math.tanh(0.1), 5);
         expect(signal).toBeLessThan(0.2);
     });
 
@@ -258,7 +264,7 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
         const fixture = makeStorageFixture({ producesTwoOutputs: true, inventory: target * 2 });
         setStorageResourceQuantity(fixture.assets.storage, constructionServiceResourceType, target / 4);
         const signal = computeFacilityStorageSignal(fixture.facility, fixture.assets);
-        expect(signal.maxError).toBeCloseTo(Math.tanh(0.75), 5);
+        expect(signal.maxError).toBeCloseTo(Math.tanh(0.75 * STORAGE_TARGET_MONTHS), 5);
     });
 
     it('maxError is negative only when every output is above the target', () => {
@@ -275,6 +281,8 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
 
 describe('reachableTargetQuantity caps the storage target at the shell capacity', () => {
     const monthly = 30 * 100;
+    const target = STORAGE_TARGET_MONTHS * monthly;
+    const scaleForMass = (mass: number): number => mass / STORAGE_SHELL_CAPACITY.mass;
 
     function makeSolidFixture(shellMaxScale: number) {
         const facility = makeProductionFacility(undefined, {
@@ -289,23 +297,23 @@ describe('reachableTargetQuantity caps the storage target at the shell capacity'
     }
 
     it('caps a target the shell cannot store at capacity minus one month of own production', () => {
-        const shellMaxScale = 0.2;
+        const shellMaxScale = scaleForMass(2 * monthly);
         const { assets } = makeSolidFixture(shellMaxScale);
         const capacity = assets.storage.shells.solid.capacity.mass * shellMaxScale;
-        expect(STORAGE_TARGET_MONTHS * monthly).toBeGreaterThan(capacity);
+        expect(target).toBeGreaterThan(capacity);
         expect(reachableTargetQuantity(assets.storage, coalResourceType, monthly)).toBeCloseTo(capacity - monthly, 5);
     });
 
     it('leaves the target alone when the shell can hold it', () => {
-        const { assets } = makeSolidFixture(4);
-        expect(reachableTargetQuantity(assets.storage, coalResourceType, monthly)).toBeGreaterThan(
-            STORAGE_TARGET_MONTHS * monthly,
-        );
+        const { assets } = makeSolidFixture(scaleForMass(2 * target));
+        expect(reachableTargetQuantity(assets.storage, coalResourceType, monthly)).toBeGreaterThan(target);
     });
 
     it('reads no deficit when a full shell still sits below the target', () => {
-        const { facility, assets } = makeSolidFixture(0.5);
-        setStorageResourceQuantity(assets.storage, coalResourceType, 24_000);
+        const shellMaxScale = scaleForMass(2 * monthly);
+        const { facility, assets } = makeSolidFixture(shellMaxScale);
+        const capacity = assets.storage.shells.solid.capacity.mass * shellMaxScale;
+        setStorageResourceQuantity(assets.storage, coalResourceType, capacity);
         expect(computeFacilityStorageSignal(facility, assets).maxError).toBeLessThan(0);
     });
 });
@@ -386,10 +394,7 @@ describe('forward-looking storage term', () => {
     it('leads by a month by default', () => {
         setStorageTrendHorizonMonths(null);
         const { facility, assets } = makeTrendFixture(100, 0);
-        expect(computeFacilityStorageSignal(facility, assets).maxError).toBeCloseTo(
-            Math.tanh(-1 / STORAGE_TARGET_MONTHS),
-            5,
-        );
+        expect(computeFacilityStorageSignal(facility, assets).maxError).toBeCloseTo(Math.tanh(-1), 5);
     });
 
     it('brakes at the target when production outruns sales', () => {
@@ -454,7 +459,7 @@ describe('PID utilization response', () => {
             const { facility, assets } = makeStorageSignalFixture(0);
             const state = getDefaultPidState();
             const error = computeFacilityStorageSignal(facility, assets).maxError;
-            expect(error).toBeCloseTo(Math.tanh(1), 5);
+            expect(error).toBeCloseTo(Math.tanh(STORAGE_TARGET_MONTHS), 5);
 
             const afterSettling = facility.scale;
             for (let tick = 0; tick < 2_000; tick++) {

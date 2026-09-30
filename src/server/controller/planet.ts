@@ -147,7 +147,9 @@ export const getPlanetEconomy = () =>
                 economy: {
                     planetName: planet.name,
                     bank: planet.bank,
-                    governmentBalance: government?.assets[planet.id]?.deposits ?? 0,
+                    governmentBalance:
+                        (government?.assets[planet.id]?.deposits ?? 0) -
+                        (government?.assets[planet.id]?.activeLoans.reduce((s, l) => s + l.remainingPrincipal, 0) ?? 0),
                     wagePerEdu: planet.wagePerEdu as Record<string, number>,
                     priceLevel: planet.marketPrices[groceryServiceResourceType.name] ?? null,
                     gdp,

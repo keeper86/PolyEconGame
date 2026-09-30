@@ -64,7 +64,7 @@ export default async function RootLayout({
                                     <AppSidebar />
                                     <SidebarInset className='min-w-0 overflow-hidden'>
                                         <header className='sticky top-0 z-30 flex h-12 sm:h-14 shrink-0 items-center justify-between gap-2 px-2 sm:px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
-                                            <div className='flex items-center gap-2 '>
+                                            <div className='flex items-center gap-1 sm:gap-2 '>
                                                 <SidebarTrigger className='-ml-1' />
                                                 <MessagesIndicator />
                                                 <AgentConditionIndicators />

@@ -286,7 +286,7 @@ export default function Footer() {
                     {displayedEvents.map(({ id, event, duration, startX }) => (
                         <div
                             key={id}
-                            className='ticker-item absolute top-1 left-0 h-full flex items-center whitespace-nowrap will-change-transform'
+                            className='ticker-item absolute top-0 sm:top-1 left-0 h-full flex items-center whitespace-nowrap will-change-transform'
                             style={
                                 {
                                     '--ticker-start': `${startX}px`,

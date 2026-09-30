@@ -93,6 +93,10 @@ export function TickOrderSection() {
                     release workers to population
                 </li>
                 <li>
+                    <em>(end of month)</em> <code>updatePolicyRate</code> — steer the loan rate within 0.25 %–5 % (max
+                    0.25 pp/month) toward smoothed (interest collected − debt written off) per loan = 0
+                </li>
+                <li>
                     <em>(end of year)</em> <code>populationAdvanceYearTick</code> — age all cohorts; education
                     graduation & dropout
                 </li>

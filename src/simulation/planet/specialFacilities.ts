@@ -1,3 +1,4 @@
+import { SR_HOLDING_COST_PER_TON } from '../constants';
 import type {
     HRFacility,
     LastManagementTickResults,
@@ -6,7 +7,7 @@ import type {
     StorageDepartment,
     TrainingsDepartment,
 } from './facility';
-import { nullWagePidState } from './facility';
+import { nullWagePidState, STORAGE_SHELL_CAPACITY, storageFormKeys } from './facility';
 import {
     administrativeServiceResourceType,
     educationServiceResourceType,
@@ -66,7 +67,7 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
     name: HR_DEPARTMENT_NAME,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
-        none: 10,
+        none: 0,
         primary: 10,
         secondary: 20,
         tertiary: 5,
@@ -79,7 +80,17 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
 });
 
 export const LOGISTICS_DEPARTMENT_NAME = 'Logistics Department';
-export const PRODUCED_STORAGE_QUANTITY = 10000;
+// The department drains `totalStoredMass * SR_HOLDING_COST_PER_TON` from its transport buffer, so its own
+// service output must cover a completely full storage (every physical shell at its mass capacity) per shared
+// scale with headroom, or transport starves and services in storage decay. A full storage costs
+// 3 * 500k * 0.001 = 1.5k per scale, and 20/3 of that is the historical 10k calibration.
+export const STORAGE_DEPARTMENT_SERVICE_HEADROOM = 20 / 3;
+export const PRODUCED_STORAGE_QUANTITY = Math.ceil(
+    storageFormKeys().length *
+        STORAGE_SHELL_CAPACITY.mass *
+        SR_HOLDING_COST_PER_TON *
+        STORAGE_DEPARTMENT_SERVICE_HEADROOM,
+);
 export const logisticsDepartmentFacilityType = (planetId: string, id: string): StorageDepartment => ({
     ...makeManagementFacilityDefaults(),
     planetId,
@@ -87,14 +98,14 @@ export const logisticsDepartmentFacilityType = (planetId: string, id: string): S
     name: LOGISTICS_DEPARTMENT_NAME,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
-        none: 25,
+        none: 10,
         primary: 10,
         secondary: 10,
         tertiary: 2,
     },
     needs: [
         { resource: administrativeServiceResourceType, quantity: 5 },
-        { resource: logisticsServiceResourceType, quantity: 50 },
+        { resource: logisticsServiceResourceType, quantity: 30 },
     ],
     produces: [{ resource: internalLogisticsServiceResourceType, quantity: PRODUCED_STORAGE_QUANTITY }],
 

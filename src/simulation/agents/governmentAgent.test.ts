@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
     GOVERNMENT_OPERATING_BUFFER,
-    GOVERNMENT_SUPPORT_LOAN_TICKS,
     POPULATION_WEALTH_TAX_ALLOWANCE_MONTHS,
     POPULATION_WEALTH_TAX_MONTHLY_RATE,
     RECYCLER_BASE_RECOVERY_EFFICIENCY,
@@ -33,6 +32,7 @@ import {
     governmentSupportTick,
     governmentTick,
     INSURANCE_WEALTH_CAP_DAYS,
+    setGovernmentSupportEnabled,
     setPopulationWealthTaxEnabled,
     setSupportEmployed,
     setSupportFoodAffordabilityMultiplier,
@@ -210,34 +210,48 @@ describe('governmentSupportTick', () => {
         return planet;
     }
 
-    it('credits the unemployed and funds it with a 3-month support loan when cash runs short', () => {
+    it('scales the support down to the available cash and never borrows', () => {
         const gov = makeGovernmentAgent('gov-1', PLANET_ID);
         const planet = makeUnemployedPlanet(gov);
         const gameState = makeGameState([planet], [gov, planet.recycler]);
+        const cat = planet.population.demography[70].unoccupied.none;
+        const cash = 200;
+        gov.assets[PLANET_ID]!.deposits = cash;
+        planet.bank.deposits = cash;
+        planet.bank.writeOffs = cash;
         const householdBefore = planet.bank.householdDeposits;
         const depositsBefore = planet.bank.deposits;
         const loansBefore = planet.bank.loans;
-        const cat = planet.population.demography[70].unoccupied.none;
         const wealthBefore = cat.total * cat.wealth.mean;
 
         const spent = governmentSupportTick(gameState, planet);
 
-        const perTickSupport = 1000 * 0.5 * (planet.wagePerEdu.none ?? 1);
-        expect(spent).toBeCloseTo(perTickSupport);
-        expect(spent).toBeGreaterThan(0);
-
-        const govLoans = gov.assets[PLANET_ID]!.activeLoans;
-        expect(govLoans).toHaveLength(1);
-        expect(govLoans[0]!.type).toBe('governmentSupport');
-        expect(govLoans[0]!.annualInterestRate).toBe(0);
-        expect(totalOutstandingLoans(govLoans)).toBeCloseTo(GOVERNMENT_SUPPORT_LOAN_TICKS * perTickSupport);
-
-        expect(gov.assets[PLANET_ID]!.deposits).toBeCloseTo(GOVERNMENT_SUPPORT_LOAN_TICKS * perTickSupport - spent);
-        expect(planet.bank.loans).toBeCloseTo(loansBefore + GOVERNMENT_SUPPORT_LOAN_TICKS * perTickSupport);
-        expect(planet.bank.deposits).toBeCloseTo(depositsBefore + GOVERNMENT_SUPPORT_LOAN_TICKS * perTickSupport);
-        expect(planet.bank.householdDeposits).toBeCloseTo(householdBefore + spent);
+        const fullClaim = cat.total * 0.5 * (planet.wagePerEdu.none ?? 1);
+        expect(fullClaim).toBeGreaterThan(cash);
+        expect(spent).toBeCloseTo(cash);
         expect(cat.total * cat.wealth.mean).toBeCloseTo(wealthBefore + spent);
+
+        expect(gov.assets[PLANET_ID]!.activeLoans).toHaveLength(0);
+        expect(gov.assets[PLANET_ID]!.deposits).toBeCloseTo(0);
+        expect(planet.bank.loans).toBeCloseTo(loansBefore);
+        expect(planet.bank.deposits).toBeCloseTo(depositsBefore);
+        expect(planet.bank.householdDeposits).toBeCloseTo(householdBefore + spent);
         expect(planet.governmentSupportVolume).toBeCloseTo(spent);
+    });
+
+    it('pays nothing at all when government support is disabled', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        const planet = makeUnemployedPlanet(gov);
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+        try {
+            setGovernmentSupportEnabled(false);
+            expect(governmentSupportTick(gameState, planet)).toBe(0);
+            expect(gov.assets[PLANET_ID]!.activeLoans).toHaveLength(0);
+            expect(planet.governmentSupportVolume).toBe(0);
+            expect(planet.bank.householdDeposits).toBe(planet.bank.deposits);
+        } finally {
+            setGovernmentSupportEnabled(true);
+        }
     });
 
     it('pays support from the budget without borrowing when funds are sufficient', () => {
@@ -272,14 +286,18 @@ describe('governmentSupportTick', () => {
         expect(gov.assets[PLANET_ID]!.deposits).toBe(GOVERNMENT_OPERATING_BUFFER);
     });
 
-    it('keeps the loans decomposition invariant across support and repayment', () => {
+    it('keeps monetary conservation without creating any loan', () => {
         const gov = makeGovernmentAgent('gov-1', PLANET_ID);
         const planet = makeUnemployedPlanet(gov);
+        gov.assets[PLANET_ID]!.deposits = 100_000_000;
+        planet.bank.deposits = 100_000_000;
+        planet.bank.writeOffs = 100_000_000;
         const gameState = makeGameState([planet], [gov, planet.recycler]);
 
         governmentSupportTick(gameState, planet);
 
-        expect(totalOutstandingLoans(gov.assets[PLANET_ID]!.activeLoans)).toBeGreaterThan(0);
+        expect(gov.assets[PLANET_ID]!.activeLoans).toHaveLength(0);
+        expect(planet.bank.loans).toBe(0);
         const issues = checkMonetaryConservation(gameState.agents, new Map([[planet.id, planet]]));
         expect(issues).toEqual([]);
     });
@@ -303,7 +321,7 @@ describe('governmentSupportTick', () => {
         const gameState = makeGameState([planet], [gov, planet.recycler]);
 
         const dailyInsurance = 0.5 * (planet.wagePerEdu.none ?? 1);
-        const wealthCap = 5 * dailyInsurance;
+        const wealthCap = INSURANCE_WEALTH_CAP_DAYS * dailyInsurance;
         const cat = planet.population.demography[70].unoccupied.none;
         cat.wealth = { mean: wealthCap - dailyInsurance / 4, variance: 0 };
 

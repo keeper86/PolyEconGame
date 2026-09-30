@@ -50,6 +50,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
             writeOffs: 0,
             bankruptcies: 0,
             emergencyLoansGranted: 0,
+            policyEquityEma: 0,
         },
         wagePerEdu: { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 },
         marketPrices: { ...initialMarketPrices },

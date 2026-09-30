@@ -3,7 +3,8 @@ import path from 'node:path';
 
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
-import { setPopulationWealthTaxEnabled, setSupportEmployed, setSupportFoodAffordabilityMultiplier, setSupportWealthCapDays, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
+import { setGovernmentSupportEnabled, setPopulationWealthTaxEnabled, setSupportEmployed, setSupportFoodAffordabilityMultiplier, setSupportWealthCapDays, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
+import { setPolicyRateControllerEnabled } from '../../src/simulation/financial/policyRateController';
 import {
     setContractionIntegralThreshold,
     setExpansionIntegralThreshold,
@@ -434,6 +435,13 @@ async function main(): Promise<void> {
     if (interestRateArg !== undefined) {
         scenario.world = { ...scenario.world, loanRatePerYear: Number(interestRateArg) };
     }
+    const policyRateControllerArg = arg('policyRateController');
+    if (policyRateControllerArg !== undefined) {
+        scenario.world = { ...scenario.world, policyRateController: policyRateControllerArg !== 'off' };
+    }
+    const policyRateController = scenario.world.policyRateController ?? true;
+    setPolicyRateControllerEnabled(policyRateController);
+    console.log(`policy rate controller ${policyRateController ? 'ENABLED' : 'DISABLED'}`);
     const costSpringArg = arg('costSpringStrength');
     if (costSpringArg !== undefined) {
         scenario.world = { ...scenario.world, costSpringStrength: Number(costSpringArg) };
@@ -457,7 +465,9 @@ async function main(): Promise<void> {
     if (populationWealthTaxArg !== undefined) {
         scenario.world = { ...scenario.world, populationWealthTax: populationWealthTaxArg !== 'off' };
     }
-    setPopulationWealthTaxEnabled(scenario.world.populationWealthTax ?? false);
+    const populationWealthTax = scenario.world.populationWealthTax ?? true;
+    setPopulationWealthTaxEnabled(populationWealthTax);
+    console.log(`population wealth tax ${populationWealthTax ? 'ENABLED' : 'DISABLED'}`);
     if (process.argv.includes('--noStorageClamp')) {
         setStorageSpaceClampEnabled(false);
         console.log('storage space clamp DISABLED (--noStorageClamp)');
@@ -560,6 +570,11 @@ async function main(): Promise<void> {
     if (supportFoodAffordabilityArg !== undefined) {
         setSupportFoodAffordabilityMultiplier(Number(supportFoodAffordabilityArg));
         console.log(`government support food affordability floor set to ${supportFoodAffordabilityArg} x food price/day`);
+    }
+    const governmentSupportArg = arg('governmentSupport');
+    if (governmentSupportArg !== undefined) {
+        setGovernmentSupportEnabled(governmentSupportArg !== 'off');
+        console.log(`government support ${governmentSupportArg !== 'off' ? 'ENABLED' : 'DISABLED'}`);
     }
     const resourceMultiplierArg = arg('resourceMultiplier');
     if (resourceMultiplierArg !== undefined) {

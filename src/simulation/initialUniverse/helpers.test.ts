@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { HR_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
+import { HR_BUFFER_CAPACITY_MULTIPLIER, TICKS_PER_MONTH } from '../constants';
 import { humanResourcesOfficeFacilityType, PRODUCED_HR_QUANTITY } from '../planet/specialFacilities';
 import { makeAgent, makeProductionFacility } from '../utils/testHelper';
 import { makeAgentPlanetAssets, makeStorage, presizeAgentShellForFacilities } from './helpers';
 import { updateAgentShellCompartments } from '../planet/automaticProductionScale/shellCompartments';
+import { STORAGE_CAPACITY_MONTHS } from '../planet/automaticProductionScale/constants';
+import { STORAGE_SHELL_CAPACITY } from '../planet/facility';
 import type { Resource } from '../planet/claims';
 
 const solidResource = (name: string, volumePerQuantity: number): Resource =>
@@ -40,17 +42,20 @@ describe('presizeAgentShellForFacilities', () => {
     // which hands every growable cell an equal share instead of the share its own footprint needs.
     it('re-allocates compartments against the raised scale so a dominant resource keeps its share', () => {
         const storage = makeStorage({ planetId: 'p', id: 's' });
+        const monthsTicks = STORAGE_CAPACITY_MONTHS * TICKS_PER_MONTH;
         const dominant = solidResource('dominant', 1);
         const minor = solidResource('minor', 1);
+        const dominantQuantity = Math.round((2 * STORAGE_SHELL_CAPACITY.volume) / monthsTicks);
+        const minorQuantity = Math.round((0.2 * STORAGE_SHELL_CAPACITY.volume) / monthsTicks);
         const assets = makeAgentPlanetAssets(
             [
                 makeProductionFacility(undefined, {
                     id: 'f-dominant',
-                    needs: [{ resource: dominant, quantity: 1000 }],
+                    needs: [{ resource: dominant, quantity: dominantQuantity }],
                 }),
                 makeProductionFacility(undefined, {
                     id: 'f-minor',
-                    needs: [{ resource: minor, quantity: 100 }],
+                    needs: [{ resource: minor, quantity: minorQuantity }],
                 }),
             ],
             storage,

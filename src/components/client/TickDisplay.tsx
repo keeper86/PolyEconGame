@@ -51,7 +51,7 @@ export default function TickDisplay() {
 
     return (
         <div
-            className={`text-sm text-muted-foreground ${smallScreen ? 'w-[90px]' : 'w-[140px]'}  text-right tabular-nums`}
+            className={`text-sm text-muted-foreground ${smallScreen ? 'w-[95px]' : 'w-[140px]'}  text-right tabular-nums`}
         >
             {tick > 0 ? mapTickToDate(tick, smallScreen, locale) : '—'}
         </div>

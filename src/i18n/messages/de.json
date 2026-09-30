@@ -332,14 +332,14 @@
         "saving": "Speichern…",
         "setting": "Wird gesetzt…",
         "set": "Setzen",
-        "orderBooks": "Orderbücher",
+        "orderBooks": "Auftragsbücher",
         "resource": "Ressource",
         "endOfMonth": "Ende {month} {year}",
         "liveData": "Live-Daten",
         "buy": "Kaufen",
         "sell": "Verkaufen",
         "stock": "Bestand",
-        "lastWanted": "Zuletzt benötigt",
+        "lastWanted": "Zuletzt geordert",
         "required": "Benötigt",
         "lastBought": "Zuletzt gekauft",
         "lastOffered": "Zuletzt angeboten",
@@ -347,7 +347,7 @@
         "smoothedFillRate": "Erfüllungsquote",
         "smoothedSellThrough": "Abverkaufsquote",
         "lastSpent": "Zuletzt ausgegeben",
-        "lastRevenue": "Zuletzt erzielter Erlös",
+        "lastRevenue": "Letzter Erlös",
         "production": "Produktion",
         "pricingStrategy": "Preisstrategie",
         "volumeStrategy": "Volumenstrategie",
@@ -778,7 +778,7 @@
         "suspensionPending": "Pausierung ausstehend…",
         "resumePending": "Fortsetzung ausstehend…",
         "revenue": "Erlös",
-        "inputs": "Vorleistungen",
+        "inputs": "Inputs",
         "wages": "Löhne",
         "netPerDay": "netto/Tag",
         "condition": "Zustand",
@@ -840,8 +840,8 @@
         "year": "Jahr {year}",
         "decade": "{decade}er",
         "previousDecember": "Vorheriger Dezember",
-        "monthly": "Monatlich",
-        "yearly": "Jährlich",
+        "monthly": "Monat",
+        "yearly": "Jahr",
         "decadeShort": "Jahrzehnt",
         "lastYear": "Letztes Jahr:",
         "netBalance": "Netto-Saldo",
@@ -971,7 +971,7 @@
             },
             "market": {
                 "0": {
-                    "content": "Der Markt ist der Ort, an dem Sie Vorleistungen kaufen und Fertigwaren verkaufen. Preise entstehen aus Angebot und Nachfrage — wie in einer echten Wirtschaft! Wir sind hier, um Bauleistungen zu kaufen, die für den Bau von Anlagen benötigt werden.",
+                    "content": "Der Markt ist der Ort, an dem Sie Inputs kaufen und Fertigwaren verkaufen. Preise entstehen aus Angebot und Nachfrage — wie in einer echten Wirtschaft! Wir sind hier, um Bauleistungen zu kaufen, die für den Bau von Anlagen benötigt werden.",
                     "title": "🏪 Marktübersicht"
                 },
                 "1": {
@@ -1057,7 +1057,7 @@
                     "title": "⏳ Bau gestartet"
                 },
                 "5": {
-                    "content": "Sobald der Bau abgeschlossen ist, wird die Anlage aktiv. Die Karte zeigt: die verbrauchten Vorleistungen (links) und die erzeugten Produkte (rechts), Effizienzbalken für Personal und eine Ertragszeile mit Erlös, Vorleistungskosten, Löhnen und Nettogewinn pro Tag. Behalten Sie die Vorleistungspuffer im Blick — gehen sie zur Neige, stoppt die Produktion!",
+                    "content": "Sobald der Bau abgeschlossen ist, wird die Anlage aktiv. Die Karte zeigt: die verbrauchten Inputs (links) und die erzeugten Produkte (rechts), Effizienzbalken für Personal und eine Ertragszeile mit Erlös, Vorleistungskosten, Löhnen und Nettogewinn pro Tag. Behalten Sie die Vorleistungspuffer im Blick — gehen sie zur Neige, stoppt die Produktion!",
                     "title": "⚙️ Aktive Anlage"
                 },
                 "6": {
@@ -1283,7 +1283,7 @@
         "hideAutomatedAgents": "Automatisierte Agenten ausblenden",
         "company": "Unternehmen",
         "netWorth": "Nettovermögen",
-        "netWorthShort": "Vermögen",
+        "netWorthShort": "Wert",
         "home": "Heimat",
         "none": "Keine Unternehmen gefunden."
     },
@@ -1296,11 +1296,11 @@
         "outstandingLoans": "Ausstehende Kredite",
         "firmDeposits": "Firmeneinlagen",
         "householdDeposits": "Haushaltseinlagen",
-        "governmentBalance": "Regierungssaldo",
+        "governmentBalance": "Regierungsbilanz",
         "bankEquity": "Bankeigenkapital",
         "writtenOffDebt": "Abgeschriebene Schulden (gesamt)",
         "loanRateNewLoans": "Kreditzins (neue Kredite, p.a.)",
-        "interestCollected": "Vereinnahmte Zinsen",
+        "interestCollected": "Eingenommene Zinsen",
         "details": "Details",
         "costOfLivingSeries": "Lebenshaltungskosten",
         "gdpSeries": "BIP",

@@ -1085,7 +1085,7 @@ describe('updateAgentProductionScale', () => {
         }
 
         expect(facility.scale).toBeGreaterThan(0);
-        expect(facility.scale).toBeLessThanOrEqual(N * PID_OUT_MAX_UP * facility.maxScale);
+        expect(facility.scale).toBeLessThanOrEqual(N * PID_OUT_MAX_UP * facility.maxScale + 1e-9);
     });
 
     it('does NOT accumulate expansion integral while HR productivity is dragged', () => {
@@ -1333,7 +1333,7 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.pidState!.smoothedSignal).toBeCloseTo(Math.tanh(1), 5);
+        expect(facility.pidState!.smoothedSignal).toBeCloseTo(Math.tanh(STORAGE_TARGET_MONTHS), 5);
     });
 
     it('applies EMA smoothing to the production signal when alpha is configured', () => {
@@ -1347,10 +1347,13 @@ describe('updateAgentProductionScale', () => {
 
             updateAgentProductionScale(makeGameState(agents), planet);
             const first = facility.pidState!.smoothedSignal;
-            expect(first).toBeCloseTo(0.3 * Math.tanh(1), 5);
+            expect(first).toBeCloseTo(0.3 * Math.tanh(STORAGE_TARGET_MONTHS), 5);
 
             updateAgentProductionScale(makeGameState(agents), planet);
-            expect(facility.pidState!.smoothedSignal).toBeCloseTo(0.3 * Math.tanh(1) + 0.7 * first, 5);
+            expect(facility.pidState!.smoothedSignal).toBeCloseTo(
+                0.3 * Math.tanh(STORAGE_TARGET_MONTHS) + 0.7 * first,
+                5,
+            );
         } finally {
             setProductionSignalEmaAlpha(null);
         }

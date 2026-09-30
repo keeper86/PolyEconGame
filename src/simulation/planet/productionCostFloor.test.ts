@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { PRICE_CEIL, PRICE_FLOOR, THEORETICAL_PRODUCTION_COST_FACTOR } from '../constants';
 import { makePlanet } from '../utils/testHelper';
+import { ALL_PRODUCTION_FACILITY_ENTRIES } from './productionFacilities';
+import type { EducationLevelType } from '../population/education';
 import { coalResourceType, waterResourceType } from './resources';
 import {
     administrativeServiceResourceType,
@@ -12,25 +14,38 @@ import { updateProductionCostFloors } from './production';
 
 const floorFor = (planet: ReturnType<typeof makePlanet>, name: string): number => planet.lastProductionCostFloors[name];
 
+const coalTemplate = Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)
+    .map((entry) => entry.template)
+    .find((template) => template.produces.some((output) => output.resource.name === coalResourceType.name));
+
+const coalWageCostPerUnit = (planet: ReturnType<typeof makePlanet>): number => {
+    if (!coalTemplate) {
+        throw new Error('no template produces coal');
+    }
+    const wagePerTick = Object.entries(coalTemplate.workerRequirement).reduce(
+        (sum, [edu, requirement]) => sum + (requirement ?? 0) * planet.wagePerEdu[edu as EducationLevelType],
+        0,
+    );
+    const outputPerTick = coalTemplate.produces.find(
+        (output) => output.resource.name === coalResourceType.name,
+    )!.quantity;
+    return wagePerTick / outputPerTick;
+};
+
 describe('updateProductionCostFloors', () => {
     it('includes auxiliary overhead on top of inputs and wages', () => {
         const planet = makePlanet();
         updateProductionCostFloors(planet);
 
-        // coalMine: 52 workers at wage 1, only a land-bound input priced at 0
-        const inputAndWageCostPerUnit = 52 / 500;
-        expect(floorFor(planet, coalResourceType.name)).toBeGreaterThan(inputAndWageCostPerUnit);
+        expect(floorFor(planet, coalResourceType.name)).toBeGreaterThan(coalWageCostPerUnit(planet));
     });
 
     it('scales the theoretical production cost by the 1.3 factor', () => {
         const planet = makePlanet();
         updateProductionCostFloors(planet);
 
-        // coalMine: 52 workers at wage 1, only a land-bound input priced at 0.
-        // The floor must cover at least the wage cost, scaled by the productivity factor.
-        const inputAndWageCostPerUnit = 52 / 500;
         expect(floorFor(planet, coalResourceType.name)).toBeGreaterThanOrEqual(
-            inputAndWageCostPerUnit * THEORETICAL_PRODUCTION_COST_FACTOR,
+            coalWageCostPerUnit(planet) * THEORETICAL_PRODUCTION_COST_FACTOR,
         );
     });
 
