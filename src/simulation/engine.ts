@@ -140,13 +140,13 @@ export function advanceTick(gameState: GameState) {
             if (profile.isEnabled) {
                 t = profile.markAndAccum('preProdFinance', '  preProductionFinancialTick', t);
             }
-            governmentSupportTick(gameState, planet);
-            if (profile.isEnabled) {
-                t = profile.markAndAccum('govSupport', '  governmentSupportTick', t);
-            }
             intergenerationalTransfersForPlanet(planet, profile);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('intergenTransfers', '  intergenerationalTransfers', t);
+            }
+            governmentSupportTick(gameState, planet);
+            if (profile.isEnabled) {
+                t = profile.markAndAccum('govSupport', '  governmentSupportTick', t);
             }
 
             // ── Market (pricing + clearing) ──

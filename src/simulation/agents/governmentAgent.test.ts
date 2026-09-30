@@ -303,7 +303,7 @@ describe('governmentSupportTick', () => {
         const gameState = makeGameState([planet], [gov, planet.recycler]);
 
         const dailyInsurance = 0.5 * (planet.wagePerEdu.none ?? 1);
-        const wealthCap = 5 * dailyInsurance;
+        const wealthCap = INSURANCE_WEALTH_CAP_DAYS * dailyInsurance;
         const cat = planet.population.demography[70].unoccupied.none;
         cat.wealth = { mean: wealthCap - dailyInsurance / 4, variance: 0 };
 

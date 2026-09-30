@@ -1,12 +1,11 @@
 import {
-    MONTHS_PER_YEAR,
-    POLICY_RATE_DEAD_BAND,
-    POLICY_RATE_EMA_ALPHA,
+    POLICY_EQUITY_DEAD_BAND,
+    POLICY_EQUITY_EMA_ALPHA,
+    POLICY_EQUITY_TARGET,
     POLICY_RATE_GAIN,
     POLICY_RATE_MAX_MONTHLY_STEP,
     POLICY_RATE_MAX_PER_YEAR,
     POLICY_RATE_MIN_PER_YEAR,
-    POLICY_RATE_TARGET,
     isMonthBoundary,
 } from '../constants';
 import type { Bank } from '../planet/planet';
@@ -18,40 +17,31 @@ export function setPolicyRateControllerEnabled(enabled: boolean): void {
 }
 
 export function updatePolicyRate(bank: Bank, tick: number): void {
-    if (!policyRateControllerEnabled || !isMonthBoundary(tick)) {
+    if (!policyRateControllerEnabled || !isMonthBoundary(tick) || bank.loans <= 0) {
         return;
     }
 
-    if (!Number.isFinite(bank.policyRateEma)) {
-        bank.policyRateEma = 0;
+    const equityRatio = (bank.loans - bank.deposits) / bank.loans;
+    if (!Number.isFinite(bank.policyEquityEma)) {
+        bank.policyEquityEma = equityRatio;
     }
-    if (!Number.isFinite(bank.policyMonthInterest) || !Number.isFinite(bank.policyMonthWriteOffs)) {
-        bank.policyMonthInterest = bank.interestCollected;
-        bank.policyMonthWriteOffs = bank.writeOffs;
-        return;
-    }
+    bank.policyEquityEma = POLICY_EQUITY_EMA_ALPHA * equityRatio + (1 - POLICY_EQUITY_EMA_ALPHA) * bank.policyEquityEma;
 
-    const monthlyInterest = bank.interestCollected - bank.policyMonthInterest;
-    const monthlyWriteOffs = bank.writeOffs - bank.policyMonthWriteOffs;
-    bank.policyMonthInterest = bank.interestCollected;
-    bank.policyMonthWriteOffs = bank.writeOffs;
-
-    if (bank.loans <= 0) {
-        return;
-    }
-
-    const annualNetPerLoans = ((monthlyInterest - monthlyWriteOffs) * MONTHS_PER_YEAR) / bank.loans;
-    bank.policyRateEma = POLICY_RATE_EMA_ALPHA * annualNetPerLoans + (1 - POLICY_RATE_EMA_ALPHA) * bank.policyRateEma;
-
-    const error = POLICY_RATE_TARGET - bank.policyRateEma;
-    if (Math.abs(error) <= POLICY_RATE_DEAD_BAND) {
+    const error = POLICY_EQUITY_TARGET - bank.policyEquityEma;
+    if (Math.abs(error) <= POLICY_EQUITY_DEAD_BAND) {
         return;
     }
 
     const unclampedStep = POLICY_RATE_GAIN * error;
     const step = Math.max(-POLICY_RATE_MAX_MONTHLY_STEP, Math.min(POLICY_RATE_MAX_MONTHLY_STEP, unclampedStep));
-    bank.loanRatePerYear = Math.max(
-        POLICY_RATE_MIN_PER_YEAR,
-        Math.min(POLICY_RATE_MAX_PER_YEAR, bank.loanRatePerYear + step),
-    );
+    const next = bank.loanRatePerYear + step;
+    if (next >= POLICY_RATE_MAX_PER_YEAR) {
+        bank.loanRatePerYear = POLICY_RATE_MAX_PER_YEAR;
+        return;
+    }
+    if (next <= POLICY_RATE_MIN_PER_YEAR) {
+        bank.loanRatePerYear = POLICY_RATE_MIN_PER_YEAR;
+        return;
+    }
+    bank.loanRatePerYear = next;
 }

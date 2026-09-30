@@ -26,7 +26,7 @@ const INSURANCE_RATES: Partial<Record<Occupation, number>> = {
     unableToWork: UNEMPLOYMENT_INSURANCE_RATE_UNABLE,
 };
 
-export const INSURANCE_WEALTH_CAP_DAYS = 5;
+export const INSURANCE_WEALTH_CAP_DAYS = 1;
 let wealthTaxAllowanceOverride: number | undefined = undefined;
 
 let supportEmployedOverride: boolean | undefined = undefined;

@@ -152,9 +152,7 @@ function makeBank(overrides?: Partial<Bank>): Bank {
         writeOffs: 0,
         bankruptcies: 0,
         emergencyLoansGranted: 0,
-        policyRateEma: 0,
-        policyMonthInterest: 0,
-        policyMonthWriteOffs: 0,
+        policyEquityEma: 0,
         ...overrides,
     };
 }

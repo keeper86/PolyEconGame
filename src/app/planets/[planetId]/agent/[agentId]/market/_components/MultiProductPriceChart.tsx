@@ -71,6 +71,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useLocale, useTranslations } from 'next-intl';
+import { useIsSmallScreen } from '@/hooks/useMobile';
 
 const LEVEL_LABEL_KEYS = {
     raw: 'resourceRaw',
@@ -470,6 +471,7 @@ export default function MultiProductPriceChart({
     const t = useTranslations('Market');
     const { granularity, setGranularity, currentTick } = useGranularity();
     const trpc = useTRPC();
+    const smallScreen = useIsSmallScreen();
 
     const [internalIsOpen, setInternalIsOpen] = useState(false);
     const isControlled = controlledIsOpen !== undefined;
@@ -698,7 +700,7 @@ export default function MultiProductPriceChart({
                                                         value='relative'
                                                         className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                                                     >
-                                                        {t('priceOverCost')}
+                                                        {smallScreen ? t('priceOverCostShort') : t('priceOverCost')}
                                                     </TabsTrigger>
                                                 </TabsList>
                                             </Tabs>

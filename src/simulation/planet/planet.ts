@@ -31,9 +31,7 @@ export interface Bank {
     writeOffs: number;
     bankruptcies: number;
     emergencyLoansGranted: number;
-    policyRateEma: number;
-    policyMonthInterest: number;
-    policyMonthWriteOffs: number;
+    policyEquityEma: number;
 }
 
 export type BankEquityView = Pick<Bank, 'loans' | 'deposits'>;

@@ -1167,6 +1167,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const wealthP90 = weightedQuantile(wealthEntries, 0.9);
     const wealthTotal = wealthWeighted;
     const redistributedTotal = planet.governmentSupportVolume;
+    const transferVolume = planet.monthTransferVolume;
     const redistributedPerCapita = totalPopulation > 0 ? planet.governmentSupportVolume / totalPopulation : 0;
     const governmentDebt = totalOutstandingLoans(
         gameState.agents.get(planet.governmentId)?.assets[planet.id]?.activeLoans ?? [],
@@ -1297,6 +1298,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         wealthTotal,
         redistributedTotal,
         redistributedPerCapita,
+        transferVolume,
         governmentDebt,
         governmentDeposits,
         foodPrice,
@@ -1656,6 +1658,7 @@ export const METRIC_KEYS: string[] = [
     'wealthTotal',
     'redistributedTotal',
     'redistributedPerCapita',
+    'transferVolume',
     'governmentDebt',
     'governmentDeposits',
     'foodPrice',
