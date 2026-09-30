@@ -32,6 +32,11 @@ let wealthTaxAllowanceOverride: number | undefined = undefined;
 let supportEmployedOverride: boolean | undefined = undefined;
 let supportWealthCapDaysOverride: number | undefined = undefined;
 let supportFoodAffordabilityOverride: number | undefined = undefined;
+let governmentSupportEnabled = true;
+
+export function setGovernmentSupportEnabled(enabled: boolean): void {
+    governmentSupportEnabled = enabled;
+}
 
 export function setSupportEmployed(enabled: boolean): void {
     supportEmployedOverride = enabled;
@@ -169,6 +174,9 @@ export const governmentTick = (gameState: GameState, planet: Planet, agent: Agen
 };
 
 export const governmentSupportTick = (gameState: GameState, planet: Planet): number => {
+    if (!governmentSupportEnabled) {
+        return 0;
+    }
     const assets = gameState.agents.get(planet.governmentId)?.assets[planet.id];
     if (!assets) {
         return 0;

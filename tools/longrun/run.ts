@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
-import { setPopulationWealthTaxEnabled, setSupportEmployed, setSupportFoodAffordabilityMultiplier, setSupportWealthCapDays, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
+import { setGovernmentSupportEnabled, setPopulationWealthTaxEnabled, setSupportEmployed, setSupportFoodAffordabilityMultiplier, setSupportWealthCapDays, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
 import { setPolicyRateControllerEnabled } from '../../src/simulation/financial/policyRateController';
 import {
     setContractionIntegralThreshold,
@@ -570,6 +570,11 @@ async function main(): Promise<void> {
     if (supportFoodAffordabilityArg !== undefined) {
         setSupportFoodAffordabilityMultiplier(Number(supportFoodAffordabilityArg));
         console.log(`government support food affordability floor set to ${supportFoodAffordabilityArg} x food price/day`);
+    }
+    const governmentSupportArg = arg('governmentSupport');
+    if (governmentSupportArg !== undefined) {
+        setGovernmentSupportEnabled(governmentSupportArg !== 'off');
+        console.log(`government support ${governmentSupportArg !== 'off' ? 'ENABLED' : 'DISABLED'}`);
     }
     const resourceMultiplierArg = arg('resourceMultiplier');
     if (resourceMultiplierArg !== undefined) {

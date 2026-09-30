@@ -33,6 +33,7 @@ import {
     governmentSupportTick,
     governmentTick,
     INSURANCE_WEALTH_CAP_DAYS,
+    setGovernmentSupportEnabled,
     setPopulationWealthTaxEnabled,
     setSupportEmployed,
     setSupportFoodAffordabilityMultiplier,
@@ -238,6 +239,21 @@ describe('governmentSupportTick', () => {
         expect(planet.bank.householdDeposits).toBeCloseTo(householdBefore + spent);
         expect(cat.total * cat.wealth.mean).toBeCloseTo(wealthBefore + spent);
         expect(planet.governmentSupportVolume).toBeCloseTo(spent);
+    });
+
+    it('pays nothing at all when government support is disabled', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        const planet = makeUnemployedPlanet(gov);
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+        try {
+            setGovernmentSupportEnabled(false);
+            expect(governmentSupportTick(gameState, planet)).toBe(0);
+            expect(gov.assets[PLANET_ID]!.activeLoans).toHaveLength(0);
+            expect(planet.governmentSupportVolume).toBe(0);
+            expect(planet.bank.householdDeposits).toBe(planet.bank.deposits);
+        } finally {
+            setGovernmentSupportEnabled(true);
+        }
     });
 
     it('pays support from the budget without borrowing when funds are sufficient', () => {
