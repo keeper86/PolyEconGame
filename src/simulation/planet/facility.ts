@@ -192,7 +192,7 @@ export const STORAGE_SHELL_FORM_NAMES: Record<StorageForm, string> = {
 
 // One shell-scale of physical container holds the same volume/mass whatever the shape; only the surface
 // topology differs. A shell's total capacity is this per-unit volume/mass scaled by its installed maxScale.
-export const STORAGE_SHELL_CAPACITY = { volume: 200000, mass: 50000 };
+export const STORAGE_SHELL_CAPACITY = { volume: 600000, mass: 200000 };
 
 export type StorageFacility = FacilityBase &
     ResourceAmountLedger & {
@@ -247,7 +247,7 @@ export const makeStorageShell = (planetId: string, id: string, form: StorageForm
         lastTickRestorationConsumption: 0,
         powerConsumptionPerTick: 0.5,
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
-        workerRequirement: { none: 5, primary: 5, secondary: 0, tertiary: 0 },
+        workerRequirement: { none: 2, primary: 2, secondary: 0, tertiary: 0 },
 
         needs: [{ resource: administrativeServiceResourceType, quantity: 1 }],
         produces: [{ resource, quantity: SHELL_STORAGE_SERVICE_QUANTITY }],

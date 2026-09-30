@@ -66,7 +66,7 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
     name: HR_DEPARTMENT_NAME,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
-        none: 10,
+        none: 0,
         primary: 10,
         secondary: 20,
         tertiary: 5,
@@ -87,14 +87,14 @@ export const logisticsDepartmentFacilityType = (planetId: string, id: string): S
     name: LOGISTICS_DEPARTMENT_NAME,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
-        none: 25,
+        none: 10,
         primary: 10,
         secondary: 10,
         tertiary: 2,
     },
     needs: [
         { resource: administrativeServiceResourceType, quantity: 5 },
-        { resource: logisticsServiceResourceType, quantity: 50 },
+        { resource: logisticsServiceResourceType, quantity: 30 },
     ],
     produces: [{ resource: internalLogisticsServiceResourceType, quantity: PRODUCED_STORAGE_QUANTITY }],
 

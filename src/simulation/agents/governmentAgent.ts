@@ -1,6 +1,5 @@
 import {
     GOVERNMENT_OPERATING_BUFFER,
-    GOVERNMENT_SUPPORT_LOAN_TICKS,
     MIN_WAGE,
     POPULATION_WEALTH_TAX_ALLOWANCE_MONTHS,
     POPULATION_WEALTH_TAX_MONTHLY_RATE,
@@ -12,10 +11,10 @@ import {
     WEALTH_TAX_MONTHLY_RATE,
 } from '../constants';
 import { computeFacilitiesValue, computeShipsValue, constructionValuationPrice } from '../financial/assetValuation';
-import { grantLoan, repayLoansOldestFirst, totalOutstandingLoans } from '../financial/loanTypes';
+import { repayLoansOldestFirst, totalOutstandingLoans } from '../financial/loanTypes';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
-import { forEachPopulationCohort, type Occupation } from '../population/population';
+import { forEachPopulationCohort, type EducationLevelType, type Occupation } from '../population/population';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import { constructionServiceResourceType, groceryServiceResourceType } from '../planet/services';
 import type { ShipCapitalMarket } from '../ships/ships';
@@ -178,7 +177,7 @@ export const governmentSupportTick = (gameState: GameState, planet: Planet): num
         return 0;
     }
     const assets = gameState.agents.get(planet.governmentId)?.assets[planet.id];
-    if (!assets) {
+    if (!assets || assets.deposits <= 0) {
         return 0;
     }
     const base = Math.max(planet.wagePerEdu.none ?? 0, MIN_WAGE);
@@ -189,7 +188,9 @@ export const governmentSupportTick = (gameState: GameState, planet: Planet): num
     const wealthCapDays = supportWealthCapDaysOverride ?? INSURANCE_WEALTH_CAP_DAYS;
     const affordabilityMultiplier = supportFoodAffordabilityOverride ?? 0;
     const foodPrice = planet.marketPrices[groceryServiceResourceType.name] ?? 0;
-    let total = 0;
+
+    const claims: Array<{ age: number; occ: Occupation; edu: EducationLevelType; payment: number }> = [];
+    let claimed = 0;
     for (let age = 0; age < planet.population.demography.length; age++) {
         forEachPopulationCohort(planet.population.demography[age], (category, occ, edu) => {
             if (category.total <= 0) {
@@ -212,18 +213,29 @@ export const governmentSupportTick = (gameState: GameState, planet: Planet): num
             if (payment <= 0) {
                 return;
             }
-            total += distributeWealthChangeTracked(planet.population.demography, age, occ, edu, payment);
+            claims.push({ age, occ, edu, payment });
+            claimed += payment * category.total;
         });
+    }
+    if (claimed <= 0) {
+        return 0;
+    }
+
+    const scale = Math.min(1, assets.deposits / claimed);
+    let total = 0;
+    for (const claim of claims) {
+        total += distributeWealthChangeTracked(
+            planet.population.demography,
+            claim.age,
+            claim.occ,
+            claim.edu,
+            claim.payment * scale,
+        );
     }
     if (total <= 0) {
         return 0;
     }
 
-    if (assets.deposits < total) {
-        const shortfall = GOVERNMENT_SUPPORT_LOAN_TICKS * total - assets.deposits;
-        const loan = grantLoan(assets, planet.bank, shortfall, 'governmentSupport', gameState.tick);
-        loan.annualInterestRate = 0;
-    }
     assets.deposits -= total;
     planet.bank.householdDeposits += total;
     planet.governmentSupportVolume += total;

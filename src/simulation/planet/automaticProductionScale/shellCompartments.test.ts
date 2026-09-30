@@ -15,6 +15,8 @@ import {
     allocateShellCells,
     footprintPerForm,
     resolveFormShell,
+    applyStorageSizingForFacilities,
+    storageSizingForFacilities,
     type StorageResidency,
 } from './shellCompartments';
 
@@ -51,6 +53,81 @@ const byCapacityShare = (
 });
 
 const sumShares = (shares: Record<string, number>): number => Object.values(shares).reduce((a, b) => a + b, 0);
+
+const oreResource = (name: string, volumePerQuantity: number, massPerQuantity: number): Resource =>
+    ({
+        name,
+        form: 'solid',
+        level: 'raw',
+        volumePerQuantity,
+        massPerQuantity,
+    }) as unknown as Resource;
+
+const serviceResource = (name: string): Resource =>
+    ({
+        name,
+        form: 'services',
+        level: 'services',
+        volumePerQuantity: 0,
+        massPerQuantity: 0,
+    }) as unknown as Resource;
+
+describe('storage sizing for production facilities', () => {
+    it('sizes each shell form to STORAGE_CAPACITY_MONTHS of that facility output', () => {
+        const facility = makeProductionFacility(undefined, {
+            produces: [{ resource: oreResource('Ore', 0.3, 1), quantity: 400 }],
+            needs: [],
+        });
+        facility.scale = 100;
+        facility.maxScale = 100;
+
+        const sizing = storageSizingForFacilities([facility]);
+
+        const monthsTicks = STORAGE_CAPACITY_MONTHS * 30;
+        const massTarget = 400 * 100 * 1 * monthsTicks;
+        const volumeTarget = 400 * 100 * 0.3 * monthsTicks;
+        expect(sizing.shells.solid).toBeCloseTo(
+            Math.max(volumeTarget / STORAGE_SHELL_CAPACITY.volume, massTarget / STORAGE_SHELL_CAPACITY.mass),
+            6,
+        );
+        expect(sizing.shells.liquid).toBe(1);
+        expect(sizing.shells.pieces).toBe(1);
+        expect(sizing.department).toBeGreaterThan(1);
+    });
+
+    it('keeps every shell at the minimum scale when nothing physical is stored', () => {
+        const facility = makeProductionFacility(undefined, {
+            produces: [{ resource: serviceResource('Grocery Service'), quantity: 10 }],
+            needs: [],
+        });
+        facility.scale = 50;
+        facility.maxScale = 50;
+
+        const sizing = storageSizingForFacilities([facility]);
+
+        expect(sizing.shells).toEqual({ solid: 1, liquid: 1, pieces: 1 });
+        expect(sizing.department).toBe(1);
+    });
+
+    it('applies the sizing to shells and logistics department', () => {
+        const facility = makeProductionFacility(undefined, {
+            produces: [{ resource: oreResource('Ore', 0.3, 1), quantity: 400 }],
+            needs: [],
+        });
+        facility.scale = 10;
+        facility.maxScale = 10;
+        const storage = makeStorageFacility() as Storage;
+        storage.department = null;
+
+        applyStorageSizingForFacilities(storage, [facility]);
+
+        const sizing = storageSizingForFacilities([facility]);
+        expect(storage.shells.solid.scale).toBeCloseTo(sizing.shells.solid, 6);
+        expect(storage.shells.solid.maxScale).toBeCloseTo(sizing.shells.solid, 6);
+        expect(storage.shells.liquid.scale).toBe(1);
+        expect(storage.shells.pieces.scale).toBe(1);
+    });
+});
 
 describe('allocateShellCells against realistic per-scale capacity', () => {
     it('splits one scale cleanly between a bulky-volume good and a dense-mass good', () => {

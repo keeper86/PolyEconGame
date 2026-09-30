@@ -32,7 +32,7 @@ import {
     softClip,
     updateAgentProductionScale,
 } from './automaticProductionScale';
-import type { ProductionFacility } from './facility';
+import { STORAGE_SHELL_CAPACITY, type ProductionFacility } from './facility';
 import type { GameState, MarketResult, Planet } from './planet';
 import { coalResourceType } from './resources';
 import { constructionServiceResourceType, maintenanceServiceResourceType } from './services';
@@ -281,6 +281,8 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
 
 describe('reachableTargetQuantity caps the storage target at the shell capacity', () => {
     const monthly = 30 * 100;
+    const target = STORAGE_TARGET_MONTHS * monthly;
+    const scaleForMass = (mass: number): number => mass / STORAGE_SHELL_CAPACITY.mass;
 
     function makeSolidFixture(shellMaxScale: number) {
         const facility = makeProductionFacility(undefined, {
@@ -295,23 +297,23 @@ describe('reachableTargetQuantity caps the storage target at the shell capacity'
     }
 
     it('caps a target the shell cannot store at capacity minus one month of own production', () => {
-        const shellMaxScale = 0.2;
+        const shellMaxScale = scaleForMass(2 * monthly);
         const { assets } = makeSolidFixture(shellMaxScale);
         const capacity = assets.storage.shells.solid.capacity.mass * shellMaxScale;
-        expect(STORAGE_TARGET_MONTHS * monthly).toBeGreaterThan(capacity);
+        expect(target).toBeGreaterThan(capacity);
         expect(reachableTargetQuantity(assets.storage, coalResourceType, monthly)).toBeCloseTo(capacity - monthly, 5);
     });
 
     it('leaves the target alone when the shell can hold it', () => {
-        const { assets } = makeSolidFixture(4);
-        expect(reachableTargetQuantity(assets.storage, coalResourceType, monthly)).toBeGreaterThan(
-            STORAGE_TARGET_MONTHS * monthly,
-        );
+        const { assets } = makeSolidFixture(scaleForMass(2 * target));
+        expect(reachableTargetQuantity(assets.storage, coalResourceType, monthly)).toBeGreaterThan(target);
     });
 
     it('reads no deficit when a full shell still sits below the target', () => {
-        const { facility, assets } = makeSolidFixture(0.5);
-        setStorageResourceQuantity(assets.storage, coalResourceType, 24_000);
+        const shellMaxScale = scaleForMass(2 * monthly);
+        const { facility, assets } = makeSolidFixture(shellMaxScale);
+        const capacity = assets.storage.shells.solid.capacity.mass * shellMaxScale;
+        setStorageResourceQuantity(assets.storage, coalResourceType, capacity);
         expect(computeFacilityStorageSignal(facility, assets).maxError).toBeLessThan(0);
     });
 });

@@ -1,7 +1,8 @@
-import { TICKS_PER_MONTH } from '../../constants';
+import { SR_HOLDING_COST_PER_TON, TICKS_PER_MONTH } from '../../constants';
+import { PRODUCED_STORAGE_QUANTITY } from '../specialFacilities';
 import type { Resource } from '../claims';
-import type { Storage, StorageFacility } from '../facility';
-import { shellFormOfResource, storageFormKeys, type StorageForm } from '../facility';
+import type { ProductionFacility, ShipConstructionFacility, Storage, StorageFacility } from '../facility';
+import { STORAGE_SHELL_CAPACITY, shellFormOfResource, storageFormKeys, type StorageForm } from '../facility';
 import type { AgentPlanetAssets } from '../planet';
 import { STORAGE_CAPACITY_MONTHS } from './constants';
 import { getStorageCapacityMonths, getStorageTargetMonths } from './runtimeConfig';
@@ -25,7 +26,11 @@ const bindingShare = (volume: number, mass: number, volCap: number, massCap: num
 
 // Minimum shell scale (in per-unit capacities) at which every footprint target fits simultaneously.
 // Kept available so a future growth hook can drive shell.maxScale toward it.
-const requiredScaleOf = (footprint: StorageResidency[], volCapPerScale: number, massCapPerScale: number): number => {
+export const requiredScaleOf = (
+    footprint: StorageResidency[],
+    volCapPerScale: number,
+    massCapPerScale: number,
+): number => {
     if (volCapPerScale <= 0 || massCapPerScale <= 0) {
         return 0;
     }
@@ -144,16 +149,17 @@ const addResidency = (
 
 // Aggregate every physical resource a facility holds (inputs and outputs/flow sources) into one
 // per-shape footprint entry, so a shell is sized to keep each resource it stores, not just its outputs.
-export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<StorageForm, StorageResidency[]>> => {
+export const footprintForFacilities = (
+    productionFacilities: ProductionFacility[],
+    shipConstructionFacilities: ShipConstructionFacility[],
+): Partial<Record<StorageForm, StorageResidency[]>> => {
     const grouped: Record<StorageForm, Map<string, StorageResidency>> = {
         solid: new Map(),
         liquid: new Map(),
         pieces: new Map(),
     };
 
-    for (const facility of assets.productionFacilities) {
-        // Size for the production level the facility is already expanding toward, not just its current
-        // ceiling, so a freshly-started expansion doesn't outstrip shell space before it completes.
+    for (const facility of productionFacilities) {
         const plannedScale = facility.construction?.constructionTargetMaxScale ?? facility.maxScale;
         for (const need of facility.needs) {
             addResidency(grouped, need.resource, need.quantity * plannedScale);
@@ -163,7 +169,7 @@ export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<Stor
         }
     }
 
-    for (const facility of assets.shipConstructionFacilities) {
+    for (const facility of shipConstructionFacilities) {
         const ship = facility.produces;
         if (!ship || ship.buildingTime <= 0) {
             continue;
@@ -184,6 +190,9 @@ export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<Stor
     return result;
 };
 
+export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<StorageForm, StorageResidency[]>> =>
+    footprintForFacilities(assets.productionFacilities, assets.shipConstructionFacilities);
+
 // Re-partition every physical shell of an agent each tick, returning the final cell allocation per shell
 // so the caller can grow or shrink a shell via construction once its installed scale drops shy or
 // overshoots the held footprint. Only resources in the authored footprint receive a compartment; anything
@@ -200,4 +209,68 @@ export const updateAgentShellCompartments = (
         }
     }
     return result;
+};
+
+export type StorageSizing = {
+    shells: Record<StorageForm, number>;
+    department: number;
+};
+
+// Shell scale per form so that every resource an agent touches holds `STORAGE_CAPACITY_MONTHS` of its
+// own flow in its own compartment. Empty forms stay at the minimum single scale.
+export const shellScalesForFootprint = (
+    footprint: Partial<Record<StorageForm, StorageResidency[]>>,
+): Record<StorageForm, number> => {
+    const scales: Record<StorageForm, number> = { solid: 1, liquid: 1, pieces: 1 };
+    for (const form of storageFormKeys()) {
+        const residency = footprint[form];
+        if (residency && residency.length > 0) {
+            scales[form] = requiredScaleOf(residency, STORAGE_SHELL_CAPACITY.volume, STORAGE_SHELL_CAPACITY.mass);
+        }
+    }
+    return scales;
+};
+
+// Logistics department scale is driven by the physical throughput it moves, not by how full any shell is.
+const logisticsScaleForFootprint = (footprint: Partial<Record<StorageForm, StorageResidency[]>>): number => {
+    const monthsTicks = residencyMonthsTicks();
+    let throughputPerTick = 0;
+    for (const form of storageFormKeys()) {
+        for (const residency of footprint[form] ?? []) {
+            const weightPerTick = (residency.mass > 0 ? residency.mass : residency.volume) / monthsTicks;
+            throughputPerTick += weightPerTick;
+        }
+    }
+    const movement = 2 * throughputPerTick;
+    const holding = throughputPerTick * TICKS_PER_MONTH * SR_HOLDING_COST_PER_TON;
+    return Math.max(1, Math.ceil((movement + holding) / PRODUCED_STORAGE_QUANTITY));
+};
+
+export const storageSizingForFacilities = (
+    productionFacilities: ProductionFacility[],
+    shipConstructionFacilities: ShipConstructionFacility[] = [],
+): StorageSizing => {
+    const footprint = footprintForFacilities(productionFacilities, shipConstructionFacilities);
+    return {
+        shells: shellScalesForFootprint(footprint),
+        department: logisticsScaleForFootprint(footprint),
+    };
+};
+
+export const applyStorageSizingForFacilities = (
+    storage: Storage,
+    productionFacilities: ProductionFacility[],
+    shipConstructionFacilities: ShipConstructionFacility[] = [],
+): void => {
+    const sizing = storageSizingForFacilities(productionFacilities, shipConstructionFacilities);
+    for (const form of storageFormKeys()) {
+        const shell = storage.shells[form];
+        shell.scale = sizing.shells[form];
+        shell.maxScale = sizing.shells[form];
+    }
+    const department = storage.department;
+    if (department) {
+        department.scale = sizing.department;
+        department.maxScale = sizing.department;
+    }
 };

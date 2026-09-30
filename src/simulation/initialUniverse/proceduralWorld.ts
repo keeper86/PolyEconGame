@@ -27,8 +27,8 @@ import {
     makeAgent,
     makeDefaultEnvironment,
     makeStorage,
-    storageScaleForFacilities,
 } from './helpers';
+import { applyStorageSizingForFacilities } from '../planet/automaticProductionScale/shellCompartments';
 import { initialMarketPrices } from './initialMarketPrices';
 import {
     buildBuyAutoConfigForResource,
@@ -138,8 +138,8 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             fac.maxScale = scale;
 
             const hrDepartment = humanResourcesOfficeFacilityType(PROC_PLANET_ID, `${id}-hr-department`);
-            const storageScale = storageScaleForFacilities([fac]);
-            const storage = makeStorage({ planetId: PROC_PLANET_ID, id: `${id}-storage`, scale: storageScale });
+            const storage = makeStorage({ planetId: PROC_PLANET_ID, id: `${id}-storage` });
+            applyStorageSizingForFacilities(storage, [fac]);
             const neededWorkers =
                 1.1 *
                 HR_WORLD_BUFFER *

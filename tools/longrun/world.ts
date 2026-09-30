@@ -7,8 +7,8 @@ import {
     makeStorage,
     prefillAgentStorageFromFacilities,
     presizeAgentShellForFacilities,
-    storageScaleForFacilities,
 } from '../../src/simulation/initialUniverse/helpers';
+import { applyStorageSizingForFacilities } from '../../src/simulation/planet/automaticProductionScale/shellCompartments';
 import { initialMarketPrices } from '../../src/simulation/initialUniverse/initialMarketPrices';
 import {
     buildBuyAutoConfigForResource,
@@ -246,8 +246,8 @@ export function buildBenchmarkWorld(
             fac.maxScale = scale;
 
             const hrDepartment = humanResourcesOfficeFacilityType(BENCHMARK_PLANET_ID, `${id}-hr-department`);
-            const storageScale = storageScaleForFacilities([fac]);
-            const storage = makeStorage({ planetId: BENCHMARK_PLANET_ID, id: `${id}-storage`, scale: storageScale });
+            const storage = makeStorage({ planetId: BENCHMARK_PLANET_ID, id: `${id}-storage` });
+            applyStorageSizingForFacilities(storage, [fac]);
             const neededWorkers =
                 1.1 *
                 HR_WORLD_BUFFER *

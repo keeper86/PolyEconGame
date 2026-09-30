@@ -979,9 +979,10 @@ describe('marketTick — agent buying', () => {
         const seller = makeCoalSeller(3000, 1.0);
         const buyer = makeSteelProducer();
         // Rebuild storage without footprint authoring, then author a deliberately small coal compartment
-        // (1/25 of the full 50k-mass shell) so the 100-unit target cannot physically fit end to end.
+        // (2k of the shell's mass capacity) so the 100-unit target cannot physically fit end to end.
+        const compartmentMass = 2_000;
         const storage = makeStorageFacility({ planetId: 'p', id: 'storage-p' });
-        storage.shells.solid.compartments[COAL] = 1 / 25;
+        storage.shells.solid.compartments[COAL] = compartmentMass / STORAGE_SHELL_CAPACITY.mass;
         buyer.assets.p.storage = storage;
 
         buyer.assets.p.market = {
