@@ -170,10 +170,9 @@ export function advanceTick(gameState: GameState) {
             facilityMaintenanceTick(gameState, planet);
             constructionTick(gameState, planet);
             storageLogisticsTick(gameState.agents, planet);
-            automaticWageAdjustment(gameState.agents, planet);
             updateAgentProductionScale(gameState, planet);
             if (profile.isEnabled) {
-                t = profile.markAndAccum('production', 'production + construction + wageAdjust', t);
+                t = profile.markAndAccum('production', 'production + construction', t);
             }
 
             // Must be after productionTick, to infer claim usage
@@ -188,10 +187,11 @@ export function advanceTick(gameState: GameState) {
             }
             if (isMonthBoundary(gameState.tick)) {
                 postProductionLaborMarketTick(gameState.agents, planet);
+                automaticWageAdjustment(gameState.agents, planet);
                 updatePolicyRate(planet.bank, gameState.tick);
             }
             if (profile.isEnabled) {
-                profile.markAndAccum('monthBoundary', 'monthBoundary (postProductionLaborMarketTick)', t);
+                profile.markAndAccum('monthBoundary', 'monthBoundary (laborMarket + wageAdjust)', t);
             }
 
             // ── Year boundary ──

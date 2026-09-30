@@ -25,7 +25,7 @@ export const workerProfiles = {
     maintenance: { none: 10, primary: 30, secondary: 50, tertiary: 10 },
 } satisfies Record<string, WorkerProfile>;
 
-const LABOUR_MULTIPLIER = 1.05;
+export const LABOUR_MULTIPLIER = 1.05;
 
 export const workers = (profile: WorkerProfile, headcountPerScale: number): Record<EducationLevelType, number> => {
     const counts = distributeProportionally(
@@ -40,7 +40,6 @@ export const workers = (profile: WorkerProfile, headcountPerScale: number): Reco
 };
 
 const flowLabour = (flows: ResourceQuantity[]): number =>
-    LABOUR_MULTIPLIER *
     flows.reduce((sum, entry) => {
         if (entry.resource.level === 'source') {
             return sum;
@@ -51,10 +50,11 @@ const flowLabour = (flows: ResourceQuantity[]): number =>
         return sum + entry.quantity * perUnit;
     }, 0);
 
-export const headcountPerScaleFor = (facility: { needs: ResourceQuantity[]; produces: ResourceQuantity[] }): number => {
-    const throughputLabour = flowLabour(facility.needs) + flowLabour(facility.produces);
-    return Math.max(MINIMUM_WORKERS_PER_SCALE, Math.round(throughputLabour * LABOUR_MULTIPLIER));
-};
+export const headcountPerScaleFor = (facility: { needs: ResourceQuantity[]; produces: ResourceQuantity[] }): number =>
+    Math.max(
+        MINIMUM_WORKERS_PER_SCALE,
+        (flowLabour(facility.needs) + flowLabour(facility.produces)) * LABOUR_MULTIPLIER,
+    );
 
 export const withDerivedWorkers = <T extends { needs: ResourceQuantity[]; produces: ResourceQuantity[] }>(
     profile: WorkerProfile,

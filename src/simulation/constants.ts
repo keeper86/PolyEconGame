@@ -116,11 +116,9 @@ export const MAX_WAGE = 1000.0;
 
 export const DEFAULT_REFERENCE_MONTHLY_INCOME = MIN_WAGE * TICKS_PER_MONTH;
 
-export const WAGE_ADJUSTMENT_RATE = 0.005;
+export const WAGE_ADJUSTMENT_RATE = 0.01;
 
 export const VACANCY_WAGE_SMOOTHING = 0.1;
-
-export const WAGE_FEEDBACK_GAIN = 0.2;
 
 export const WAGE_SHARE = 0.6;
 export const WAGE_BARGAINING_GAIN = 1.0;

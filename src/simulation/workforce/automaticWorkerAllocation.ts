@@ -94,7 +94,7 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             const pressure = shortagePressure + bargainingPull - springPenalty;
 
             const maxStep = WAGE_ADJUSTMENT_RATE * current;
-            const step = Math.max(-maxStep, Math.min(maxStep, WAGE_FEEDBACK_GAIN * current * pressure));
+            const step = Math.max(-maxStep, Math.min(maxStep, current * pressure));
             assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, current + step));
         }
 

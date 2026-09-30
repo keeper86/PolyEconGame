@@ -6,6 +6,7 @@ import { coalResourceType } from './resources';
 import { administrativeServiceResourceType } from './services';
 import {
     headcountPerScaleFor,
+    LABOUR_MULTIPLIER,
     LABOUR_PER_SERVICE_UNIT,
     LABOUR_PER_TON_PER_TICK,
     MINIMUM_WORKERS_PER_SCALE,
@@ -52,7 +53,7 @@ describe('headcountPerScaleFor', () => {
             produces: [{ resource: coalResourceType, quantity: 500 }],
         };
 
-        expect(headcountPerScaleFor(facility)).toBeCloseTo(501 * LABOUR_PER_TON_PER_TICK, 10);
+        expect(headcountPerScaleFor(facility)).toBeCloseTo(501 * LABOUR_PER_TON_PER_TICK * LABOUR_MULTIPLIER, 10);
     });
 
     it('ignores source deposits, which carry no storable mass', () => {
@@ -61,7 +62,7 @@ describe('headcountPerScaleFor', () => {
             produces: [{ resource: coalResourceType, quantity: 100 }],
         };
 
-        expect(headcountPerScaleFor(facility)).toBeCloseTo(100 * LABOUR_PER_TON_PER_TICK, 10);
+        expect(headcountPerScaleFor(facility)).toBeCloseTo(100 * LABOUR_PER_TON_PER_TICK * LABOUR_MULTIPLIER, 10);
     });
 
     it('charges service throughput its own labour rate', () => {
@@ -70,7 +71,7 @@ describe('headcountPerScaleFor', () => {
             produces: [{ resource: administrativeServiceResourceType, quantity: 300 }],
         };
 
-        expect(headcountPerScaleFor(facility)).toBeCloseTo(300 * LABOUR_PER_SERVICE_UNIT, 10);
+        expect(headcountPerScaleFor(facility)).toBeCloseTo(300 * LABOUR_PER_SERVICE_UNIT * LABOUR_MULTIPLIER, 10);
     });
 
     it('floors every facility at a minimum crew', () => {
