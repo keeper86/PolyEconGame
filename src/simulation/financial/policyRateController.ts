@@ -10,7 +10,7 @@ import {
 } from '../constants';
 import type { Bank } from '../planet/planet';
 
-let policyRateControllerEnabled = false;
+let policyRateControllerEnabled = true;
 
 export function setPolicyRateControllerEnabled(enabled: boolean): void {
     policyRateControllerEnabled = enabled;

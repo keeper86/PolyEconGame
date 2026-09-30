@@ -83,7 +83,7 @@ export const STARTER_LOAN_AMOUNT = 1_000_000;
 
 export const LOAN_INTEREST_RATE_PER_YEAR = 0.01;
 
-export const POLICY_RATE_MIN_PER_YEAR = 0.0025;
+export const POLICY_RATE_MIN_PER_YEAR = 0;
 export const POLICY_RATE_MAX_PER_YEAR = 0.25;
 export const POLICY_RATE_MAX_MONTHLY_STEP = 0.0025;
 export const POLICY_EQUITY_TARGET = 0;

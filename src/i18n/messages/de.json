@@ -1300,7 +1300,7 @@
         "bankEquity": "Bankeigenkapital",
         "writtenOffDebt": "Abgeschriebene Schulden (gesamt)",
         "loanRateNewLoans": "Kreditzins (neue Kredite, p.a.)",
-        "interestCollected": "Vereinnahmte Zinsen",
+        "interestCollected": "Eingenommene Zinsen",
         "details": "Details",
         "costOfLivingSeries": "Lebenshaltungskosten",
         "gdpSeries": "BIP",

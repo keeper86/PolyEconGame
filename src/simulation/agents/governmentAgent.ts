@@ -102,7 +102,7 @@ export const collectWealthTax = (gameState: GameState, planet: Planet): number =
     return total;
 };
 
-let populationWealthTaxEnabled = false;
+let populationWealthTaxEnabled = true;
 
 export function setPopulationWealthTaxEnabled(enabled: boolean): void {
     populationWealthTaxEnabled = enabled;

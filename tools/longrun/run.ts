@@ -439,10 +439,9 @@ async function main(): Promise<void> {
     if (policyRateControllerArg !== undefined) {
         scenario.world = { ...scenario.world, policyRateController: policyRateControllerArg !== 'off' };
     }
-    setPolicyRateControllerEnabled(scenario.world.policyRateController ?? false);
-    if (scenario.world.policyRateController) {
-        console.log('policy rate controller ENABLED');
-    }
+    const policyRateController = scenario.world.policyRateController ?? true;
+    setPolicyRateControllerEnabled(policyRateController);
+    console.log(`policy rate controller ${policyRateController ? 'ENABLED' : 'DISABLED'}`);
     const costSpringArg = arg('costSpringStrength');
     if (costSpringArg !== undefined) {
         scenario.world = { ...scenario.world, costSpringStrength: Number(costSpringArg) };
@@ -466,7 +465,9 @@ async function main(): Promise<void> {
     if (populationWealthTaxArg !== undefined) {
         scenario.world = { ...scenario.world, populationWealthTax: populationWealthTaxArg !== 'off' };
     }
-    setPopulationWealthTaxEnabled(scenario.world.populationWealthTax ?? false);
+    const populationWealthTax = scenario.world.populationWealthTax ?? true;
+    setPopulationWealthTaxEnabled(populationWealthTax);
+    console.log(`population wealth tax ${populationWealthTax ? 'ENABLED' : 'DISABLED'}`);
     if (process.argv.includes('--noStorageClamp')) {
         setStorageSpaceClampEnabled(false);
         console.log('storage space clamp DISABLED (--noStorageClamp)');
