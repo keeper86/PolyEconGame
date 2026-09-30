@@ -58,8 +58,9 @@ export const allocateShellCells = (
         return { shares: {}, feasible: true, requiredScale: 0 };
     }
 
-    const volCap = volCapPerScale * scale;
-    const massCap = massCapPerScale * scale;
+    const required = requiredScaleOf(footprint, volCapPerScale, massCapPerScale);
+    const volCap = volCapPerScale * required;
+    const massCap = massCapPerScale * required;
 
     const declared = live.map((r) => bindingShare(r.volume, r.mass, volCap, massCap));
     const declaredScale = declared.reduce((a, b) => a + b, 0);

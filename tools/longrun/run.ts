@@ -4,7 +4,7 @@ import path from 'node:path';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
 import { setGovernmentSupportEnabled, setPopulationWealthTaxEnabled, setSupportEmployed, setSupportFoodAffordabilityMultiplier, setSupportWealthCapDays, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
-import { setPolicyRateControllerEnabled } from '../../src/simulation/financial/policyRateController';
+import { setPolicyRateControllerEnabled, setPolicyRateMaxPerYear } from '../../src/simulation/financial/policyRateController';
 import {
     setContractionIntegralThreshold,
     setExpansionIntegralThreshold,
@@ -471,6 +471,11 @@ async function main(): Promise<void> {
     if (process.argv.includes('--noStorageClamp')) {
         setStorageSpaceClampEnabled(false);
         console.log('storage space clamp DISABLED (--noStorageClamp)');
+    }
+    const policyRateMaxArg = arg('policyRateMax');
+    if (policyRateMaxArg !== undefined) {
+        setPolicyRateMaxPerYear(Number(policyRateMaxArg));
+        console.log(`policy rate ceiling overridden to ${policyRateMaxArg}`);
     }
     const pidDownArg = arg('pidDown');
     if (pidDownArg !== undefined) {

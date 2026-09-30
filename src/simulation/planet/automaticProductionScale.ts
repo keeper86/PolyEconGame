@@ -133,7 +133,7 @@ export function reconcileShellScale(
     }
 
     if (shell.maxScale > flooredRequired * SHELL_OVERSHOOT_FRACTION && shell.maxScale > bufferScale) {
-        processFacilityContraction(planet, shell, agent, bufferScale, gameState, 0.5);
+        processFacilityContraction(planet, shell, agent, bufferScale, gameState, 0.5, 1);
     }
 
     return remainingConstructionBudget;

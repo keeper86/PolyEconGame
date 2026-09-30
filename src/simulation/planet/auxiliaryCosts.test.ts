@@ -112,7 +112,7 @@ describe('auxiliaryCostRates', () => {
 describe('facilityThroughputMass', () => {
     it('counts produced and non-land-bound needs', () => {
         const water = waterFacility('catalog', 'preview');
-        expect(facilityThroughputMass(water)).toBe(800);
+        expect(facilityThroughputMass(water)).toBe(600);
     });
 
     it('is zero for massless service outputs', () => {

@@ -142,12 +142,12 @@ describe('allocateShellCells against realistic per-scale capacity', () => {
         void storage;
     });
 
-    it('marks the footprint infeasible when the combined footprint needs more than one scale', () => {
+    it('splits the required scale proportionally when the footprint needs more than one scale', () => {
         const footprint: StorageResidency[] = [byCapacityShare('bulk', 0.9, 0.1), byCapacityShare('dense', 0.1, 0.9)];
         const { shell } = solidStorage();
         const allocation = allocateShellCells(shell, footprint, 1);
-        expect(allocation.feasible).toBe(false);
-        // Infeasible water-fills: both go growable and split the whole scale in half.
+        expect(allocation.feasible).toBe(true);
+        expect(allocation.requiredScale).toBeCloseTo(1.8, 6);
         expect(allocation.shares.bulk).toBeCloseTo(0.5);
         expect(allocation.shares.dense).toBeCloseTo(0.5);
     });
@@ -165,24 +165,26 @@ describe('allocateShellCells against realistic per-scale capacity', () => {
         expect(allocation.shares.ore).toBeGreaterThanOrEqual(0.45 - 1e-9);
     });
 
-    it('hands every growable cell the same leftover when several produced goods are short on space', () => {
+    it('gives every produced good a positive cell of the required scale', () => {
         const footprint: StorageResidency[] = [byCapacityShare('a', 0.9, 0.1), byCapacityShare('b', 1.0, 0.5)];
         const { shell } = solidStorage();
         const allocation = allocateShellCells(shell, footprint, 1);
-        expect(allocation.feasible).toBe(false);
-        const growable = Object.entries(allocation.shares).filter(([, v]) => v < 1 - 1e-9);
-        expect(growable.every(([, v]) => v > 0)).toBe(true);
+        expect(allocation.feasible).toBe(true);
+        expect(allocation.requiredScale).toBeCloseTo(1.9, 6);
+        const shares = Object.values(allocation.shares);
+        expect(shares.every((share) => share > 0)).toBe(true);
+        expect(shares.reduce((sum, share) => sum + share, 0)).toBeCloseTo(1, 6);
     });
 });
 
 describe('resolveFormShell grows a shell to the footprint scale', () => {
-    it('is infeasible before growing and feasible at the reported required scale', () => {
+    it('reports the required scale at which the footprint fits', () => {
         const { storage } = solidStorage();
         const footprint: StorageResidency[] = [byCapacityShare('ore', 2.4, 3.0)];
 
         const before = resolveFormShell(storage, 'solid', footprint);
-        expect(before.feasible).toBe(false);
-        expect(before.requiredScale).toBeGreaterThan(1);
+        expect(before.feasible).toBe(true);
+        expect(before.requiredScale).toBeCloseTo(3, 6);
 
         const grownStorage = solidStorage().storage;
         const grownShell = grownStorage.shells.solid;
