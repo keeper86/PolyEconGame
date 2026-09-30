@@ -259,7 +259,7 @@ export const SERVICE_TIERS: ServiceTier[] = [
     {
         name: 'comfort',
         services: ['logistics', 'education'],
-        coverageFraction: 0.5,
+        coverageFraction: 0.75,
         mandatoryForOwnConsumption: false,
     },
     {
