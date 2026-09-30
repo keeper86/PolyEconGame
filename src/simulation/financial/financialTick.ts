@@ -167,6 +167,9 @@ function collectLoanInterest(agents: Map<string, Agent>, planet: Planet, tick: n
     const bank = planet.bank;
     let collected = 0;
     agents.forEach((agent) => {
+        if (agent.id === planet.governmentId) {
+            return;
+        }
         const assets = agent.assets[planet.id];
         if (!assets) {
             return;

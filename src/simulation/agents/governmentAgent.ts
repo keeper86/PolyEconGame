@@ -221,7 +221,8 @@ export const governmentSupportTick = (gameState: GameState, planet: Planet): num
 
     if (assets.deposits < total) {
         const shortfall = GOVERNMENT_SUPPORT_LOAN_TICKS * total - assets.deposits;
-        grantLoan(assets, planet.bank, shortfall, 'governmentSupport', gameState.tick);
+        const loan = grantLoan(assets, planet.bank, shortfall, 'governmentSupport', gameState.tick);
+        loan.annualInterestRate = 0;
     }
     assets.deposits -= total;
     planet.bank.householdDeposits += total;
