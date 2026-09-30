@@ -1,4 +1,6 @@
 import {
+    MIN_EMPLOYABLE_AGE,
+    POPULATION_WEALTH_TAX_ALLOWANCE_MONTHS,
     PRICE_CEIL,
     PRICE_FLOOR,
     RECYCLER_BASE_RECOVERY_EFFICIENCY,
@@ -6,6 +8,7 @@ import {
     TICKS_PER_MONTH,
     TICKS_PER_YEAR,
 } from '../../src/simulation/constants';
+import { effectiveSurplus } from '../../src/simulation/market/intergenerationalTransfers';
 import { totalOutstandingLoans } from '../../src/simulation/financial/loanTypes';
 import { computeNormalizedBuffer } from '../../src/simulation/market/serviceBufferNormalizer';
 import { computeCostOfLiving } from '../../src/simulation/market/serviceDefinitions';
@@ -226,6 +229,15 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let starvationFatal = 0;
     let wealthWeighted = 0;
     const wealthEntries: Array<{ mean: number; count: number }> = [];
+    const monthlyLivingCost = computeCostOfLiving(planet, false) * TICKS_PER_MONTH;
+    const monthlyLivingCostFull = computeCostOfLiving(planet, true) * TICKS_PER_MONTH;
+    const intergenFloor = POPULATION_WEALTH_TAX_ALLOWANCE_MONTHS * monthlyLivingCost;
+    const intergenFloorFull = POPULATION_WEALTH_TAX_ALLOWANCE_MONTHS * monthlyLivingCostFull;
+    let intergenNeed = 0;
+    let intergenSurplus = 0;
+    let intergenNeedFull = 0;
+    let intergenSurplusFull = 0;
+    let populationBelowFloor = 0;
 
     for (let age = 0; age < planet.population.demography.length; age++) {
         const cohort = planet.population.demography[age];
@@ -251,6 +263,24 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 }
                 wealthWeighted += cat.total * cat.wealth.mean;
                 wealthEntries.push({ mean: cat.wealth.mean, count: cat.total });
+                if (age >= MIN_EMPLOYABLE_AGE) {
+                    intergenSurplus += effectiveSurplus(cat.wealth.mean, cat.wealth.variance, intergenFloor, cat.total);
+                    intergenSurplusFull += effectiveSurplus(
+                        cat.wealth.mean,
+                        cat.wealth.variance,
+                        intergenFloorFull,
+                        cat.total,
+                    );
+                }
+                const floorShortfall = intergenFloor - cat.wealth.mean;
+                if (floorShortfall > 0) {
+                    intergenNeed += floorShortfall * cat.total;
+                    populationBelowFloor += cat.total;
+                }
+                const floorShortfallFull = intergenFloorFull - cat.wealth.mean;
+                if (floorShortfallFull > 0) {
+                    intergenNeedFull += floorShortfallFull * cat.total;
+                }
                 if (starvation > maxGroceryStarvation) {
                     maxGroceryStarvation = starvation;
                 }
@@ -1166,6 +1196,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const wealthP10 = weightedQuantile(wealthEntries, 0.1);
     const wealthP90 = weightedQuantile(wealthEntries, 0.9);
     const wealthTotal = wealthWeighted;
+    const wealthMonthsP10 = monthlyLivingCost > 0 ? wealthP10 / monthlyLivingCost : 0;
+    const wealthMonthsP50 = monthlyLivingCost > 0 ? medianWealth / monthlyLivingCost : 0;
+    const wealthMonthsP90 = monthlyLivingCost > 0 ? wealthP90 / monthlyLivingCost : 0;
+    const wealthMonthsMean = monthlyLivingCost > 0 ? meanWealth / monthlyLivingCost : 0;
     const redistributedTotal = planet.governmentSupportVolume;
     const transferVolume = planet.monthTransferVolume;
     const redistributedPerCapita = totalPopulation > 0 ? planet.governmentSupportVolume / totalPopulation : 0;
@@ -1296,6 +1330,21 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         wealthP10,
         wealthP90,
         wealthTotal,
+        wealthMonthsMean,
+        wealthMonthsP10,
+        wealthMonthsP50,
+        wealthMonthsP90,
+        livingCostMonthly: monthlyLivingCost,
+        livingCostMonthlyFull: monthlyLivingCostFull,
+        intergenFloor,
+        intergenFloorFull,
+        intergenSurplus,
+        intergenNeed,
+        intergenSelfSustain: intergenNeed > 0 ? intergenSurplus / intergenNeed : 0,
+        intergenSurplusFull,
+        intergenNeedFull,
+        intergenSelfSustainFull: intergenNeedFull > 0 ? intergenSurplusFull / intergenNeedFull : 0,
+        populationBelowFloorFraction: totalPopulation > 0 ? populationBelowFloor / totalPopulation : 0,
         redistributedTotal,
         redistributedPerCapita,
         transferVolume,
@@ -1656,6 +1705,21 @@ export const METRIC_KEYS: string[] = [
     'wealthP10',
     'wealthP90',
     'wealthTotal',
+    'wealthMonthsMean',
+    'wealthMonthsP10',
+    'wealthMonthsP50',
+    'wealthMonthsP90',
+    'livingCostMonthly',
+    'livingCostMonthlyFull',
+    'intergenFloor',
+    'intergenFloorFull',
+    'intergenSurplus',
+    'intergenNeed',
+    'intergenSelfSustain',
+    'intergenSurplusFull',
+    'intergenNeedFull',
+    'intergenSelfSustainFull',
+    'populationBelowFloorFraction',
     'redistributedTotal',
     'redistributedPerCapita',
     'transferVolume',
