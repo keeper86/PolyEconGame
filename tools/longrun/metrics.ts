@@ -213,6 +213,13 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let employed = 0;
     let unableToWork = 0;
     let inEducation = 0;
+    let wageShortagePressure = 0;
+    let wageBargainingPull = 0;
+    let wageSpringPenalty = 0;
+    let wageCeiling = 0;
+    let wageDebugWeight = 0;
+    let companyWageMin = Number.POSITIVE_INFINITY;
+    let companyWageMax = 0;
     const unoccByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     let groceryStarvationWeighted = 0;
     let healthcareStarvationWeighted = 0;
@@ -970,6 +977,19 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             if (wf) {
                 activeByEdu[edu] += totalActiveForEdu(wf, edu);
             }
+            const debug = assets._wageStepDebug?.[edu];
+            if (debug) {
+                const weight = wf ? totalActiveForEdu(wf, edu) : 1;
+                wageDebugWeight += weight;
+                wageShortagePressure += debug.shortagePressure * weight;
+                wageBargainingPull += debug.bargainingPull * weight;
+                wageSpringPenalty += debug.springPenalty * weight;
+                wageCeiling += debug.ceiling * weight;
+            }
+        }
+        if (typeof assets.wagePerEdu?.primary === 'number') {
+            companyWageMin = Math.min(companyWageMin, assets.wagePerEdu.primary);
+            companyWageMax = Math.max(companyWageMax, assets.wagePerEdu.primary);
         }
     }
 
@@ -1275,6 +1295,12 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         wagePrimary: wageByEduCount.primary > 0 ? wageByEdu.primary / wageByEduCount.primary : 0,
         wageSecondary: wageByEduCount.secondary > 0 ? wageByEdu.secondary / wageByEduCount.secondary : 0,
         wageTertiary: wageByEduCount.tertiary > 0 ? wageByEdu.tertiary / wageByEduCount.tertiary : 0,
+        wageShortagePressure: wageDebugWeight > 0 ? wageShortagePressure / wageDebugWeight : 0,
+        wageBargainingPull: wageDebugWeight > 0 ? wageBargainingPull / wageDebugWeight : 0,
+        wageSpringPenalty: wageDebugWeight > 0 ? wageSpringPenalty / wageDebugWeight : 0,
+        wageCeiling: wageDebugWeight > 0 ? wageCeiling / wageDebugWeight : 0,
+        companyWageMin: Number.isFinite(companyWageMin) ? companyWageMin : 0,
+        companyWageMax,
         capacityNone: capacityByEdu.none,
         capacityPrimary: capacityByEdu.primary,
         capacitySecondary: capacityByEdu.secondary,
@@ -1650,6 +1676,12 @@ export const METRIC_KEYS: string[] = [
     'wagePrimary',
     'wageSecondary',
     'wageTertiary',
+    'wageShortagePressure',
+    'wageBargainingPull',
+    'wageSpringPenalty',
+    'wageCeiling',
+    'companyWageMin',
+    'companyWageMax',
     'capacityNone',
     'capacityPrimary',
     'capacitySecondary',

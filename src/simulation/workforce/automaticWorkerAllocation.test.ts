@@ -120,7 +120,7 @@ describe('updateAllocatedWorkers', () => {
 
         automaticWorkerAllocation(agentMap(agent), planet);
 
-        expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
+        expect(agent.assets.p.allocatedWorkers.none).toBe(105);
     });
 });
 
@@ -175,7 +175,7 @@ describe('automaticWageAdjustment', () => {
         expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
     });
 
-    it('raises the wage toward the labor share of value added even when slots are filled', () => {
+    it('raises the wage toward a share of the marked-up production cost even when slots are filled', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: MIN_WAGE, primary: MIN_WAGE, secondary: MIN_WAGE, tertiary: MIN_WAGE };
@@ -187,7 +187,7 @@ describe('automaticWageAdjustment', () => {
         fac.lastTickResults.exactUsedByEdu = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
         agent.assets.p.productionFacilities = [fac];
 
-        agent.assets.p.lastMonthAcc.revenue = 1000;
+        agent.assets.p.lastMonthAcc.consumptionValue = 1000;
         agent.assets.p.lastMonthAcc.purchases = 0;
         agent.assets.p.lastMonthAcc.claimPayments = 0;
         agent.assets.p.lastMonthAcc.totalWorkersTicks = 100;

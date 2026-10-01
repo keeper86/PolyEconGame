@@ -37,6 +37,12 @@ export function preProductionFinancialTick(
     const demography = planet.population.demography;
 
     const weightedWageSum: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    const wageEntries: Record<EducationLevelType, Array<{ wage: number; workers: number }>> = {
+        none: [],
+        primary: [],
+        secondary: [],
+        tertiary: [],
+    };
     const totalPlanetWorkersForEdu: Record<EducationLevelType, number> = {
         none: 0,
         primary: 0,
@@ -87,6 +93,7 @@ export function preProductionFinancialTick(
                 wageBill += totalWorkers * assets.wagePerEdu[edu];
                 weightedWageSum[edu] += assets.wagePerEdu[edu] * totalWorkers;
                 totalPlanetWorkersForEdu[edu] += totalWorkers;
+                wageEntries[edu].push({ wage: assets.wagePerEdu[edu] ?? 0, workers: totalWorkers });
             }
         }
 
@@ -158,9 +165,25 @@ export function preProductionFinancialTick(
 
     for (const edu of educationLevelKeys) {
         if (totalPlanetWorkersForEdu[edu] > 0) {
-            planet.wagePerEdu[edu] = weightedWageSum[edu] / totalPlanetWorkersForEdu[edu];
+            planet.wagePerEdu[edu] = weightedMedianWage(wageEntries[edu]);
         }
     }
+}
+
+function weightedMedianWage(entries: Array<{ wage: number; workers: number }>): number {
+    if (entries.length === 0) {
+        return 0;
+    }
+    const sorted = [...entries].sort((a, b) => a.wage - b.wage);
+    const total = sorted.reduce((sum, entry) => sum + entry.workers, 0);
+    let cumulative = 0;
+    for (const entry of sorted) {
+        cumulative += entry.workers;
+        if (cumulative >= total / 2) {
+            return entry.wage;
+        }
+    }
+    return sorted[sorted.length - 1].wage;
 }
 
 function collectLoanInterest(agents: Map<string, Agent>, planet: Planet, tick: number, gameState: GameState): void {

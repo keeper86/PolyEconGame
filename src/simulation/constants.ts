@@ -125,6 +125,7 @@ export const WAGE_BARGAINING_GAIN = 1.0;
 
 export const SPRING_K = 0.5;
 export const WAGE_CEILING_SMOOTHING = 0.1;
+export const WAGE_CEILING_COST_MARKUP = 2;
 
 export const HIRE_RATE_LIMIT_PER_MONTH = 0.05;
 export const FIRE_RATE_LIMIT_PER_MONTH = 0.05;
