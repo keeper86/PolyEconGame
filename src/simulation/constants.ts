@@ -116,7 +116,7 @@ export const MAX_WAGE = 1000.0;
 
 export const DEFAULT_REFERENCE_MONTHLY_INCOME = MIN_WAGE * TICKS_PER_MONTH;
 
-export const WAGE_ADJUSTMENT_RATE = 0.01;
+export const WAGE_ADJUSTMENT_RATE = 0.05;
 
 export const VACANCY_WAGE_SMOOTHING = 0.1;
 
@@ -125,6 +125,9 @@ export const WAGE_BARGAINING_GAIN = 1.0;
 
 export const SPRING_K = 0.5;
 export const WAGE_CEILING_SMOOTHING = 0.1;
+
+export const HIRE_RATE_LIMIT_PER_MONTH = 0.05;
+export const FIRE_RATE_LIMIT_PER_MONTH = 0.05;
 
 export const SEARCH_HORIZON_TICKS = TICKS_PER_MONTH / 2;
 

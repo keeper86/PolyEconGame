@@ -5,9 +5,10 @@ import {
     WAGE_ADJUSTMENT_RATE,
     WAGE_BARGAINING_GAIN,
     WAGE_CEILING_SMOOTHING,
-    WAGE_FEEDBACK_GAIN,
     WAGE_SHARE,
+    HIRE_RATE_LIMIT_PER_MONTH,
 } from '../constants';
+import { perTickLimit } from './hireWorkforce';
 import type { Agent, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
@@ -35,17 +36,30 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
         const slotFill = sumSlotFillByEdu(assets);
 
         const newTarget: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+        const previousTarget = assets.allocatedWorkers;
         for (const edu of educationLevelKeys) {
             const ownUnfilled = Math.max(0, totalSlotCapacity[edu] - slotFill[edu]);
 
-            let target = totalUsed[edu] + ownUnfilled;
-            target = Math.ceil(target * (1 + ACCEPTABLE_IDLE_FRACTION));
-            newTarget[edu] = target;
+            const rawTarget = Math.ceil((totalUsed[edu] + ownUnfilled) * (1 + ACCEPTABLE_IDLE_FRACTION));
+            const headcount = totalUsed[edu] + slotFill[edu];
+            const previous = previousTarget?.[edu] ?? rawTarget;
+            if (headcount <= 0) {
+                newTarget[edu] = rawTarget;
+                continue;
+            }
+            const maxStep = perTickLimit(headcount, hireRateLimitPerMonth);
+            newTarget[edu] = Math.round(Math.max(previous - maxStep, Math.min(previous + maxStep, rawTarget)));
         }
 
         assets.allocatedWorkers = newTarget;
     }
 }
+
+let hireRateLimitPerMonth = HIRE_RATE_LIMIT_PER_MONTH;
+
+export const setHireRateLimitPerMonth = (value: number): void => {
+    hireRateLimitPerMonth = value;
+};
 
 export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {

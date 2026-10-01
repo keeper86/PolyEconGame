@@ -1,3 +1,8 @@
+import { setHireRateLimitPerMonth } from './automaticWorkerAllocation';
+import { setFireRateLimitPerMonth } from './hireWorkforce';
+setHireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+setFireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {

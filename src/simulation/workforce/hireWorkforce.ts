@@ -1,10 +1,16 @@
-import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
+import {
+    FIRE_RATE_LIMIT_PER_MONTH,
+    MIN_EMPLOYABLE_AGE,
+    NOTICE_PERIOD_MONTHS,
+    TICKS_PER_MONTH,
+} from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { hasActiveLicense } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import { transferPopulation } from '../population/population';
 import type { TickProfiler } from '../TickProfiler';
 import { distributeProportionally } from '../utils/distributeProportionally';
+import { stochasticRound } from '../utils/stochasticRound';
 import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
 import {
     ACCEPTABLE_IDLE_FRACTION,
@@ -30,6 +36,16 @@ export function assertBackfillProgress(
         );
     }
 }
+
+export function perTickLimit(stock: number, fractionPerMonth: number): number {
+    return Math.max(1, (stock * fractionPerMonth) / TICKS_PER_MONTH);
+}
+
+let fireRateLimitPerMonth = FIRE_RATE_LIMIT_PER_MONTH;
+
+export const setFireRateLimitPerMonth = (value: number): void => {
+    fireRateLimitPerMonth = value;
+};
 
 export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profiler?: TickProfiler): void {
     let t: number = 0;
@@ -141,10 +157,10 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
                 }
             } else if (gapActive < -activeOnly * ACCEPTABLE_IDLE_FRACTION) {
                 // --- FIRING (active-only, so in-training workers are never fired) ---
-                let toFire = -gapActive;
+                let toFire = Math.min(-gapActive, perTickLimit(activeOnly, fireRateLimitPerMonth));
                 for (let age = 0; age < workforce.length && toFire > 0; age++) {
                     const cat = workforce[age][edu];
-                    const fire = Math.min(toFire, cat.active);
+                    const fire = Math.min(stochasticRound(toFire), cat.active);
                     if (fire > 0) {
                         cat.active -= fire;
                         cat.departingFired[NOTICE_PERIOD_MONTHS - 1] += fire;

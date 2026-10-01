@@ -61,11 +61,11 @@ export function workforceDemographicTick(
 
         const workforce = assets.workforceDemography;
 
-        const betterByEdu: Record<EducationLevelType, { meanWage: number; share: number }> = {
-            none: { meanWage: 0, share: 0 },
-            primary: { meanWage: 0, share: 0 },
-            secondary: { meanWage: 0, share: 0 },
-            tertiary: { meanWage: 0, share: 0 },
+        const betterByEdu: Record<EducationLevelType, { meanWage: number; medianWage: number; share: number }> = {
+            none: { meanWage: 0, medianWage: 0, share: 0 },
+            primary: { meanWage: 0, medianWage: 0, share: 0 },
+            secondary: { meanWage: 0, medianWage: 0, share: 0 },
+            tertiary: { meanWage: 0, medianWage: 0, share: 0 },
         };
         for (const l of educationLevelKeys) {
             betterByEdu[l] = betterOfferStats(laborMarket.reachableVacancySteps[l], assets.wagePerEdu[l] ?? 0);
@@ -102,7 +102,7 @@ export function workforceDemographicTick(
                     const quitRate = quitPropensity(
                         assets.wagePerEdu[l] ?? 0,
                         laborMarket.reachableTightness[l] * better.share,
-                        better.meanWage,
+                        better.medianWage,
                     );
                     const voluntaryQuitters = stochasticRound(category.active * quitRate);
                     if (voluntaryQuitters > 0) {

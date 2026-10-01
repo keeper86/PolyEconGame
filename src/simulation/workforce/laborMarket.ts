@@ -73,9 +73,9 @@ const QUIT_RATE_CAP = 0.002;
 export const betterOfferStats = (
     steps: VacancyWageStep[],
     currentWage: number,
-): { meanWage: number; share: number } => {
+): { meanWage: number; medianWage: number; share: number } => {
     if (steps.length === 0) {
-        return { meanWage: 0, share: 0 };
+        return { meanWage: 0, medianWage: 0, share: 0 };
     }
     let lo = 0;
     let hi = steps.length - 1;
@@ -90,16 +90,23 @@ export const betterOfferStats = (
         }
     }
     const total = steps[steps.length - 1];
-    if (ans === -1) {
-        return { meanWage: total.cumWage / total.cumVacancy, share: 1 };
-    }
-    const below = steps[ans];
-    const betterVacancy = total.cumVacancy - below.cumVacancy;
+    const belowCumVacancy = ans === -1 ? 0 : steps[ans].cumVacancy;
+    const belowCumWage = ans === -1 ? 0 : steps[ans].cumWage;
+    const betterVacancy = total.cumVacancy - belowCumVacancy;
     if (betterVacancy <= 0) {
-        return { meanWage: 0, share: 0 };
+        return { meanWage: 0, medianWage: 0, share: 0 };
+    }
+    const medianCumVacancy = belowCumVacancy + betterVacancy / 2;
+    let medianWage = total.wage;
+    for (let i = ans + 1; i < steps.length; i++) {
+        if (steps[i].cumVacancy >= medianCumVacancy) {
+            medianWage = steps[i].wage;
+            break;
+        }
     }
     return {
-        meanWage: (total.cumWage - below.cumWage) / betterVacancy,
+        meanWage: (total.cumWage - belowCumWage) / betterVacancy,
+        medianWage,
         share: betterVacancy / total.cumVacancy,
     };
 };
