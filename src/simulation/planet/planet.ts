@@ -377,9 +377,10 @@ export type AgentPlanetAssets = {
     lastMonthAcc: MonthAccumulator;
 
     _smoothedWageCeiling?: number;
+    _monthlyVoluntaryQuits?: Record<EducationLevelType, number>;
     _wageStepDebug?: Record<
         EducationLevelType,
-        { shortagePressure: number; bargainingPull: number; springPenalty: number; ceiling: number }
+        { shortagePressure: number; churnPressure: number; quitRate: number; ceiling: number }
     >;
 
     licenses: {

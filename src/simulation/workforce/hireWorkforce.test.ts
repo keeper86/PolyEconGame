@@ -5,13 +5,7 @@ setFireRateLimitPerMonth(Number.POSITIVE_INFINITY);
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import {
-    BASE_QUIT_RATE,
-    WAGE_DURATION_DECAY,
-    MIN_EMPLOYABLE_AGE,
-    NOTICE_PERIOD_MONTHS,
-    SEARCH_HORIZON_TICKS,
-} from '../constants';
+import { WAGE_DURATION_DECAY, MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS, SEARCH_HORIZON_TICKS } from '../constants';
 import { type Agent, type Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 
@@ -76,9 +70,13 @@ describe('labor market helpers', () => {
         expect(acceptProbability(1_000_000, 100)).toBeCloseTo(0.05, 4);
     });
 
-    it('quitPropensity starts at the base rate and rises with a better outside option', () => {
-        expect(quitPropensity(100, 0, 0)).toBe(BASE_QUIT_RATE);
-        expect(quitPropensity(100, 1, 200)).toBeGreaterThan(quitPropensity(100, 0, 0));
+    it('quitPropensity quits only when a better offer or fairness gap outweighs the current pay', () => {
+        expect(quitPropensity(100, 0, 0, 100)).toBe(0);
+        expect(quitPropensity(100, 0, 0, 60)).toBe(0);
+        expect(quitPropensity(100, 1, 50, 100)).toBe(0);
+        expect(quitPropensity(100, 1, 200, 100)).toBeGreaterThan(0);
+        expect(quitPropensity(100, 1, 50, 200)).toBeGreaterThan(0);
+        expect(quitPropensity(100, 1, 100000, 100)).toBe(0.002);
     });
 
     it('reservationWage anchors to the going tier rate and does NOT depend on cost of living', () => {
@@ -546,7 +544,7 @@ describe('per-education level isolation', () => {
 });
 
 describe('voluntary quit rate', () => {
-    it('produces correct numbers with large workforce', () => {
+    it('does not quit without a reachable better offer', () => {
         const planet = makePlanet();
         const agent = makeAgent();
 
@@ -555,22 +553,17 @@ describe('voluntary quit rate', () => {
         hireWorkforce(agentMap(agent), planet);
 
         const wf = agent.assets.p.workforceDemography!;
-        const activeAfterHire = totalActiveForEdu(wf, 'none');
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        const expectedQuits = Math.floor(activeAfterHire * BASE_QUIT_RATE);
-
-        let allDeparting = 0;
+        let voluntaryDepartures = 0;
         for (let age = 0; age < wf.length; age++) {
-            const cat = wf[age].none;
-            for (let m = 0; m < cat.voluntaryDeparting.length; m++) {
-                allDeparting += cat.voluntaryDeparting[m];
-                allDeparting += cat.departingRetired[m];
+            for (const m of wf[age].none.voluntaryDeparting) {
+                voluntaryDepartures += m;
             }
         }
 
-        expect(Math.abs(allDeparting - expectedQuits)).toBeLessThanOrEqual(1);
+        expect(voluntaryDepartures).toBe(0);
     });
 
     it('does not affect a single worker (floor rounds to 0)', () => {

@@ -1,8 +1,8 @@
 import {
     ACCEPT_BASE,
-    BASE_QUIT_RATE,
     MIN_EMPLOYABLE_AGE,
-    QUIT_SENSITIVITY,
+    QUIT_FAIRNESS_SENSITIVITY,
+    QUIT_OUTSIDE_SENSITIVITY,
     SEARCH_HORIZON_TICKS,
     VACANCY_WAGE_SMOOTHING,
     WAGE_ACCEPT_FRACTION,
@@ -61,14 +61,20 @@ export const reservationWage = (reachableTightness: number, reachableVacancyWage
     return WAGE_ACCEPT_FRACTION * reachableVacancyWage * durationDiscount;
 };
 
-export const quitPropensity = (wage: number, tightness: number, vacancyWage: number): number => {
-    const outside = outsideIncome(tightness, vacancyWage);
-    const incomeGain = wage > 0 ? Math.max(0, outside - wage) / wage : 0;
-    const raw = BASE_QUIT_RATE + QUIT_SENSITIVITY * incomeGain;
-    return Math.min(raw, QUIT_RATE_CAP);
-};
-
 const QUIT_RATE_CAP = 0.002;
+
+const clampUnit = (value: number): number => Math.max(-1, Math.min(1, value));
+
+export const quitPropensity = (wage: number, tightness: number, vacancyWage: number, fairWage: number): number => {
+    if (wage <= 0) {
+        return QUIT_RATE_CAP;
+    }
+    const outside = outsideIncome(tightness, vacancyWage);
+    const exitGap = clampUnit((outside - wage) / wage);
+    const fairnessGap = clampUnit((fairWage - wage) / wage);
+    const raw = QUIT_OUTSIDE_SENSITIVITY * exitGap + QUIT_FAIRNESS_SENSITIVITY * fairnessGap;
+    return Math.max(0, Math.min(raw, QUIT_RATE_CAP));
+};
 
 export const betterOfferStats = (
     steps: VacancyWageStep[],

@@ -1,9 +1,4 @@
-import {
-    FIRE_RATE_LIMIT_PER_MONTH,
-    MIN_EMPLOYABLE_AGE,
-    NOTICE_PERIOD_MONTHS,
-    TICKS_PER_MONTH,
-} from '../constants';
+import { FIRE_RATE_LIMIT_PER_MONTH, MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS, TICKS_PER_MONTH } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { hasActiveLicense } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';

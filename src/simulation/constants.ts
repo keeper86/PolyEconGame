@@ -121,20 +121,17 @@ export const WAGE_ADJUSTMENT_RATE = 0.05;
 export const VACANCY_WAGE_SMOOTHING = 0.1;
 
 export const WAGE_SHARE = 0.6;
-export const WAGE_BARGAINING_GAIN = 1.0;
-
-export const SPRING_K = 0.5;
+export const WAGE_CHURN_GAIN = 3;
 export const WAGE_CEILING_SMOOTHING = 0.1;
-export const WAGE_CEILING_COST_MARKUP = 2;
 
 export const HIRE_RATE_LIMIT_PER_MONTH = 0.05;
 export const FIRE_RATE_LIMIT_PER_MONTH = 0.05;
 
 export const SEARCH_HORIZON_TICKS = TICKS_PER_MONTH / 2;
 
-export const BASE_QUIT_RATE = 0.0003;
-
-export const QUIT_SENSITIVITY = 0.005;
+export const QUIT_OUTSIDE_SENSITIVITY = 0.05;
+export const QUIT_FAIRNESS_SENSITIVITY = 0.05;
+export const QUIT_TARGET_RATE = 0.009;
 
 export const ACCEPT_BASE = 0.05;
 

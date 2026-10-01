@@ -629,4 +629,3 @@ describe('wage adjustment cadence', () => {
         { timeout: 20000 },
     );
 });
-

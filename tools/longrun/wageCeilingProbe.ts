@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { deserializeSnapshot } from '../../src/simulation/snapshotCompression';
 import type { GameState } from '../../src/simulation/planet/planet';
+import { deserializeSnapshot } from '../../src/simulation/snapshotCompression';
 
 const outDir = process.argv[2];
 if (!outDir) {
@@ -36,7 +36,7 @@ state.planets.forEach((planet) => {
             `\n${agent.name} (${agent.id}) workers=${workers}\n` +
                 `  costValue(floors)=${costValue.toFixed(1)} marketValue=${marketValue.toFixed(1)} ratio=${(costValue / (marketValue || 1)).toFixed(3)}\n` +
                 `  consumptionValue=${last.consumptionValue.toFixed(1)} purchases=${last.purchases.toFixed(1)} claims=${last.claimPayments.toFixed(1)} revenue=${last.revenue.toFixed(1)} wages=${last.wages.toFixed(1)} workerTicks=${last.totalWorkersTicks.toFixed(0)}\n` +
-                `  wagePerEdu=${JSON.stringify(assets.wagePerEdu)} smoothedCeiling=${(assets._smoothedWageCeiling ?? 0).toFixed(3)}\n` +
+                `  wagePerEdu=${JSON.stringify(assets.wagePerEdu)} ceilingHistory=[]\n` +
                 `  ${detail.slice(0, 6).join(' | ')}`,
         );
     });
