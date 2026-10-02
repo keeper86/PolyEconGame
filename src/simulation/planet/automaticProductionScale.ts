@@ -415,10 +415,12 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                     : rawSignal;
             state.smoothedSignal = signal;
 
-            const delta = computePidDelta(signal, state) * facility.maxScale;
+            const minScale = facility.maxScale * (getMinScaleFraction() ?? MIN_SCALE_FRACTION);
+            const targetScale = signal > 0 ? facility.maxScale : minScale;
+            const gapFraction = Math.min(1, Math.abs(targetScale - facility.scale) / facility.maxScale);
+            const delta = computePidDelta(signal, state) * facility.maxScale * gapFraction;
             state.lastRawSignal = rawSignal;
             state.lastDelta = delta;
-            const minScale = facility.maxScale * (getMinScaleFraction() ?? MIN_SCALE_FRACTION);
             facility.scale = applySoftFloorScale(facility.scale, delta, minScale, facility.maxScale);
 
             const hrHealthy = (assets.hrProductivityMultiplier ?? 1) >= HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER;

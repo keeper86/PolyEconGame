@@ -333,7 +333,8 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.scale).toBe(maxScale);
+        expect(facility.scale).toBeGreaterThan(maxScale - 0.0001);
+        expect(facility.scale).toBeLessThanOrEqual(maxScale);
     });
 
     it('skips a facility under construction (type === "new")', () => {

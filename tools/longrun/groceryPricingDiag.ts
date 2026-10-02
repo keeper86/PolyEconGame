@@ -8,8 +8,8 @@ import type { GameState } from '../../src/simulation/planet/planet';
 import { deserializeSnapshot } from '../../src/simulation/snapshotCompression';
 import { setRngState } from '../../src/simulation/utils/stochasticRound';
 
-const CKPT = path.join(__dirname, 'results', 'refillfix-6000y');
-const OUT = path.join(__dirname, 'results', 'groceryPricingDiag.tsv');
+const CKPT = path.join(__dirname, 'results', process.env.PRICING_CKPT ?? 'refillfix-6000y');
+const OUT = path.join(__dirname, 'results', process.env.PRICING_OUT ?? 'groceryPricingDiag.tsv');
 const RESOURCE = process.env.PRICING_RESOURCE ?? 'Grocery';
 const START_YEAR = Number(process.env.PRICING_START_YEAR ?? 74);
 const END_YEAR = Number(process.env.PRICING_END_YEAR ?? 80);

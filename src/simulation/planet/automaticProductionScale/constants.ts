@@ -19,7 +19,7 @@ export const STORAGE_CAPACITY_MONTHS = 6;
 export const STORAGE_ERROR_ZOOM_MONTHS = 1;
 export const STORAGE_TREND_HORIZON_MONTHS = 1;
 
-export const PID_OUT_MAX_UP = 0.001;
+export const PID_OUT_MAX_UP = 0.002;
 export const PID_OUT_MAX_DOWN = 0.001;
 export const PID_D_ALPHA = 0.3;
 export const SIGNAL_EMA_ALPHA = 0.3;

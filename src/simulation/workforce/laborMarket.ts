@@ -3,6 +3,7 @@ import {
     MIN_EMPLOYABLE_AGE,
     QUIT_FAIRNESS_SENSITIVITY,
     QUIT_OUTSIDE_SENSITIVITY,
+    QUIT_OUTSIDE_WAGE_BIAS,
     SEARCH_HORIZON_TICKS,
     VACANCY_WAGE_SMOOTHING,
     WAGE_ACCEPT_FRACTION,
@@ -69,10 +70,13 @@ export const quitPropensity = (wage: number, tightness: number, vacancyWage: num
     if (wage <= 0) {
         return QUIT_RATE_CAP;
     }
-    const outside = outsideIncome(tightness, vacancyWage);
+    const outside = QUIT_OUTSIDE_WAGE_BIAS * outsideIncome(tightness, vacancyWage);
     const exitGap = clampUnit((outside - wage) / wage);
-    const fairnessGap = clampUnit((fairWage - wage) / wage);
-    const raw = QUIT_OUTSIDE_SENSITIVITY * exitGap + QUIT_FAIRNESS_SENSITIVITY * fairnessGap;
+    const fairnessGap = clampUnit((fairWage - wage) / fairWage);
+
+    const raw =
+        QUIT_OUTSIDE_SENSITIVITY * exitGap + //
+        QUIT_FAIRNESS_SENSITIVITY * fairnessGap;
     return Math.max(0, Math.min(raw, QUIT_RATE_CAP));
 };
 

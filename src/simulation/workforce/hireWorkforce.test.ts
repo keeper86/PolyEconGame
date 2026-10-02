@@ -70,13 +70,21 @@ describe('labor market helpers', () => {
         expect(acceptProbability(1_000_000, 100)).toBeCloseTo(0.05, 4);
     });
 
-    it('quitPropensity quits only when a better offer or fairness gap outweighs the current pay', () => {
+    it('quitPropensity quits only when a better offer outweighs the current pay, tilted by unfairness', () => {
         expect(quitPropensity(100, 0, 0, 100)).toBe(0);
-        expect(quitPropensity(100, 0, 0, 60)).toBe(0);
+        expect(quitPropensity(100, 0, 0, 250)).toBe(0);
         expect(quitPropensity(100, 1, 50, 100)).toBe(0);
+        expect(quitPropensity(100, 1, 95, 100)).toBe(0);
         expect(quitPropensity(100, 1, 200, 100)).toBeGreaterThan(0);
-        expect(quitPropensity(100, 1, 50, 200)).toBeGreaterThan(0);
+        expect(quitPropensity(100, 1, 105, 1000)).toBeGreaterThan(0);
+        expect(quitPropensity(100, 1, 105, 100)).toBe(0);
         expect(quitPropensity(100, 1, 100000, 100)).toBe(0.002);
+    });
+
+    it('quitPropensity biases the outside wage so a parity offer is not a better offer', () => {
+        expect(quitPropensity(100, 1, 100, 100)).toBe(0);
+        expect(quitPropensity(100, 1, 105, 100)).toBe(0);
+        expect(quitPropensity(100, 1, 130, 100)).toBeGreaterThan(0);
     });
 
     it('reservationWage anchors to the going tier rate and does NOT depend on cost of living', () => {

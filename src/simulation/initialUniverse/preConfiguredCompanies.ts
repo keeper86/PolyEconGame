@@ -756,7 +756,7 @@ function generateCompanyName(facilityType: FacilityType, index: number): string 
 
     const stem = pool.stems[Math.floor(nextRandom() * pool.stems.length)];
 
-    if (nextRandom() < 0.5 || existingNames.some((n) => n.startsWith(stem))) {
+    if (existingNames.some((n) => n.startsWith(stem))) {
         const form = CORPORATE_FORMS[Math.floor(nextRandom() * CORPORATE_FORMS.length)];
         const candidate = `${stem} ${form}`;
         if (!existingNames.includes(candidate) && !existingNames.some((n) => n.startsWith(stem) && n.endsWith(form))) {
@@ -802,6 +802,8 @@ export const NAMES: Record<string, string[]> = {
         'Coalfield Ventures',
         'Northern Seam Ltd',
         'Coal Valley Co',
+        'Direct Coal Co',
+        'Dirty Delight',
     ],
     oilWell: [
         'PetroGlobal Corp',

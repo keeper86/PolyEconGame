@@ -59,6 +59,12 @@ export const setHireRateLimitPerMonth = (value: number): void => {
     hireRateLimitPerMonth = value;
 };
 
+let pinWagesToMinimum = false;
+
+export const setPinWagesToMinimum = (value: boolean): void => {
+    pinWagesToMinimum = value;
+};
+
 export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
         if (!agent.automated && !agent.automateWorkerAllocation) {
@@ -90,7 +96,7 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             { shortagePressure: number; churnPressure: number; quitRate: number; ceiling: number }
         > = {};
         for (const edu of educationLevelKeys) {
-            const current = assets.wagePerEdu[edu] ?? MIN_WAGE;
+            const current = pinWagesToMinimum ? MIN_WAGE : (assets.wagePerEdu[edu] ?? MIN_WAGE);
 
             const capacity = assets.totalSlotCapacity?.[edu] ?? 0;
             const shortage = Math.max(0, capacity - slotsFilled[edu]) / Math.max(1, capacity);
@@ -104,7 +110,7 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             wageStepDebug[edu] = { shortagePressure, churnPressure, quitRate, ceiling };
 
             const maxStep = WAGE_ADJUSTMENT_RATE * current;
-            const step = Math.max(-maxStep, Math.min(maxStep, current * pressure));
+            const step = pinWagesToMinimum ? 0 : Math.max(-maxStep, Math.min(maxStep, current * pressure));
             assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, current + step));
         }
 

@@ -24,6 +24,7 @@ import {
 } from '../../src/simulation/planet/automaticProductionScale/runtimeConfig';
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
 import { setBankruptcyDebtWriteOffFraction } from '../../src/simulation/financial/bankruptcy';
+import { setPinWagesToMinimum } from '../../src/simulation/workforce/automaticWorkerAllocation';
 import { deserializeSnapshot, serializeGameState } from '../../src/simulation/snapshotCompression';
 import { getRngState, setRngState } from '../../src/simulation/utils/stochasticRound';
 import type { GameState } from '../../src/simulation/planet/planet';
@@ -506,6 +507,11 @@ async function main(): Promise<void> {
     if (storageCapacityMonthsArg !== undefined) {
         setStorageCapacityMonths(Number(storageCapacityMonthsArg));
         console.log(`goods storage capacity overridden to ${storageCapacityMonthsArg} months`);
+    }
+    const pinWagesArg = arg('pinWages');
+    if (pinWagesArg !== undefined) {
+        setPinWagesToMinimum(pinWagesArg !== 'off');
+        console.log(`wages pinned to MIN_WAGE = ${pinWagesArg !== 'off'}`);
     }
     const productionSignalEmaAlphaArg = arg('productionSignalEmaAlpha');
     if (productionSignalEmaAlphaArg !== undefined) {
