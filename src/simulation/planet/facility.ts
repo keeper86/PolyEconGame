@@ -202,6 +202,7 @@ export type StorageFacility = FacilityBase &
     ResourceAmountLedger & {
         type: 'storage';
         form: StorageForm;
+        allocationScale: number;
         capacity: {
             volume: number;
             mass: number;
@@ -239,6 +240,7 @@ export const makeStorageShell = (planetId: string, id: string, form: StorageForm
         name: STORAGE_SHELL_FORM_NAMES[form],
         maxScale: scale,
         scale,
+        allocationScale: 0,
         capacity: { ...cap },
         currentInStorage: {},
         escrow: {},
@@ -542,8 +544,10 @@ export const getStorageCapacityState = (storage: Storage, resource: Resource): S
         const shell = storage.shells[form];
         const ownQuantity = shell.currentInStorage[resource.name]?.quantity ?? 0;
         const share = computeCompartmentShare(shell, resource);
-        const shellVolume = shell.capacity.volume * shell.maxScale;
-        const shellMass = shell.capacity.mass * shell.maxScale;
+        const capacityScale =
+            shell.allocationScale > 0 ? Math.min(shell.maxScale, shell.allocationScale) : shell.maxScale;
+        const shellVolume = shell.capacity.volume * capacityScale;
+        const shellMass = shell.capacity.mass * capacityScale;
         capacity.volume = shellVolume * share;
         capacity.mass = shellMass * share;
         used.volume = Math.max(0, ownQuantity * resource.volumePerQuantity);

@@ -25,9 +25,11 @@ import {
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
 import { setBankruptcyDebtWriteOffFraction } from '../../src/simulation/financial/bankruptcy';
 import { setPinWagesToMinimum } from '../../src/simulation/workforce/automaticWorkerAllocation';
+import { setCostFloorBuffer, setCostSpringStrength } from '../../src/simulation/market/automaticPricing';
 import { deserializeSnapshot, serializeGameState } from '../../src/simulation/snapshotCompression';
 import { getRngState, setRngState } from '../../src/simulation/utils/stochasticRound';
 import type { GameState } from '../../src/simulation/planet/planet';
+import type { AgentPlanetAssets } from '../../src/simulation/planet/planet';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
 import { formatDuration, printYearly, yearlySeries } from './report';
 import { mineWorkerProbe } from './mineWorkerProbe';
@@ -163,6 +165,32 @@ function readCsv(filePath: string): Array<Record<string, number | undefined>> {
     });
 }
 
+type CompanySpringPatch = { resource: string; costSpringStrength: number; costFloorBuffer: number };
+
+let companySpringPatches: CompanySpringPatch[] = [];
+
+function applyCompanySpringPatches(gameState: GameState): void {
+    for (const patch of companySpringPatches) {
+        let patched = 0;
+        for (const agent of gameState.agents.values()) {
+            for (const rawAssets of Object.values(agent.assets)) {
+                const assets = rawAssets as AgentPlanetAssets;
+                const offer = assets.market?.sell[patch.resource];
+                if (!offer?.autoConfig) {
+                    continue;
+                }
+                offer.autoConfig = {
+                    ...offer.autoConfig,
+                    costSpringStrength: patch.costSpringStrength,
+                    automatedCostFloorBuffer: patch.costFloorBuffer,
+                };
+                patched++;
+            }
+        }
+        console.log(`company spring patch on ${patch.resource}: ${patched} sell offer(s) relaxed`);
+    }
+}
+
 function arg(name: string): string | undefined {
     const prefix = `--${name}=`;
     const found = process.argv.find((a) => a.startsWith(prefix));
@@ -291,6 +319,8 @@ async function runScenario(
         fs.writeFileSync(path.join(outDir, 'seedGap.txt'), formatScaleComparison(seedComparison) + '\n');
         console.log(`[${scenario.name}] world ready: ${built.agents.length} agents, 1 planet, ${totalTicks} ticks`);
     }
+
+    applyCompanySpringPatches(gameState);
 
     const checkpointInterval = checkpointEveryYears * TICKS_PER_YEAR;
     const checkpointMeta = { scenario: scenario.name, seed: seedOverride ?? scenario.seed, years };
@@ -547,6 +577,23 @@ async function main(): Promise<void> {
     if (serviceFillRateArg !== undefined) {
         setServiceFillRateTarget(Number(serviceFillRateArg));
         console.log(`service buyer fill-rate target overridden to ${serviceFillRateArg}`);
+    }
+    const costSpringStrengthArg = arg('costSpringStrength');
+    if (costSpringStrengthArg !== undefined) {
+        setCostSpringStrength(Number(costSpringStrengthArg));
+        console.log(`cost spring strength overridden to ${costSpringStrengthArg}`);
+    }
+    const costFloorBufferArg = arg('costFloorBuffer');
+    if (costFloorBufferArg !== undefined) {
+        setCostFloorBuffer(Number(costFloorBufferArg));
+        console.log(`cost floor buffer overridden to ${costFloorBufferArg}`);
+    }
+    const companySpringArg = arg('companySpring');
+    if (companySpringArg !== undefined) {
+        companySpringPatches = companySpringArg.split(',').map((pair) => {
+            const [resource, costSpringStrength, costFloorBuffer] = pair.split(':');
+            return { resource, costSpringStrength: Number(costSpringStrength), costFloorBuffer: Number(costFloorBuffer) };
+        });
     }
     const serviceDecayArg = arg('serviceDecayTarget');
     if (serviceDecayArg !== undefined) {

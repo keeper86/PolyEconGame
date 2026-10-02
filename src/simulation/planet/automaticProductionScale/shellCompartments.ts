@@ -115,6 +115,9 @@ export const resolveFormShell = (
     for (const res of footprint) {
         shell.compartments[res.name] = allocation.shares[res.name] ?? 0;
     }
+    if (allocation.requiredScale > 0) {
+        shell.allocationScale = allocation.requiredScale;
+    }
     return allocation;
 };
 

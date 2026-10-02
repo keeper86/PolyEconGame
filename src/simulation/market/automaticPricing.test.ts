@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
     AUTOMATED_COST_FLOOR_BUFFER,
     BID_OFFER_MAX_COST_MULTIPLIER,
@@ -29,7 +29,14 @@ import {
 } from '../planet/resources';
 import { seedRng } from '../utils/stochasticRound';
 import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
-import { adjustOfferPrice, automaticPricing, buyVolumeFraction, sellVolumeFraction } from './automaticPricing';
+import {
+    adjustOfferPrice,
+    automaticPricing,
+    buyVolumeFraction,
+    sellVolumeFraction,
+    setCostFloorBuffer,
+    setCostSpringStrength,
+} from './automaticPricing';
 import { facilityMaintenanceRepairDeficit } from '../planet/facilityMaintenance';
 import type { Resource } from '../planet/claims';
 import {
@@ -420,6 +427,42 @@ describe('adjustOfferPrice — cost spring (soft minAsk)', () => {
         expect(offer.diagnostics!.baseFactor).toBeCloseTo(1, 10);
         expect(offer.offerPrice).toBeCloseTo(10 * (1 + 0.05 * SPRING_NORMALIZATION * deviation), 10);
         expect(offer.offerPrice).toBeGreaterThan(10);
+    });
+
+    it('loosens the soft minAsk when the global knobs are adapted', () => {
+        const build = (): AgentMarketOfferState =>
+            ({
+                resource: goodsResource,
+                offerPrice: 10,
+                lastSold: 0,
+                autoConfig: {
+                    automatedCostFloorBuffer: 2,
+                    costSpringStrength: 0.5,
+                    targetSellThrough: 1,
+                    freeRetainmentSmoothingMaxExtra: 1,
+                },
+            }) as unknown as AgentMarketOfferState;
+
+        const held = build();
+        adjustOfferPrice(held, 100, 10, 20);
+
+        setCostFloorBuffer(0);
+        const unfloored = build();
+        adjustOfferPrice(unfloored, 100, 10, 20);
+        setCostFloorBuffer(null);
+
+        setCostFloorBuffer(1);
+        setCostSpringStrength(5);
+        const hardFloor = build();
+        adjustOfferPrice(hardFloor, 100, 10, 20);
+        setCostFloorBuffer(null);
+        setCostSpringStrength(null);
+
+        expect(held.diagnostics!.costSpringDeviation).toBeCloseTo(Math.sqrt(3), 10);
+        expect(unfloored.diagnostics!.costSpringDeviation).toBe(0);
+        expect(unfloored.offerPrice).toBeCloseTo(10 * PRICE_ADJUST_MAX_DOWN, 10);
+        expect(hardFloor.diagnostics!.costSpringDeviation).toBeCloseTo(Math.sqrt(20 / 10 - 1), 10);
+        expect(hardFloor.offerPrice).toBeGreaterThan(10 * PRICE_ADJUST_MAX_DOWN);
     });
 
     it('amplifies without bound as the price approaches the floor from above', () => {

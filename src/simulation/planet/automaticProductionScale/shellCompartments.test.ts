@@ -8,7 +8,7 @@ import {
 import type { Resource } from '../claims';
 import type { Storage } from '../facility';
 import { STORAGE_CAPACITY_MONTHS } from './constants';
-import { STORAGE_SHELL_CAPACITY, getStorageCapacityState } from '../facility';
+import { STORAGE_SHELL_CAPACITY, getAvailableStorageCapacity, getStorageCapacityState } from '../facility';
 import type { TransportShipType } from '../../ships/ships';
 import {
     updateAgentShellCompartments,
@@ -207,6 +207,45 @@ describe('resolveFormShell grows a shell to the footprint scale', () => {
         const planned = resolveFormShell(storage, 'solid', resident);
         expect(planned.requiredScale).toBeLessThanOrEqual(1 + 1e-9);
         expect(planned.feasible).toBe(true);
+    });
+});
+
+describe('compartment capacity follows the allocation, not the shell overshoot', () => {
+    const stateFor = (
+        shellScale: number,
+        footprint: StorageResidency[],
+    ): ReturnType<typeof getStorageCapacityState> => {
+        const { storage, shell } = solidStorage();
+        shell.scale = shellScale;
+        shell.maxScale = shellScale;
+        resolveFormShell(storage, 'solid', footprint);
+        return getStorageCapacityState(storage, footprint[0].resource);
+    };
+
+    it('sizes a compartment from the footprint even when the shell is oversized', () => {
+        const footprint: StorageResidency[] = [byCapacityShare('ore', 0.5, 1.0)];
+        const tight = stateFor(1, footprint);
+        const oversized = stateFor(4, footprint);
+        expect(oversized.capacity.volume).toBeCloseTo(tight.capacity.volume, 6);
+        expect(oversized.capacity.mass).toBeCloseTo(tight.capacity.mass, 6);
+        expect(oversized.capacity.mass).toBeCloseTo(footprint[0].mass, 6);
+    });
+
+    it('still squeezes a compartment to the installed scale when the shell is undersized', () => {
+        const footprint: StorageResidency[] = [byCapacityShare('ore', 2.5, 1.0)];
+        const squeezed = stateFor(1, footprint);
+        expect(squeezed.capacity.volume).toBeCloseTo(V0, 6);
+        expect(squeezed.capacity.mass).toBeCloseTo(M0, 6);
+    });
+
+    it('leaves no free space once the stock reaches the allocated compartment', () => {
+        const footprint: StorageResidency[] = [byCapacityShare('ore', 0.5, 1.0)];
+        const { storage, shell } = solidStorage();
+        shell.scale = 4;
+        shell.maxScale = 4;
+        resolveFormShell(storage, 'solid', footprint);
+        shell.currentInStorage.ore = { resource: footprint[0].resource, quantity: M0 };
+        expect(getAvailableStorageCapacity(storage, footprint[0].resource)).toBe(0);
     });
 });
 
