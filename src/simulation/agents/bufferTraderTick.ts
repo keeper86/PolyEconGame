@@ -1,5 +1,4 @@
 import {
-    BUFFER_TRADER_FLOW_EMA_ALPHA,
     BUFFER_TRADER_PIVOT,
     BUFFER_TRADER_RATE,
     BUFFER_TRADER_RESPONSE,
@@ -23,8 +22,6 @@ export function bufferCapacityQuantity(
     const byMass = resource.massPerQuantity > 0 ? capacity.mass / resource.massPerQuantity : Number.POSITIVE_INFINITY;
     return Math.max(0, Math.min(byVolume, byMass));
 }
-
-const flowEma = new Map<string, number>();
 
 export function bufferTraderTick(gameState: GameState): void {
     bufferTraderRepaymentTick(gameState);
@@ -51,16 +48,11 @@ export function bufferTraderTick(gameState: GameState): void {
                     continue;
                 }
 
-                const volume = planet.lastMarketResult[name]?.totalVolume ?? 0;
-                const flowKey = `${planetId}|${name}`;
-                const previousFlow = flowEma.get(flowKey) ?? volume;
-                const flow =
-                    BUFFER_TRADER_FLOW_EMA_ALPHA * volume + (1 - BUFFER_TRADER_FLOW_EMA_ALPHA) * previousFlow;
-                flowEma.set(flowKey, flow);
+                const volume = planet.avgMarketResult[name]?.totalVolume ?? 0;
 
                 const space = bufferCapacityQuantity(assets.storage, resource);
                 const stock = held.get(name) ?? 0;
-                const target = Math.min(BUFFER_TRADER_TARGET_MONTHS * TICKS_PER_MONTH * flow, space);
+                const target = Math.min(BUFFER_TRADER_TARGET_MONTHS * TICKS_PER_MONTH * volume, space);
                 const imbalance = price / cost - BUFFER_TRADER_PIVOT;
                 const intensity = Math.min(1, BUFFER_TRADER_RESPONSE * Math.abs(imbalance) ** 4);
                 const quantum = intensity * BUFFER_TRADER_RATE * target;

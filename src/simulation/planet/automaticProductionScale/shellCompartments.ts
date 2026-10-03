@@ -207,11 +207,43 @@ export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<Stor
 // so the caller can grow or shrink a shell via construction once its installed scale drops shy or
 // overshoots the held footprint. Only resources in the authored footprint receive a compartment; anything
 // else has no allocated capacity until it is explicitly authored (see facility.ts computeCompartmentShare).
+export const mergeResidency = (
+    base: Partial<Record<StorageForm, StorageResidency[]>>,
+    additional?: Partial<Record<StorageForm, StorageResidency[]>>,
+): Partial<Record<StorageForm, StorageResidency[]>> => {
+    if (!additional) {
+        return base;
+    }
+    const merged: Partial<Record<StorageForm, StorageResidency[]>> = {};
+    for (const form of storageFormKeys()) {
+        const byName = new Map<string, StorageResidency>();
+        for (const entry of base[form] ?? []) {
+            byName.set(entry.name, entry);
+        }
+        for (const entry of additional[form] ?? []) {
+            const existing = byName.get(entry.name);
+            if (existing) {
+                existing.targetQuantity += entry.targetQuantity;
+                existing.volume += entry.volume;
+                existing.mass += entry.mass;
+            } else {
+                byName.set(entry.name, entry);
+            }
+        }
+        const values = [...byName.values()];
+        if (values.length > 0) {
+            merged[form] = values;
+        }
+    }
+    return merged;
+};
+
 export const updateAgentShellCompartments = (
     assets: AgentPlanetAssets,
+    additionalResidency?: Partial<Record<StorageForm, StorageResidency[]>>,
 ): Partial<Record<StorageForm, CellAllocation>> => {
     const result: Partial<Record<StorageForm, CellAllocation>> = {};
-    const footprint = footprintPerForm(assets);
+    const footprint = mergeResidency(footprintPerForm(assets), additionalResidency);
     for (const form of storageFormKeys()) {
         const residency = footprint[form];
         if (residency && residency.length > 0) {

@@ -22,7 +22,7 @@ function makeTraderState(opts?: {
     const price = opts?.price ?? 5;
     const planet: Planet = makePlanet({ id: 'p1', name: 'P1', marketPrices: { 'Iron Ore': price } });
     planet.productionCosts = { 'Iron Ore': opts?.cost ?? 4 };
-    planet.lastMarketResult = {
+    planet.avgMarketResult = {
         'Iron Ore': {
             resourceName: 'Iron Ore',
             clearingPrice: price,

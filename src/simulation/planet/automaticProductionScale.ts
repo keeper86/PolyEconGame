@@ -77,6 +77,7 @@ import { updateServiceFlowSignal } from './automaticProductionScale/serviceFlow'
 import { computeFacilityStorageSignal } from './automaticProductionScale/signalComputation';
 import { computeStorageExpansionTarget, computeStorageSignal } from './automaticProductionScale/storageAutoscale';
 import { updateAgentShellCompartments, scaleToHoldContents } from './automaticProductionScale/shellCompartments';
+import { bufferTraderFootprint } from '../agents/bufferTrader';
 
 export function applySoftFloorScale(currentScale: number, delta: number, minScale: number, maxScale: number): number {
     let newScale = currentScale + delta;
@@ -790,7 +791,10 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             storageDepartment.pidState = stoState;
         }
 
-        const shellSizing = updateAgentShellCompartments(assets);
+        const shellSizing = updateAgentShellCompartments(
+            assets,
+            agent.agentRole === 'buffer_trader' ? bufferTraderFootprint(agent, planet) : undefined,
+        );
 
         for (const form of storageFormKeys()) {
             const sizing = shellSizing[form];
