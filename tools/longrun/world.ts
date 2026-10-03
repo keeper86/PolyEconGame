@@ -415,6 +415,7 @@ export function buildBenchmarkWorld(
         forexMarketMakers: new Map(),
         shipbuilderAgents: new Map(),
         arbitrageTraders: new Map(),
+        bufferTraders: new Map(),
         tickerEvents: [],
         nextEventId: 1,
         bankruptcies: [],

@@ -42,8 +42,10 @@ in ~3 years.
 - (kept: PID_KD 0.001, PID_IMAX 0.0025, PID_OUT_MAX_UP/DOWN 0.001, PID_D_ALPHA 0.3,
    STORAGE_TARGET_MONTHS 12, STORAGE_CAPACITY_MONTHS 13, STORAGE_ERROR_ZOOM_MONTHS 1)
 
-Note: `outMax = 0.001 = 0.1%/tick = 36%/yr` is the **scale (hiring/firing) change**,
-not the expansion (maxScale) which is ~3%/yr. The bang-bang is in the scale.
+Note: `outMax = 0.02/0.01 = 2%/1% per tick` is the **scale (hiring/firing) change**;
+the expansion (maxScale) is ~3%/yr. The bang-bang is in the scale. The fast gains are now the
+*default* (PID_KP 0.01 / KI 0.0001 / KD 0.01), chosen on the y52-160 grid: 0 famines, 22.0 M
+population, worst-capacity ratio 0.81-0.92 against the slow default's 16 famines, 6.0 M, 0.126.
 
 ## Current constants (src/simulation/constants.ts)
 - AUTOMATED_COST_FLOOR_BUFFER 1.5; THEORETICAL_PRODUCTION_COST_FACTOR 1.0

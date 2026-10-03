@@ -99,7 +99,8 @@ export function grantAutomaticLoan(
         type === 'emergency' &&
         hasOutstandingEmergencyLoan(agent.assets[planet.id].activeLoans) &&
         totalOutstandingLoans(agent.assets[planet.id].activeLoans) > conditions.bankruptcyTrigger &&
-        agent.id !== planet.governmentId
+        agent.id !== planet.governmentId &&
+        agent.agentRole !== 'buffer_trader'
     ) {
         processBankruptcy(gameState, planet, agent, tick);
         return { kind: 'bankrupt' };

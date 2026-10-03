@@ -3,6 +3,19 @@ import { grantLoan } from '../financial/loanTypes';
 import { makeAgentPlanetAssets, makeStorage } from '../initialUniverse/helpers';
 import type { Agent, GameState } from '../planet/planet';
 
+let storageScaleOverride: number | null = null;
+let bufferTraderEnabled = false;
+
+export const setBufferTraderStorageScale = (value: number | null): void => {
+    storageScaleOverride = value;
+};
+
+export const setBufferTraderEnabled = (value: boolean): void => {
+    bufferTraderEnabled = value;
+};
+
+export const isBufferTraderEnabled = (): boolean => bufferTraderEnabled;
+
 export function seedBufferTraderAgents(gameState: GameState): void {
     for (const planet of gameState.planets.values()) {
         const agentId = `buf_${planet.id}`;
@@ -24,7 +37,7 @@ export function seedBufferTraderAgents(gameState: GameState): void {
         const storage = makeStorage({
             planetId: planet.id,
             id: `${agentId}_store`,
-            scale: BUFFER_TRADER_STORAGE_SCALE,
+            scale: storageScaleOverride ?? BUFFER_TRADER_STORAGE_SCALE,
         });
         const assets = makeAgentPlanetAssets([], storage, null);
         assets.licenses = { commercial: { acquiredTick: gameState.tick, frozen: false } };

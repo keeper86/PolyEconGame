@@ -660,3 +660,55 @@ so the asymmetry is in *access*, not timing.
 Reads due on the current grid at y160: law-fit b/R² per arm over the full window, famine onsets
 past y105, survival, and the maxScale erosion table.
 
+## Round 4 verdicts (complete, y52-160, same y50 checkpoint, seed 1001)
+
+| arm | famines | pop y140 | popEnd | util | worst maxScale | price/wage wave | grocery fill | retail fill |
+|---|---|---|---|---|---|---|---|---|
+| `pairctl` (no buffer, k=1) | 16 | 4.87 | **6.01** | 0.607 | 0.126 | 2.1 % | 0.842 | 0.090 |
+| `store01` (2-mo store, k=1) | 11 | 2.49 | 3.40 | 0.495 | 0.055 | 1.9 % | 0.872 | 0.200 |
+| `buf12` (11-mo store, k=1) | 6 | 19.02 | 20.64 | 0.792 | 0.684 | 0.9 % | 0.954 | 0.051 |
+| `gate-x` (contraction 60 / expansion 10) | 2 | 19.00 | 21.58 | 0.770 | 0.720 | 0.8 % | 0.945 | 0.065 |
+| `act-10x-0mo` (11-mo, k=10) | 0 | 19.55 | **22.00** | 0.765 | 0.812 | 0.6 % | 0.982 | 0.197 |
+| `act-30x-0mo` (11-mo, k=30) | 0 | 19.56 | 22.00 | 0.773 | 0.881 | 0.5 % | 0.986 | 0.222 |
+| `a10-b3` (**2-mo**, k=10) | **0** | 19.52 | 21.95 | 0.772 | 0.900 | 1.8 % | 0.972 | 0.078 |
+| `b4-a10` (3-mo, k=10) | **0** | 19.54 | 21.98 | 0.781 | 0.923 | 0.9 % | 0.987 | 0.134 |
+| `b6-a10` (5-mo, k=10) | **0** | 19.54 | 21.98 | 0.777 | 0.923 | 0.8 % | 0.986 | 0.142 |
+| `b8-a10` (7-mo, k=10) | **0** | 19.55 | 21.98 | 0.777 | 0.832 | 0.6 % | 0.983 | 0.167 |
+| `trader-b3` (agent, store 200) | **18** | 4.95 | **2.79** | 0.573 | 0.072 | 2.6 % | 0.793 | 0.110 |
+| `traderbig-b3` (agent, store 800) | 4 | 11.20 | 12.92 | 0.667 | 0.267 | 2.4 % | 0.828 | 0.065 |
+| `trader-b6-a10` (agent + 5-mo + k=10) | 0 | 19.54 | 21.97 | 0.776 | 0.849 | 0.7 % | 0.982 | 0.148 |
+| `floor-b6-a10` (+ floor 0.5) | 0 | 19.54 | 21.89 | 0.776 | 0.852 | 0.7 % | 0.980 | **0.391** |
+
+**Prediction hits:** the gate change halves-plus the erosion (0.126 → 0.720; predicted ≥0.5);
+the affordability floor lifts the retail fill above 0.3 (0.090 → 0.391; predicted >0.3); the
+buffer is *not* needed at 12 months.
+
+**Prediction misses — these matter more:**
+1. **"The buffer is the necessary half" — wrong.** Famine onsets are flat at 0 from a 2-month to
+   an 11-month store once the actuator is fast (a10-b3 0 → b8-a10 0 → act-10x 0), populations
+   within 0.2 % (21.95-22.00 M). Without speed: 12-mo store 6, 2-mo store 11, nothing 16. So the
+   **actuator speed is necessary and nearly sufficient, and the storage target is neither.** The
+   only thing the buffer still buys is price smoothness (wave 1.8 % at 2 mo → 0.5 % at 11 mo) and
+   the retail fill (0.078 → 0.222).
+2. **"The famine counts will not move with the gate" — wrong.** `gate-x` cut the famines from 16
+   to 2 while keeping the capacity alive (0.126 → 0.720). The capacity ratchet is therefore a
+   famine driver, not only affordability: capacity, utilisation, food supply and the price-stock
+   convexity are **one loop, not two**. The affordability fit describes the final transmission
+   step, not the driver.
+3. **"The buffer trader is inert (zero capacity)" — wrong.** The unit test confirms the
+   compartment dependency, but the live arms show it acting: a 200-scale store is *worse than
+   doing nothing* (18 famines, 2.79 M vs 16, 6.01 M) while the 4× store is far better (4 famines,
+   12.92 M). Position size, not existence, is the variable — the capital-constrained-speculation
+   result, measured. It does not beat the mandate + speed combination.
+
+**Unit tests:** `bufferTraderTick.test.ts`, 10/10. It pins the quoting band, the capacity-reserve
+sizing, the never-quote-a-service rule, the compartment dependency (a fresh `makeStorage` has
+zero capacity until a compartment exists — which is why the bid path must allocate the shell),
+the rollover, and the repayment down to the 1e11 retained working balance, matching the live
++8.6e10 `bankLoans` jump.
+
+**Recommended configuration:** fast actuator (k=10) + a *modest* store (3-5 months) — 0 famines,
+21.98 M, utilisation 0.78, worst capacity ratio 0.92 — plus the affordability floor if the
+service sector matters (retail fill 0.39). Cheaper than the current 12-month mandate and
+strictly better on every column measured.
+

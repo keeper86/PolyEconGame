@@ -6,11 +6,11 @@ export const STORAGE_STARVATION_EXPANSION_MAX = 0.05;
 export const MIN_SCALE_FRACTION = 0.25;
 export const SOFT_FLOOR_RELAXATION = 0.5;
 
-export const PID_KP = 0.001;
+export const PID_KP = 0.01;
 
-export const PID_KI = 0.00001;
+export const PID_KI = 0.0001;
 
-export const PID_KD = 0.001;
+export const PID_KD = 0.01;
 export const PID_IMAX = 0.0001;
 
 export const STORAGE_TARGET_MONTHS = 3;
@@ -19,8 +19,8 @@ export const STORAGE_CAPACITY_MONTHS = 6;
 export const STORAGE_ERROR_ZOOM_MONTHS = 1;
 export const STORAGE_TREND_HORIZON_MONTHS = 1;
 
-export const PID_OUT_MAX_UP = 0.002;
-export const PID_OUT_MAX_DOWN = 0.001;
+export const PID_OUT_MAX_UP = 0.02;
+export const PID_OUT_MAX_DOWN = 0.01;
 export const PID_D_ALPHA = 0.3;
 export const SIGNAL_EMA_ALPHA = 0.3;
 

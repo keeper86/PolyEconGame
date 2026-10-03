@@ -1,9 +1,14 @@
 import {
-    BUFFER_TRADER_BUY_FACTOR,
-    BUFFER_TRADER_MAX_TRADE_FRACTION,
-    BUFFER_TRADER_RESERVE_FRACTION,
-    BUFFER_TRADER_SELL_FACTOR,
+    BUFFER_TRADER_FLOW_EMA_ALPHA,
+    BUFFER_TRADER_PIVOT,
+    BUFFER_TRADER_RATE,
+    BUFFER_TRADER_RESPONSE,
+    BUFFER_TRADER_RETAIN_DEPOSIT_FRACTION,
+    BUFFER_TRADER_SEED_DEPOSIT,
+    BUFFER_TRADER_TARGET_MONTHS,
+    TICKS_PER_MONTH,
 } from '../constants';
+import { grantLoan, repayLoansOldestFirst, totalOutstandingLoans, type Loan } from '../financial/loanTypes';
 import { getStorageCapacityState, getWholeStorage, type ProductionFacility } from '../planet/facility';
 import type { AgentPlanetAssets, GameState } from '../planet/planet';
 import { TRADABLE_RESOURCES } from '../planet/resourceCatalog';
@@ -19,7 +24,10 @@ export function bufferCapacityQuantity(
     return Math.max(0, Math.min(byVolume, byMass));
 }
 
+const flowEma = new Map<string, number>();
+
 export function bufferTraderTick(gameState: GameState): void {
+    bufferTraderRepaymentTick(gameState);
     for (const agent of gameState.bufferTraders.values()) {
         for (const [planetId, assets] of Object.entries(agent.assets)) {
             const planet = gameState.planets.get(planetId);
@@ -38,39 +46,142 @@ export function bufferTraderTick(gameState: GameState): void {
                 }
                 const name = resource.name;
                 const cost = planet.productionCosts[name] ?? 0;
-                const stock = held.get(name) ?? 0;
-                const target = bufferCapacityQuantity(assets.storage, resource) * BUFFER_TRADER_RESERVE_FRACTION;
-                if (cost <= 0 || target <= 0) {
+                const price = planet.marketPrices[name] ?? 0;
+                if (cost <= 0 || price <= 0) {
                     continue;
                 }
 
-                const deficit = Math.max(0, target - stock);
-                if (deficit > 0) {
+                const volume = planet.lastMarketResult[name]?.totalVolume ?? 0;
+                const flowKey = `${planetId}|${name}`;
+                const previousFlow = flowEma.get(flowKey) ?? volume;
+                const flow =
+                    BUFFER_TRADER_FLOW_EMA_ALPHA * volume + (1 - BUFFER_TRADER_FLOW_EMA_ALPHA) * previousFlow;
+                flowEma.set(flowKey, flow);
+
+                const space = bufferCapacityQuantity(assets.storage, resource);
+                const stock = held.get(name) ?? 0;
+                const target = Math.min(BUFFER_TRADER_TARGET_MONTHS * TICKS_PER_MONTH * flow, space);
+                const imbalance = price / cost - BUFFER_TRADER_PIVOT;
+                const intensity = Math.min(1, BUFFER_TRADER_RESPONSE * Math.abs(imbalance) ** 4);
+                const quantum = intensity * BUFFER_TRADER_RATE * target;
+
+                delete assets.market.buy[name];
+                delete assets.market.sell[name];
+                if (quantum <= 0) {
+                    continue;
+                }
+
+                if (imbalance < 0) {
+                    const qty = Math.min(quantum, target - stock, space - stock);
+                    if (qty <= 0) {
+                        continue;
+                    }
+                    const spend = qty * price;
+                    if (spend > assets.deposits) {
+                        grantLoan(
+                            assets,
+                            planet.bank,
+                            spend - assets.deposits,
+                            'forexWorkingCapital',
+                            gameState.tick,
+                        );
+                    }
                     if (!assets.market.buy[name]) {
                         assets.market.buy[name] = { resource };
                     }
                     const bid = assets.market.buy[name];
                     bid.resource = resource;
-                    bid.bidPrice = cost * BUFFER_TRADER_BUY_FACTOR;
-                    bid.bidStorageTarget = stock + deficit * BUFFER_TRADER_MAX_TRADE_FRACTION;
+                    bid.bidPrice = price;
+                    bid.bidStorageTarget = stock + qty;
                 } else {
-                    delete assets.market.buy[name];
-                }
-
-                const offered = stock * BUFFER_TRADER_MAX_TRADE_FRACTION;
-                if (offered > 0) {
+                    const qty = Math.min(quantum, stock);
+                    if (qty <= 0) {
+                        continue;
+                    }
                     if (!assets.market.sell[name]) {
                         assets.market.sell[name] = { resource };
                     }
                     const offer = assets.market.sell[name];
                     offer.resource = resource;
                     offer.automated = true;
-                    offer.offerPrice = cost * BUFFER_TRADER_SELL_FACTOR;
-                    offer.offerRetainment = stock - offered;
-                } else {
-                    delete assets.market.sell[name];
+                    offer.offerPrice = price;
+                    offer.offerRetainment = stock - qty;
                 }
             }
+        }
+    }
+}
+
+function enforceBufferLoanMaturities(gameState: GameState): void {
+    for (const agent of gameState.bufferTraders.values()) {
+        for (const [planetId, assets] of Object.entries(agent.assets)) {
+            const planet = gameState.planets.get(planetId);
+            if (!planet) {
+                continue;
+            }
+
+            const matured: Loan[] = [];
+            const remaining: Loan[] = [];
+            for (const loan of assets.activeLoans) {
+                if (loan.maturityTick > 0 && gameState.tick >= loan.maturityTick) {
+                    matured.push(loan);
+                } else {
+                    remaining.push(loan);
+                }
+            }
+            if (matured.length === 0) {
+                continue;
+            }
+
+            const totalDue = matured.reduce((sum, loan) => sum + loan.remainingPrincipal, 0);
+            const canRepay = Math.min(totalDue, assets.deposits);
+            const shortfall = totalDue - canRepay;
+
+            if (canRepay > 0) {
+                assets.deposits -= canRepay;
+                planet.bank.loans -= canRepay;
+                planet.bank.deposits -= canRepay;
+            }
+
+            if (shortfall > 0) {
+                grantLoan(assets, planet.bank, shortfall, 'forexWorkingCapital', gameState.tick);
+                assets.deposits -= shortfall;
+                planet.bank.loans -= shortfall;
+                planet.bank.deposits -= shortfall;
+                const rollover = assets.activeLoans.pop();
+                if (rollover) {
+                    remaining.push(rollover);
+                }
+            }
+
+            assets.activeLoans = remaining;
+        }
+    }
+}
+
+export function bufferTraderRepaymentTick(gameState: GameState): void {
+    enforceBufferLoanMaturities(gameState);
+
+    const retain = BUFFER_TRADER_SEED_DEPOSIT * BUFFER_TRADER_RETAIN_DEPOSIT_FRACTION;
+    for (const agent of gameState.bufferTraders.values()) {
+        for (const [planetId, assets] of Object.entries(agent.assets)) {
+            const outstanding = totalOutstandingLoans(assets.activeLoans);
+            if (outstanding <= 0) {
+                continue;
+            }
+            const planet = gameState.planets.get(planetId);
+            if (!planet) {
+                continue;
+            }
+            const excess = Math.max(0, assets.deposits - retain);
+            const repayment = Math.min(outstanding, excess);
+            if (repayment <= 0) {
+                continue;
+            }
+            const actual = repayLoansOldestFirst(assets.activeLoans, repayment);
+            assets.deposits -= actual;
+            planet.bank.loans -= actual;
+            planet.bank.deposits -= actual;
         }
     }
 }

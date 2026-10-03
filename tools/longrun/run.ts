@@ -47,6 +47,12 @@ import {
     sampleInFlightConstruction,
 } from './solverDiagnostic';
 import { buildBenchmarkWorld } from './world';
+import {
+    isBufferTraderEnabled,
+    seedBufferTraderAgents,
+    setBufferTraderEnabled,
+    setBufferTraderStorageScale,
+} from '../../src/simulation/agents/bufferTrader';
 
 const OUT_ROOT = path.join(__dirname, 'results');
 
@@ -325,6 +331,11 @@ async function runScenario(
 
     applyCompanySpringPatches(gameState);
 
+    if (isBufferTraderEnabled()) {
+        seedBufferTraderAgents(gameState);
+        console.log(`buffer traders seeded: ${gameState.bufferTraders.size}`);
+    }
+
     const checkpointInterval = checkpointEveryYears * TICKS_PER_YEAR;
     const checkpointMeta = { scenario: scenario.name, seed: seedOverride ?? scenario.seed, years };
 
@@ -575,6 +586,15 @@ async function main(): Promise<void> {
     if (storageTrendMonthsArg !== undefined) {
         setStorageTrendHorizonMonths(Number(storageTrendMonthsArg));
         console.log(`storage trend horizon overridden to ${storageTrendMonthsArg} months`);
+    }
+
+    const bufferTraderArg = arg('bufferTrader');
+    if (bufferTraderArg !== undefined) {
+        const bufferStorageScaleArg = arg('bufferStorageScale');
+        if (bufferStorageScaleArg !== undefined) {
+            setBufferTraderStorageScale(Number(bufferStorageScaleArg));
+        }
+        setBufferTraderEnabled(true);
     }
     const minScaleFractionArg = arg('minScaleFraction');
     if (minScaleFractionArg !== undefined) {
