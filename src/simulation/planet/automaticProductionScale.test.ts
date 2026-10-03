@@ -146,6 +146,7 @@ function makeGameState(agents: Map<string, Agent>): GameState {
         forexMarketMakers: new Map(),
         shipbuilderAgents: new Map(),
         arbitrageTraders: new Map(),
+        bufferTraders: new Map(),
         tickerEvents: [],
         bankruptcies: [],
         nextEventId: 1,

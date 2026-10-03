@@ -12,6 +12,7 @@ export interface WireGameState {
     forexMarketMakers?: Agent[];
     shipbuilderAgents?: Agent[];
     arbitrageTraders?: Agent[];
+    bufferTraders?: Agent[];
     bankruptcies: BankruptcyRecord[];
     nextEventId: number;
 }
@@ -25,6 +26,7 @@ export function gameStateToWire(gs: GameState): WireGameState {
         forexMarketMakers: [...gs.forexMarketMakers.values()],
         shipbuilderAgents: [...gs.shipbuilderAgents.values()],
         arbitrageTraders: [...gs.arbitrageTraders.values()],
+        bufferTraders: [...gs.bufferTraders.values()],
         bankruptcies: gs.bankruptcies,
         nextEventId: gs.nextEventId,
     };
@@ -62,6 +64,13 @@ function wireToGameState(wire: WireGameState): GameState {
             arbitrageTraders.set(at.id, canonical);
         }
     }
+    const bufferTraders = new Map<string, Agent>();
+    for (const bt of wire.bufferTraders ?? []) {
+        const canonical = agents.get(bt.id);
+        if (canonical) {
+            bufferTraders.set(bt.id, canonical);
+        }
+    }
 
     // Re-link planet.recycler references
     for (const planet of planets.values()) {
@@ -81,6 +90,7 @@ function wireToGameState(wire: WireGameState): GameState {
         forexMarketMakers,
         shipbuilderAgents,
         arbitrageTraders,
+        bufferTraders,
         tickerEvents: [],
         bankruptcies: wire.bankruptcies,
         nextEventId: wire.nextEventId,

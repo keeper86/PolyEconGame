@@ -251,7 +251,7 @@ export const getAgentListSummaries = () =>
                         associatedPlanetId: z.string(),
                         balance: z.number(),
                         automated: z.boolean(),
-                        agentRole: z.enum(['shipbuilder', 'arbitrage_trader']).optional(),
+                        agentRole: z.enum(['shipbuilder', 'arbitrage_trader', 'buffer_trader']).optional(),
                         normalizedBalance: z.number(),
                         facilityCount: z.number(),
                         avgEfficiency: z.number().nullable(),

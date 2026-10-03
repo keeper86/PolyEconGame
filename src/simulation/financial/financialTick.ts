@@ -285,7 +285,11 @@ export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Plane
         if (!agent.automated) {
             return;
         }
-        if (agent.agentRole === 'arbitrage_trader' || agent.agentRole === 'shipbuilder') {
+        if (
+            agent.agentRole === 'arbitrage_trader' ||
+            agent.agentRole === 'shipbuilder' ||
+            agent.agentRole === 'buffer_trader'
+        ) {
             return;
         }
         const assets = agent.assets[planet.id];

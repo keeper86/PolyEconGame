@@ -127,6 +127,7 @@ function makeChainGameState(planet: Planet, facility: ProductionFacility): GameS
         forexMarketMakers: new Map(),
         shipbuilderAgents: new Map(),
         arbitrageTraders: new Map(),
+        bufferTraders: new Map(),
         tickerEvents: [],
         bankruptcies: [],
         nextEventId: 1,

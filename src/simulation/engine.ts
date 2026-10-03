@@ -1,6 +1,7 @@
 import assert from 'assert';
 import { performance } from 'node:perf_hooks';
 import { arbitrageTraderTick } from './agents/arbitrageTraderTick';
+import { bufferTraderTick } from './agents/bufferTraderTick';
 import { forexMarketMakerPricing } from './agents/forexMarketMakerPricing';
 import { forexMMRepaymentTick } from './agents/forexMarketMakerTick';
 import { governmentSupportTick, governmentTick } from './agents/governmentAgent';
@@ -275,6 +276,7 @@ export function advanceTick(gameState: GameState) {
         t = profile.mark();
     }
     arbitrageTraderTick(gameState);
+    bufferTraderTick(gameState);
     if (profile.isEnabled) {
         profile.markAndAccum('arbitrage', 'arbitrageTraderTick', t);
     }
