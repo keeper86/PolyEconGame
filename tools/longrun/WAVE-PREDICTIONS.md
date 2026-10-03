@@ -442,6 +442,167 @@ Reading order next session:
    century / death at y249.25.
 4. Update this document with hits and misses — the misses matter more than the hits.
 
+## Round 3b: the ratchet, the chain buffers, and the HR ceiling (y116 read, `pairctl` complete)
+
+**The contraction gate, in code.** `automaticProductionScale.ts` requires *all* of
+(a) `scale < 0.5 · maxScale` (`CONTRACTION_AT_SCALE_FRACTION`), (b) `signal < 0`
+(over-stocked), (c) `contractionIntegral ≥ 15` — accumulating `STORAGE_CONTRACTION_RATE
+= 0.1` per triggering tick and decaying `CONTRACTION_INTEGRAL_DECAY = 0.05`, so ≈150
+triggering ticks ≈ 5 months *sustained* or far longer intermittently — and (d) no active
+construction. Only then it cuts capacity by `MAX_SCALE_CONTRACT_FRACTION = 0.01`, i.e.
+**1 % per firing**. Expansion instead requires the conjunction `scale ≥ 0.98 · maxScale
+AND signal > 0 AND hrHealthy AND storageHealthy`. So the asymmetry is in *access*, not in
+rate: in a depressed economy the contraction gate is open while the expansion gate is
+unreachable — a ratchet. A 75 % write-down needs ~140 firings = decades of deep idling,
+which is exactly the time the 10-15 y cycle provides.
+
+**Capacity per capita (sum of `facilityMaxScale_*` / population, `pairctl`)**, indexed to
+y0-10: 1.00 → 0.88 → 0.66 → 0.50 → 0.40 → 0.35 → 0.31 → 0.32. Utilisation dips to 0.45 in
+y10-55 (no famine at all in those bins: 0.000 %) then recovers to 0.70-0.74 while the
+capacity keeps eroding. **Famines and erosion are not synchronous**: the erosion is a
+background process, the famines are episodes. Under `buf12` the same bins give utilisation
+0.70-0.78, used capacity +36 % absolute at y100-116, famine 0.317 % vs 6.321 %, and — with
+no forecasting of any kind — the worst-eroded facilities are far less eaten: copperMine
+0.712 vs 0.233, concretePlant 0.499 vs 0.324, siliconWaferFactory 0.654 vs 0.304. The
+buffer *is* the memory that protects the capacity.
+
+**RETRACTED: "the chain buffers are the wildness".** I read `market_*_buffer` as storage months.
+It is not: `tools/longrun/metrics.ts` defines `market_*_buffer = volume / supply` (the
+sell-through) and `market_*_fillRate = volume / demand`. series.csv has no storage-months
+column at all. So the upstream figure was a **sell-through of 0.14-0.21** — the designed
+oversubscription of the order-book commodity markets, which is exactly what over-provisioning
+looks like. "Every intermediate storage holds 0.2 months / 4-6 days" was a category error, and
+over-high maxScales and a low sell-through *agree* rather than contradict. Every storage-level
+claim built on that column is withdrawn, including "the chain is a pure pass-through with no
+damping" — that is not established by this data.
+
+Now measured through the right column (`signal = tanh((target − predicted) / zoom)`, zoom = 1 month,
+so `stock ≈ target − atanh(signal)`, clipped at ±3.8 months — which is why buf12's p10 pins to
+exactly 8.20):
+
+| facility | `pairctl` (target 3 mo) median stock | `buf12` (target 12 mo) median stock |
+|---|---|---|
+| limestoneQuarry | 3.19 | 10.81 |
+| coalMine | 2.53 | 11.79 |
+| ironMine | 4.09 | 9.95 |
+| copperMine | 4.56 | 11.39 |
+| waterFacility | 3.27 | 11.61 |
+| agriculturalFacility | 2.91 | 11.51 |
+| foodProcessor | 2.96 | 11.88 |
+| groceryChain | 3.00 | 12.00 |
+
+So the storages **are at target on median in both arms** — the 12-month target does fill, there is
+no retention failure, and there is no contradiction with the over-provisioning. (This also
+re-bases the earlier session's "raw-material storages do not hold target": the median holds
+target; what was read as 0.04 months was the p10 — a deep drawdown, not the typical level.)
+
+What *is* real is the variance: in `pairctl` the mine signals exceed |0.9| for 64-90 % of ticks
+and the p10 stock is 0.01-1.9 months — i.e. the upstream storage swings between far-below and
+far-above target. Upstream storage is a **bang-bang, not a level**, which is the same signature as
+the control chatter and would be the thing to damp. In `buf12` the same signals are mostly
+*positive* (mean +0.05…+0.24) with the median at target, i.e. a milder, one-sided excursion.
+
+The upstream/downstream asymmetry (upstream signals saturated, manufacturing idle) comes from
+the signal and utilisation columns and stands.
+
+**Pesticide→chemical→oil does not drive the produce oscillation.** The chain exists as
+guessed (`agriculturalFacility ← pesticide 10 + water 100`, `pesticidePlant ← chemical 60`,
+`chemicalRefinery ← crudeOil 200`), but the lead-lag is weak and the direction is
+ambiguous: produce volume ↔ pesticide volume = +0.21 *contemporaneous*; input prices
+(pesticide/chemical/oil) lead the produce volume by 12-24 months at only +0.17…+0.25;
+produce price ↔ chemical price = +0.27. The input chain explains a minor share. The
+structural fact (0.2-month buffers everywhere) explains more.
+
+**The fast actuator saturates the HR department.** `act-30x-*` logs continuously
+`HR Demand 5031 exceeds max daily output 2000, ratio 2.5`. So beyond k≈10-30 the worker
+reallocation the fast actuator wants exceeds what the HR department can process — the same
+coupled channel as the churn, now a hard ceiling. This is a *better* reason to touch the
+labour/scale coupling than the churn numbers, which stayed small.
+
+**Famine months vs the rules-compliant long-run audit.** Over the 149 severe-starvation
+months of `pairctl`, `groceryFillRate` averages 0.338 against 0.842 over the whole run —
+2.5× below its own norm. That is a genuine deterioration *as a smoothed comparison*, but the
+absolute level is dominated by the deliberately oversubscribed book, so it does **not** mean
+two-thirds of households went unfed. Same caveat for the chain fills above (0.31-0.35 are
+the design, not a shortage).
+
+The audit the rules actually call for — decade-window means of the instantaneous series,
+then look for a drift — gives a much stronger result than any per-tick number:
+
+| `pairctl` decade | PF fill | PF price/MA120 | grocery sell-through | grocery unfilledF |
+|---|---|---|---|---|
+| 0-10 | 0.403 | 0.727 | 0.222 | 0.081 |
+| 25-40 | 0.439 | 1.069 | 0.164 | 0.201 |
+| 40-55 | 0.292 | 0.999 | 0.085 | 0.300 |
+| 55-70 | 0.267 | 1.054 | 0.400 | 0.085 |
+| 85-100 | 0.261 | 1.091 | 0.400 | 0.104 |
+| 100-135 | 0.310 | **1.196** | 0.257 | 0.167 |
+
+Under `buf12`: PF fill 0.281 → 0.367 with the price/MA *recentring* (1.125 at y40-55 → 1.020
+at y100-135), and grocery sell-through 0.122 → **0.659-0.805** with the unfilledF 0.213 →
+**0.012-0.074**. So by the rules' own criteria the baseline has two real long-run problems —
+a fill-rate drifting down and a price leaving its band (food at 1.20× its own 10-year mean) —
+and the buffer reverses both. Water is flat in both arms (price/MA ≈ 1.00), i.e. not every
+market degrades; this is specific to the food chain.
+
+Open definitional question rather than a conclusion: the `unfilled/demand` level for
+ProcessedFood sits at 0.56-0.74 in *both* arms, outside the 0.2-0.3 band the metric rules
+quote as expected. Either my normalisation differs from the rules' definition or these runs
+are genuinely outside it. Do not build on the level until that is settled — the decade
+*trend* is what is used in the table above, and that is robust to the choice.
+
+## Round 3 read-out: actuator × buffer grid (buffer/actuator arms, y52-105 of y160)
+
+All eleven arms resume from the same checkpoint `tick 18000 (y50.0), 605 samples already
+recorded`, seed 1001, so the grid is paired. Window y52-105 (53 y ≈ 3-5 cycles of the
+baseline mode); wave band = 12-month MA minus 120-month MA of the log.
+
+| arm | real food price wave sd | volume/pop | severe starvation sd | processedFood vol | demand/pop | peak period | ACF(13 y) |
+|---|---|---|---|---|---|---|---|
+| `pairctl` (no buffer, k=1) | 23.5 % | 8.5 % | 2.9 | 12.6 % | 4.4 % | 10.7 y | +0.10 |
+| `buf12` (12 mo store, k=1) | 16.0 % | 7.0 % | **0.0** | 15.7 % | 2.1 % | 14.7 y | +0.13 |
+| `act-2x` (h=0/2/12 mo) | 12.0 / 10.1 / 9.9 | 7.1-11.1 | 0.0 | 3.5-11.5 | 0.8-2.4 | 15 / 24.7 y | −0.02 / −0.08 |
+| `act-10x` | 6.3 / 5.6 / 5.6 | 4.4-6.1 | 0.0 | 3.2-12.2 | 0.2 | 24.7 y | −0.18 / −0.23 |
+| `act-30x` | 5.8 / 6.4 / 4.0 | 1.3-2.8 | 0.0 | 1.8-13.8 | 0.1 | 24.7 y | −0.06 / −0.27 |
+
+- **Correction to the earlier y95 reading.** I reported the gain as "chatter, not control"
+  because the *level* (utilisation 0.71-0.78, slot fill 0.999-1.000) and the band-fit R²
+  degrade with k. Both are true, and both are about the *fast* band. On the **wave band —
+  the famine channel — the actuator is a damper**: the real food price wave falls
+  monotonically 23.5 % → 16.0 % (buffer) → 12 % (2x) → 6 % (10x) → 4-6 % (30x), and the
+  period moves 10.7 y → 14.7 y (buffer) → ~25 y (fast actuator, ACF(13 y) turning
+  negative). Level is demand-limited; amplitude is gain-limited. The two claims are not in
+  conflict, they are different bands.
+- **The buffer and the actuator do different jobs**: the buffer alone takes severe
+  starvation from 2.9 to 0.0 and the price wave from 23.5 % to 16 %, the actuator removes
+  the remaining price wave. Neither alone does both.
+- **Affordability channel confirmed on the wave band**: corr(realPrice[t],
+  starvation[t+lag]) = 0.64 / 0.59 / 0.49 / 0.25 / 0.11 at lag 0/6/12/24/36 mo, and
+  corr(volume/pop, realPrice) = **−0.66** in `pairctl` — but **+0.06** in `buf12`. So the
+  buffer severs the price-to-flow transmission, not just its amplitude.
+- **The wave is not in the demand.** Per-capita grocery demand wave sd is 2-4 % and the
+  need is smooth by construction; the wave is in the price (23.5 %) and the storable-food
+  flow (processedFood 12.6 %). The write-downs in `pairlm` therefore are not a reaction to
+  vanishing demand — they are the contraction gate integrating a multi-year *low-margin*
+  phase, and the down-phase lasts 5-7 y of a 10-15 y cycle, which is what gives the gate
+  time to eat the capacity. A ratchet, not a demand collapse.
+- **Perishables are the noisy flows**: produce market volume ±98.6 %, retail service
+  ±70.4 %, healthcare ±18.4 % in the fast band, against grocery demand ±1.7 %. No storage,
+  no smoothing — which is the argument for storage, not against it.
+- **Phase-limit is never binding**: realised scale velocity is 0.57 %/mo mean, 1.2 % p90 at
+  k=30, against `PID_OUT_MAX_UP` 6 %/mo. Gate utilisation did not rise (0.78 → 0.71-0.75),
+  so the actuator buys stability, not growth.
+- **Worker churn absorbed**: primary-sector reallocation rises ×4-6 (0.05 % → 0.22 % of
+  workforce per month) at k=30 with `workerUtilization` 0.999-1.000 at every k. De-coupling
+  labour from scale is not needed at this gain; it would be needed for tick-level
+  bang-bang. Look-ahead halves the churn at high gain (1.31 % → 0.51 %).
+- Look-ahead is mostly neutral (h=0/2/12 similar at a given k); h=12 is marginally best at
+  k=30 (4.0 % vs 5.8 %) and halves churn, but at k=10 it collapses food-processor
+  authority (R² 0.67 → 0.12). Keep h small; do not chase it.
+
+Still pending at y160: the law-fit b/R² over the full window, famine onsets past y105,
+survival, and the maxScale erosion check.
+
 ## What is still missing: the dynamic reduced model
 
 The identification above is static (gains + the mode measured from the run). A small
@@ -467,4 +628,35 @@ comparison is apples-to-apples; targets are (a) a 14 y mode with Q 7–9 and 25�
 share, (b) the sign and ordering of the trigger table, (c) the *measured* response of
 T/Q to the floor buffer across the five arms — a 5-point out-of-sample test the model
 has not seen. A model that matches (a)+(b) but not (c) is a curve fit, not a model.
+
+## Round 4 pre-registration: hardening the flow picture (queued, not started)
+
+State entering Round 4: the famine channel is the affordability layer; the chain amplifies it
+step by step (wave sd household → produce: 5.4 → 16.5 → 25.9 → 50.1 %, with growing lags); the
+buffer absorbs downstream of the purchase stage (29.1 → 6.3 %) and does nothing for the raw
+materials (chemical 47 → 47, crudeOil 30 → 31); the retail service is a non-famine failure the
+buffer does not touch (fill 0.09 → 0.06). Each arm below attacks one of those, and each has a
+prediction that can lose.
+
+| arm | knob | prediction | falsifier |
+|---|---|---|---|
+| `res-x2` | `--resourceMultiplier` (loosen upstream) | upstream wave sd falls ≥30 %, chain prices follow, upstream stores reach target | no change → upstream volatility is market/demand-driven, not capacity-driven |
+| `floor-up` | `--supportFoodAffordability`, `--governmentSupport` | purchase-stage wave 29 % → <15 %, famine months → 0, retail fill 0.06 → >0.3 | no change → affordability failure is supply-side, not money-side |
+| `hr-x3` | code: `PRODUCED_HR_QUANTITY` ×3 via a runtimeConfig override | the `HR Demand … exceeds max daily output` line disappears; k=30 wave amplitude falls further | no change → HR is not the binding constraint |
+| `store01` | `--storageTargetMonths=1.5` (effective 0.5 mo) | the wave **rises**, churn rises — falsifies "no storage = more stable"; pulses need absorption | the wave falls → the inventory phase lag dominates after all |
+| `gate-x` | `--contractionThreshold=60`, `--expansionThreshold=10` | erosion halves (copperMine ≥0.5), famine counts **unchanged** | famines change → the famine is capacity-driven, contradicting the affordability fit |
+| `svc-fill` | `--serviceFillRate`, `--serviceSellThrough` | retail fill recovers if it is seller-rationed | no recovery → retail is demand/affordability-limited, consistent with the pooled 0.66 service fill |
+
+Constraints that bound all of the above: `PID_OUT_MAX_UP/DOWN` = 0.2 %/0.1 % per tick
+(6.2 %/3.0 % per month — the contraction side is deliberately half); `MIN_SCALE_FRACTION` = 0.25
+floors the operating scale; in-place `maxScale` can only be cut (1 % per firing), so capacity
+*growth* requires new construction; the effective storage target is `targetMonths − 1` (one month
+of production is reserved and untouchable); `PRODUCED_HR_QUANTITY = 2000` is the hard HR ceiling
+and is not CLI-reachable; the expansion gate needs `scale ≥ 0.98·maxScale AND signal > 0 AND
+hrProd ≥ 0.9 AND storageStarvation ≤ 0.05` simultaneously, against `EXPANSION_INTEGRAL_THRESHOLD`
+30 at `STORAGE_EXPANSION_RATE` 0.2 versus the contraction's 15 at 0.1 — equal 150-tick integrals,
+so the asymmetry is in *access*, not timing.
+
+Reads due on the current grid at y160: law-fit b/R² per arm over the full window, famine onsets
+past y105, survival, and the maxScale erosion table.
 
