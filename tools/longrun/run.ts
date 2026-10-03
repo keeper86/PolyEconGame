@@ -21,6 +21,9 @@ import {
     setProductionSignalEmaAlpha,
     setStorageErrorZoomMonths,
     setStorageTrendHorizonMonths,
+    setPidKp,
+    setPidKi,
+    setPidOutMaxUp,
 } from '../../src/simulation/planet/automaticProductionScale/runtimeConfig';
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
 import { setBankruptcyDebtWriteOffFraction } from '../../src/simulation/financial/bankruptcy';
@@ -512,6 +515,21 @@ async function main(): Promise<void> {
     if (pidDownArg !== undefined) {
         setPidOutMaxDown(Number(pidDownArg));
         console.log(`PID ramp-down limit overridden to ${pidDownArg}`);
+    }
+    const pidUpArg = arg('pidUp');
+    if (pidUpArg !== undefined) {
+        setPidOutMaxUp(Number(pidUpArg));
+        console.log(`PID ramp-up limit overridden to ${pidUpArg}`);
+    }
+    const pidKpArg = arg('pidKp');
+    if (pidKpArg !== undefined) {
+        setPidKp(Number(pidKpArg));
+        console.log(`PID P gain overridden to ${pidKpArg}`);
+    }
+    const pidKiArg = arg('pidKi');
+    if (pidKiArg !== undefined) {
+        setPidKi(Number(pidKiArg));
+        console.log(`PID I gain overridden to ${pidKiArg}`);
     }
     const pidKdArg = arg('pidKd');
     if (pidKdArg !== undefined) {
