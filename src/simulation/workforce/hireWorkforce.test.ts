@@ -1,8 +1,3 @@
-import { setHireRateLimitPerMonth } from './automaticWorkerAllocation';
-import { setFireRateLimitPerMonth } from './hireWorkforce';
-setHireRateLimitPerMonth(Number.POSITIVE_INFINITY);
-setFireRateLimitPerMonth(Number.POSITIVE_INFINITY);
-
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { WAGE_DURATION_DECAY, MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS, SEARCH_HORIZON_TICKS } from '../constants';
@@ -22,8 +17,8 @@ import {
     sumPopOcc,
     totalPopulation,
 } from '../utils/testHelper';
-import { assertBackfillProgress, hireWorkforce } from './hireWorkforce';
-import { automaticWorkerAllocation } from './automaticWorkerAllocation';
+import { assertBackfillProgress, hireWorkforce, setFireRateLimitPerMonth } from './hireWorkforce';
+import { automaticWorkerAllocation, setHireRateLimitPerMonth } from './automaticWorkerAllocation';
 import {
     acceptProbability,
     betterOfferMeanWage,
@@ -34,6 +29,11 @@ import {
     reservationWage,
 } from './laborMarket';
 import { workforceDemographicTick } from './workforceDemographicTick';
+
+beforeEach(() => {
+    setHireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+    setFireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+});
 
 function totalActiveForEdu(workforce: ReturnType<typeof makeWorkforceDemography>, edu: EducationLevelType): number {
     let total = 0;

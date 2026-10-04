@@ -7,7 +7,7 @@ import {
     BUFFER_TRADER_TARGET_MONTHS,
     TICKS_PER_MONTH,
 } from '../constants';
-import { grantLoan, repayLoansOldestFirst, totalOutstandingLoans, type Loan } from '../financial/loanTypes';
+import { grantLoan, repayLoansOldestFirst, totalOutstandingLoans } from '../financial/loanTypes';
 import { getStorageCapacityState, getWholeStorage, type ProductionFacility } from '../planet/facility';
 import type { AgentPlanetAssets, GameState } from '../planet/planet';
 import { TRADABLE_RESOURCES } from '../planet/resourceCatalog';
@@ -70,13 +70,7 @@ export function bufferTraderTick(gameState: GameState): void {
                     }
                     const spend = qty * price;
                     if (spend > assets.deposits) {
-                        grantLoan(
-                            assets,
-                            planet.bank,
-                            spend - assets.deposits,
-                            'forexWorkingCapital',
-                            gameState.tick,
-                        );
+                        grantLoan(assets, planet.bank, spend - assets.deposits, 'forexWorkingCapital', gameState.tick);
                     }
                     if (!assets.market.buy[name]) {
                         assets.market.buy[name] = { resource };
@@ -104,56 +98,7 @@ export function bufferTraderTick(gameState: GameState): void {
     }
 }
 
-function enforceBufferLoanMaturities(gameState: GameState): void {
-    for (const agent of gameState.bufferTraders.values()) {
-        for (const [planetId, assets] of Object.entries(agent.assets)) {
-            const planet = gameState.planets.get(planetId);
-            if (!planet) {
-                continue;
-            }
-
-            const matured: Loan[] = [];
-            const remaining: Loan[] = [];
-            for (const loan of assets.activeLoans) {
-                if (loan.maturityTick > 0 && gameState.tick >= loan.maturityTick) {
-                    matured.push(loan);
-                } else {
-                    remaining.push(loan);
-                }
-            }
-            if (matured.length === 0) {
-                continue;
-            }
-
-            const totalDue = matured.reduce((sum, loan) => sum + loan.remainingPrincipal, 0);
-            const canRepay = Math.min(totalDue, assets.deposits);
-            const shortfall = totalDue - canRepay;
-
-            if (canRepay > 0) {
-                assets.deposits -= canRepay;
-                planet.bank.loans -= canRepay;
-                planet.bank.deposits -= canRepay;
-            }
-
-            if (shortfall > 0) {
-                grantLoan(assets, planet.bank, shortfall, 'forexWorkingCapital', gameState.tick);
-                assets.deposits -= shortfall;
-                planet.bank.loans -= shortfall;
-                planet.bank.deposits -= shortfall;
-                const rollover = assets.activeLoans.pop();
-                if (rollover) {
-                    remaining.push(rollover);
-                }
-            }
-
-            assets.activeLoans = remaining;
-        }
-    }
-}
-
 export function bufferTraderRepaymentTick(gameState: GameState): void {
-    enforceBufferLoanMaturities(gameState);
-
     const retain = BUFFER_TRADER_SEED_DEPOSIT * BUFFER_TRADER_RETAIN_DEPOSIT_FRACTION;
     for (const agent of gameState.bufferTraders.values()) {
         for (const [planetId, assets] of Object.entries(agent.assets)) {

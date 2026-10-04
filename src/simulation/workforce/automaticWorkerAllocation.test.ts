@@ -1,13 +1,18 @@
-import { setHireRateLimitPerMonth } from './automaticWorkerAllocation';
+import { beforeEach, describe, it, expect } from 'vitest';
+
+import {
+    automaticWageAdjustment,
+    automaticWorkerAllocation,
+    setHireRateLimitPerMonth,
+} from './automaticWorkerAllocation';
 import { setFireRateLimitPerMonth } from './hireWorkforce';
-setHireRateLimitPerMonth(Number.POSITIVE_INFINITY);
-setFireRateLimitPerMonth(Number.POSITIVE_INFINITY);
-
-import { describe, it, expect } from 'vitest';
-
-import { automaticWageAdjustment, automaticWorkerAllocation } from './automaticWorkerAllocation';
 import { makeAgent, makePlanetWithPopulation, makeProductionFacility, agentMap } from '../utils/testHelper';
 import { MAX_WAGE, MIN_WAGE, NOTICE_PERIOD_MONTHS } from '../constants';
+
+beforeEach(() => {
+    setHireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+    setFireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+});
 
 describe('updateAllocatedWorkers', () => {
     it('sets allocatedWorkers to buffered requirement x scale when no prior tick results', () => {

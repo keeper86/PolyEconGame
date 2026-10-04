@@ -173,13 +173,16 @@ describe('bufferTraderTick – loan servicing', () => {
         expect(assets.deposits).toBeLessThan(BUFFER_TRADER_SEED_DEPOSIT);
     });
 
-    it('rolls over a matured loan when deposits cannot cover it', () => {
+    it('leaves a matured loan untouched, because maturesLoans rolls it over before this tick', () => {
         const { state, assets, planet } = makeTraderState({ deposits: 0, tick: 100_000 });
-        grantLoan(assets, planet.bank, BUFFER_TRADER_SEED_DEPOSIT, 'forexWorkingCapital', 0);
+        const matured = grantLoan(assets, planet.bank, BUFFER_TRADER_SEED_DEPOSIT, 'forexWorkingCapital', 0);
+        matured.maturityTick = 1;
 
         bufferTraderTick(state);
 
-        expect(assets.activeLoans.length).toBeGreaterThan(0);
+        expect(assets.activeLoans).toContain(matured);
+        expect(matured.maturityTick).toBeLessThan(state.tick);
+        expect(matured.remainingPrincipal).toBe(BUFFER_TRADER_SEED_DEPOSIT * BUFFER_TRADER_RETAIN_DEPOSIT_FRACTION);
     });
 
     it('ignores an empty trader map', () => {

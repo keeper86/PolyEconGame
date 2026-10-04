@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
     AUTOMATED_COST_FLOOR_BUFFER,
     BID_OFFER_MAX_COST_MULTIPLIER,

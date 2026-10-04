@@ -36,7 +36,6 @@ export function preProductionFinancialTick(
     const bank = planet.bank;
     const demography = planet.population.demography;
 
-    const weightedWageSum: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const wageEntries: Record<EducationLevelType, Array<{ wage: number; workers: number }>> = {
         none: [],
         primary: [],
@@ -91,7 +90,6 @@ export function preProductionFinancialTick(
                 }
                 totalWorkersForEdu[edu] += totalWorkers;
                 wageBill += totalWorkers * assets.wagePerEdu[edu];
-                weightedWageSum[edu] += assets.wagePerEdu[edu] * totalWorkers;
                 totalPlanetWorkersForEdu[edu] += totalWorkers;
                 wageEntries[edu].push({ wage: assets.wagePerEdu[edu] ?? 0, workers: totalWorkers });
             }
