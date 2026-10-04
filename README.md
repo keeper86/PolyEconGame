@@ -36,6 +36,17 @@ This will read env variables and interpolate them into the template to create a 
 
 The settings can be adapted later in the Keycloak admin UI.
 
+### User sync on startup
+
+On server startup the app reconciles the realm's Keycloak users into the game database (`user_data`), so a valid Keycloak session keeps working after the game database is wiped. It authenticates as the `polyecongame-app` client's **service account**, which needs only the `realm-management → view-users` role - no admin credentials are stored in the app.
+
+Keycloak only imports a realm that does not already exist. On an existing deployment (persistent `keycloak_db_data` volume) enable the service account once:
+
+1. Admin UI → Clients → `polyecongame-app` → Settings → Capability config → turn on **Service accounts roles** → Save. Keycloak then creates the `service-account-polyecongame-app` user automatically - do not add a user manually; it is a special, non-login user that is not shown in the Users list.
+2. Open the client's **Service account roles** tab → **Assign role** → change the filter to **Filter by clients** → pick `realm-management` → check **`view-users`** → Assign.
+
+Fresh deployments and local development pick this up from the imported realm automatically.
+
 ### Start
 
 Then start the containers with

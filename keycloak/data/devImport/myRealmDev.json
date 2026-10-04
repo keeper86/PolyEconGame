@@ -24,7 +24,7 @@
             "standardFlowEnabled": true,
             "implicitFlowEnabled": false,
             "directAccessGrantsEnabled": true,
-            "serviceAccountsEnabled": false,
+            "serviceAccountsEnabled": true,
             "publicClient": false,
             "frontchannelLogout": true,
             "protocol": "openid-connect",
@@ -72,6 +72,14 @@
             "realmRoles": ["user"],
             "clientRoles": {
                 "account": ["view-profile"]
+            }
+        },
+        {
+            "username": "service-account-polyecongame-app",
+            "enabled": true,
+            "serviceAccountClientId": "polyecongame-app",
+            "clientRoles": {
+                "realm-management": ["view-users"]
             }
         }
     ]
