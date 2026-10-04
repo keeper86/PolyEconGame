@@ -12,7 +12,7 @@ import { effectiveSurplus } from '../../src/simulation/market/intergenerationalT
 import { totalOutstandingLoans } from '../../src/simulation/financial/loanTypes';
 import { computeNormalizedBuffer } from '../../src/simulation/market/serviceBufferNormalizer';
 import { computeCostOfLiving } from '../../src/simulation/market/serviceDefinitions';
-import { computeFacilityConditionEfficiency, getFormStorageStarvation, getTransportStarvation, queryStorageFacility, storageFormKeys } from '../../src/simulation/planet/facility';
+import { computeFacilityConditionEfficiency, getFormStorageStarvation, getTransportStarvation, getWholeStorage, queryStorageFacility, storageFormKeys } from '../../src/simulation/planet/facility';
 import { facilityMaintenanceConsumptionPerTick } from '../../src/simulation/planet/facilityMaintenance';
 import { coalDepositResourceType, ironOreDepositResourceType, oilReservoirResourceType, sandDepositResourceType } from '../../src/simulation/planet/landBoundResources';
 import { bankEquity, type GameState, type Planet } from '../../src/simulation/planet/planet';
@@ -42,7 +42,12 @@ import { educationLevelKeys } from '../../src/simulation/population/education';
 import { computeEnvironmentalMortality, mortalityComponentsPerTick } from '../../src/simulation/population/mortality';
 import { OCCUPATIONS } from '../../src/simulation/population/population';
 import { computeLaborMarket } from '../../src/simulation/workforce/laborMarket';
-import { sumSlotFillByEdu, sumTotalUsedByEdu, totalActiveForEdu } from '../../src/simulation/workforce/workforceAggregates';
+import {
+    sumSlotFillByEdu,
+    sumTotalUsedByEdu,
+    totalActiveForEdu,
+    totalVoluntaryDepartingForEdu,
+} from '../../src/simulation/workforce/workforceAggregates';
 import { facilityNameToKey } from './solverDiagnostic';
 import { computeCompanyNetWorth, computeWealthTax } from '../../src/simulation/agents/governmentAgent';
 import { computeLoanConditions } from '../../src/simulation/financial/loanConditions';
@@ -213,6 +218,14 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let employed = 0;
     let unableToWork = 0;
     let inEducation = 0;
+    let wageShortagePressure = 0;
+    let wageChurnPressure = 0;
+    let wageQuitRate = 0;
+    let wageCeiling = 0;
+    let wageDebugWeight = 0;
+    let voluntaryDepartingTotal = 0;
+    let companyWageMin = Number.POSITIVE_INFINITY;
+    let companyWageMax = 0;
     const unoccByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     let groceryStarvationWeighted = 0;
     let healthcareStarvationWeighted = 0;
@@ -969,7 +982,21 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             overqualByEdu[edu] += Object.values(oqBreakdown).reduce((sum, count) => sum + (count ?? 0), 0);
             if (wf) {
                 activeByEdu[edu] += totalActiveForEdu(wf, edu);
+                voluntaryDepartingTotal += totalVoluntaryDepartingForEdu(wf, edu);
             }
+            const debug = assets._wageStepDebug?.[edu];
+            if (debug) {
+                const weight = wf ? totalActiveForEdu(wf, edu) : 1;
+                wageDebugWeight += weight;
+                wageShortagePressure += debug.shortagePressure * weight;
+                wageChurnPressure += debug.churnPressure * weight;
+                wageQuitRate += debug.quitRate * weight;
+                wageCeiling += debug.ceiling * weight;
+            }
+        }
+        if (typeof assets.wagePerEdu?.primary === 'number') {
+            companyWageMin = Math.min(companyWageMin, assets.wagePerEdu.primary);
+            companyWageMax = Math.max(companyWageMax, assets.wagePerEdu.primary);
         }
     }
 
@@ -1014,6 +1041,34 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         marketFields[`market_${key}_fillRate`] = demand > 0 ? volume / demand : 0;
         marketFields[`market_${key}_buffer`] = supply > 0 ? volume / supply : 0;
     }
+
+    const bufferTraderFields: Record<string, number> = {};
+    for (const resource of TRADABLE_RESOURCES) {
+        bufferTraderFields[`bufferTraderHeld_${resource.name.replace(/[^A-Za-z0-9]/g, '')}`] = 0;
+    }
+    let bufferTraderDeposits = 0;
+    let bufferTraderLoanTotal = 0;
+    let bufferTraderHeldValue = 0;
+    for (const agent of gameState.bufferTraders?.values() ?? []) {
+        const assets = agent.assets[planet.id];
+        if (!assets) {
+            continue;
+        }
+        bufferTraderDeposits += assets.deposits;
+        for (const loan of assets.activeLoans) {
+            bufferTraderLoanTotal += loan.remainingPrincipal;
+        }
+        for (const [resourceName, entry] of getWholeStorage(assets.storage)) {
+            const price = planet.marketPrices[resourceName] ?? 0;
+            const key = resourceName.replace(/[^A-Za-z0-9]/g, '');
+            bufferTraderHeldValue += entry.quantity * price;
+            bufferTraderFields[`bufferTraderHeld_${key}`] = (bufferTraderFields[`bufferTraderHeld_${key}`] ?? 0) + entry.quantity;
+        }
+    }
+    bufferTraderFields.bufferTraderCount = gameState.bufferTraders.size;
+    bufferTraderFields.bufferTraderDeposits = bufferTraderDeposits;
+    bufferTraderFields.bufferTraderLoanTotal = bufferTraderLoanTotal;
+    bufferTraderFields.bufferTraderHeldValue = bufferTraderHeldValue;
 
     const gdpAnnual =
         Object.values(planet.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) * TICKS_PER_YEAR;
@@ -1275,6 +1330,13 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         wagePrimary: wageByEduCount.primary > 0 ? wageByEdu.primary / wageByEduCount.primary : 0,
         wageSecondary: wageByEduCount.secondary > 0 ? wageByEdu.secondary / wageByEduCount.secondary : 0,
         wageTertiary: wageByEduCount.tertiary > 0 ? wageByEdu.tertiary / wageByEduCount.tertiary : 0,
+        wageShortagePressure: wageDebugWeight > 0 ? wageShortagePressure / wageDebugWeight : 0,
+        wageChurnPressure: wageDebugWeight > 0 ? wageChurnPressure / wageDebugWeight : 0,
+        wageQuitRate: wageDebugWeight > 0 ? wageQuitRate / wageDebugWeight : 0,
+        wageCeiling: wageDebugWeight > 0 ? wageCeiling / wageDebugWeight : 0,
+        voluntaryDeparting: voluntaryDepartingTotal,
+        companyWageMin: Number.isFinite(companyWageMin) ? companyWageMin : 0,
+        companyWageMax,
         capacityNone: capacityByEdu.none,
         capacityPrimary: capacityByEdu.primary,
         capacitySecondary: capacityByEdu.secondary,
@@ -1524,6 +1586,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         maintSteelBuffer: maintSteelBufferAvg,
         maintElectronicsBuffer: maintElectronicsBufferAvg,
         maintPlasticBuffer: maintPlasticBufferAvg,
+        ...bufferTraderFields,
         fillRateSteel,
         fillRateElectronics,
         fillRatePlastic,
@@ -1650,6 +1713,13 @@ export const METRIC_KEYS: string[] = [
     'wagePrimary',
     'wageSecondary',
     'wageTertiary',
+    'wageShortagePressure',
+    'wageChurnPressure',
+    'wageQuitRate',
+    'wageCeiling',
+    'companyWageMin',
+    'companyWageMax',
+    'voluntaryDeparting',
     'capacityNone',
     'capacityPrimary',
     'capacitySecondary',
@@ -2020,5 +2090,10 @@ export const METRIC_KEYS: string[] = [
             `market_${key}_buffer`,
         ];
     }),
+    'bufferTraderCount',
+    'bufferTraderDeposits',
+    'bufferTraderLoanTotal',
+    'bufferTraderHeldValue',
+    ...TRADABLE_RESOURCES.map((resource) => `bufferTraderHeld_${resource.name.replace(/[^A-Za-z0-9]/g, '')}`),
 ];
 

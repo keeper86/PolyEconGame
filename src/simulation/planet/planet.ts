@@ -377,6 +377,11 @@ export type AgentPlanetAssets = {
     lastMonthAcc: MonthAccumulator;
 
     _smoothedWageCeiling?: number;
+    _monthlyVoluntaryQuits?: Record<EducationLevelType, number>;
+    _wageStepDebug?: Record<
+        EducationLevelType,
+        { shortagePressure: number; churnPressure: number; quitRate: number; ceiling: number }
+    >;
 
     licenses: {
         commercial?: PlanetLicense;
@@ -430,7 +435,7 @@ export type Agent = {
     foundedTick: number;
     starterLoanTaken: boolean;
     associatedPlanetId: string;
-    agentRole?: 'shipbuilder' | 'arbitrage_trader';
+    agentRole?: 'shipbuilder' | 'arbitrage_trader' | 'buffer_trader';
     ships: Ship[];
     assets: {
         [planetId in string]: AgentPlanetAssets;
@@ -447,6 +452,7 @@ export interface GameState {
     shipbuilderAgents: Map<string, Agent>;
 
     arbitrageTraders: Map<string, Agent>;
+    bufferTraders: Map<string, Agent>;
     tickerEvents: TickerEvent[];
     bankruptcies: BankruptcyRecord[];
     nextEventId: number;

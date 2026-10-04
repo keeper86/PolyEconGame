@@ -1,13 +1,13 @@
 import {
     MAX_WAGE,
     MIN_WAGE,
-    SPRING_K,
+    QUIT_TARGET_RATE,
     WAGE_ADJUSTMENT_RATE,
-    WAGE_BARGAINING_GAIN,
     WAGE_CEILING_SMOOTHING,
-    WAGE_FEEDBACK_GAIN,
-    WAGE_SHARE,
+    WAGE_CHURN_GAIN,
+    HIRE_RATE_LIMIT_PER_MONTH,
 } from '../constants';
+import { perTickLimit } from './hireWorkforce';
 import type { Agent, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
@@ -35,17 +35,35 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
         const slotFill = sumSlotFillByEdu(assets);
 
         const newTarget: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+        const previousTarget = assets.allocatedWorkers;
         for (const edu of educationLevelKeys) {
             const ownUnfilled = Math.max(0, totalSlotCapacity[edu] - slotFill[edu]);
-
-            let target = totalUsed[edu] + ownUnfilled;
-            target = Math.ceil(target * (1 + ACCEPTABLE_IDLE_FRACTION));
-            newTarget[edu] = target;
+            const headcount = totalUsed[edu] + slotFill[edu];
+            const rawTarget = Math.ceil((totalUsed[edu] + ownUnfilled) * (1 + ACCEPTABLE_IDLE_FRACTION));
+            const previous = previousTarget?.[edu] ?? rawTarget;
+            if (headcount <= 0) {
+                newTarget[edu] = rawTarget;
+                continue;
+            }
+            const maxStep = perTickLimit(headcount, hireRateLimitPerMonth);
+            newTarget[edu] = Math.round(Math.max(previous - maxStep, Math.min(previous + maxStep, rawTarget)));
         }
 
         assets.allocatedWorkers = newTarget;
     }
 }
+
+let hireRateLimitPerMonth = HIRE_RATE_LIMIT_PER_MONTH;
+
+export const setHireRateLimitPerMonth = (value: number): void => {
+    hireRateLimitPerMonth = value;
+};
+
+let pinWagesToMinimum = false;
+
+export const setPinWagesToMinimum = (value: boolean): void => {
+    pinWagesToMinimum = value;
+};
 
 export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
@@ -70,31 +88,29 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
         assets._smoothedWageCeiling = WAGE_CEILING_SMOOTHING * rawCeiling + (1 - WAGE_CEILING_SMOOTHING) * prevCeiling;
         const ceiling = assets._smoothedWageCeiling;
 
-        let totalWageBill = 0;
-        let totalWorkers = 0;
-        for (const edu of educationLevelKeys) {
-            const active = totalActiveForEdu(workforce, edu);
-            totalWageBill += (assets.wagePerEdu[edu] ?? 0) * active;
-            totalWorkers += active;
-        }
-        const avgWage = totalWorkers > 0 ? totalWageBill / totalWorkers : 0;
-        const targetWage = ceiling > 0 ? WAGE_SHARE * ceiling : MIN_WAGE;
-        const bargainingReference = ceiling > 0 ? ceiling : MIN_WAGE;
-        const bargainingPull =
-            totalWorkers > 0 ? (WAGE_BARGAINING_GAIN * (targetWage - avgWage)) / bargainingReference : 0;
-        const springPenalty = ceiling > 0 ? SPRING_K * Math.max(0, (avgWage - ceiling) / ceiling) : 0;
+        const monthlyQuits = assets._monthlyVoluntaryQuits ?? { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+        assets._monthlyVoluntaryQuits = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
 
+        const wageStepDebug: Record<
+            string,
+            { shortagePressure: number; churnPressure: number; quitRate: number; ceiling: number }
+        > = {};
         for (const edu of educationLevelKeys) {
-            const current = assets.wagePerEdu[edu] ?? MIN_WAGE;
+            const current = pinWagesToMinimum ? MIN_WAGE : (assets.wagePerEdu[edu] ?? MIN_WAGE);
 
             const capacity = assets.totalSlotCapacity?.[edu] ?? 0;
             const shortage = Math.max(0, capacity - slotsFilled[edu]) / Math.max(1, capacity);
             const shortagePressure = shortage * shortage;
 
-            const pressure = shortagePressure + bargainingPull - springPenalty;
+            const active = totalActiveForEdu(workforce, edu);
+            const quitRate = active > 0 ? monthlyQuits[edu] / active : 0;
+            const churnPressure = WAGE_CHURN_GAIN * (quitRate - QUIT_TARGET_RATE);
+
+            const pressure = shortagePressure + churnPressure;
+            wageStepDebug[edu] = { shortagePressure, churnPressure, quitRate, ceiling };
 
             const maxStep = WAGE_ADJUSTMENT_RATE * current;
-            const step = Math.max(-maxStep, Math.min(maxStep, WAGE_FEEDBACK_GAIN * current * pressure));
+            const step = pinWagesToMinimum ? 0 : Math.max(-maxStep, Math.min(maxStep, current * pressure));
             assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, current + step));
         }
 
@@ -105,5 +121,7 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
                 assets.wagePerEdu[nextEdu] = assets.wagePerEdu[currentEdu];
             }
         }
+
+        assets._wageStepDebug = wageStepDebug;
     }
 }

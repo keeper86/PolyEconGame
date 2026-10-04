@@ -202,6 +202,7 @@ export type StorageFacility = FacilityBase &
     ResourceAmountLedger & {
         type: 'storage';
         form: StorageForm;
+        allocationScale: number;
         capacity: {
             volume: number;
             mass: number;
@@ -214,10 +215,6 @@ export type StorageFacility = FacilityBase &
         lastTickResults: LastManagementTickResults;
     };
 
-// Every tick a shell drains `usageOfShell.mass * SR_HOLDING_COST_PER_TON` from its storage buffer, so the
-// service the shell produces for itself must cover a completely full container with headroom: falling short
-// starves the shell and spoils the goods via storagePreservationFactor. The headroom also absorbs the
-// shell's own production inefficiency.
 export const SHELL_STORAGE_SERVICE_HEADROOM = 40;
 export const SHELL_STORAGE_SERVICE_QUANTITY =
     STORAGE_SHELL_CAPACITY.mass * SR_HOLDING_COST_PER_TON * SHELL_STORAGE_SERVICE_HEADROOM;
@@ -243,6 +240,7 @@ export const makeStorageShell = (planetId: string, id: string, form: StorageForm
         name: STORAGE_SHELL_FORM_NAMES[form],
         maxScale: scale,
         scale,
+        allocationScale: 0,
         capacity: { ...cap },
         currentInStorage: {},
         escrow: {},
@@ -546,8 +544,10 @@ export const getStorageCapacityState = (storage: Storage, resource: Resource): S
         const shell = storage.shells[form];
         const ownQuantity = shell.currentInStorage[resource.name]?.quantity ?? 0;
         const share = computeCompartmentShare(shell, resource);
-        const shellVolume = shell.capacity.volume * shell.maxScale;
-        const shellMass = shell.capacity.mass * shell.maxScale;
+        const capacityScale =
+            shell.allocationScale > 0 ? Math.min(shell.maxScale, shell.allocationScale) : shell.maxScale;
+        const shellVolume = shell.capacity.volume * capacityScale;
+        const shellMass = shell.capacity.mass * capacityScale;
         capacity.volume = shellVolume * share;
         capacity.mass = shellMass * share;
         used.volume = Math.max(0, ownQuantity * resource.volumePerQuantity);

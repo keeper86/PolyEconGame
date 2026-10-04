@@ -40,6 +40,8 @@ const TARGETS = [
     'Iron Mine',
     'Copper Smelter',
     'Plastics Factory',
+    'Limestone Quarry',
+    'Sand Mine',
 ] as const;
 
 const COLUMNS = [

@@ -1,8 +1,9 @@
 import {
     ACCEPT_BASE,
-    BASE_QUIT_RATE,
     MIN_EMPLOYABLE_AGE,
-    QUIT_SENSITIVITY,
+    QUIT_FAIRNESS_SENSITIVITY,
+    QUIT_OUTSIDE_SENSITIVITY,
+    QUIT_OUTSIDE_WAGE_BIAS,
     SEARCH_HORIZON_TICKS,
     VACANCY_WAGE_SMOOTHING,
     WAGE_ACCEPT_FRACTION,
@@ -61,21 +62,30 @@ export const reservationWage = (reachableTightness: number, reachableVacancyWage
     return WAGE_ACCEPT_FRACTION * reachableVacancyWage * durationDiscount;
 };
 
-export const quitPropensity = (wage: number, tightness: number, vacancyWage: number): number => {
-    const outside = outsideIncome(tightness, vacancyWage);
-    const incomeGain = wage > 0 ? Math.max(0, outside - wage) / wage : 0;
-    const raw = BASE_QUIT_RATE + QUIT_SENSITIVITY * incomeGain;
-    return Math.min(raw, QUIT_RATE_CAP);
-};
-
 const QUIT_RATE_CAP = 0.002;
+
+const clampUnit = (value: number): number => Math.max(-1, Math.min(1, value));
+
+export const quitPropensity = (wage: number, tightness: number, vacancyWage: number, fairWage: number): number => {
+    if (wage <= 0) {
+        return QUIT_RATE_CAP;
+    }
+    const outside = QUIT_OUTSIDE_WAGE_BIAS * outsideIncome(tightness, vacancyWage);
+    const exitGap = clampUnit((outside - wage) / wage);
+    const fairnessGap = clampUnit((fairWage - wage) / fairWage);
+
+    const raw =
+        QUIT_OUTSIDE_SENSITIVITY * exitGap + //
+        QUIT_FAIRNESS_SENSITIVITY * fairnessGap;
+    return Math.max(0, Math.min(raw, QUIT_RATE_CAP));
+};
 
 export const betterOfferStats = (
     steps: VacancyWageStep[],
     currentWage: number,
-): { meanWage: number; share: number } => {
+): { meanWage: number; medianWage: number; share: number } => {
     if (steps.length === 0) {
-        return { meanWage: 0, share: 0 };
+        return { meanWage: 0, medianWage: 0, share: 0 };
     }
     let lo = 0;
     let hi = steps.length - 1;
@@ -90,16 +100,23 @@ export const betterOfferStats = (
         }
     }
     const total = steps[steps.length - 1];
-    if (ans === -1) {
-        return { meanWage: total.cumWage / total.cumVacancy, share: 1 };
-    }
-    const below = steps[ans];
-    const betterVacancy = total.cumVacancy - below.cumVacancy;
+    const belowCumVacancy = ans === -1 ? 0 : steps[ans].cumVacancy;
+    const belowCumWage = ans === -1 ? 0 : steps[ans].cumWage;
+    const betterVacancy = total.cumVacancy - belowCumVacancy;
     if (betterVacancy <= 0) {
-        return { meanWage: 0, share: 0 };
+        return { meanWage: 0, medianWage: 0, share: 0 };
+    }
+    const medianCumVacancy = belowCumVacancy + betterVacancy / 2;
+    let medianWage = total.wage;
+    for (let i = ans + 1; i < steps.length; i++) {
+        if (steps[i].cumVacancy >= medianCumVacancy) {
+            medianWage = steps[i].wage;
+            break;
+        }
     }
     return {
-        meanWage: (total.cumWage - below.cumWage) / betterVacancy,
+        meanWage: (total.cumWage - belowCumWage) / betterVacancy,
+        medianWage,
         share: betterVacancy / total.cumVacancy,
     };
 };

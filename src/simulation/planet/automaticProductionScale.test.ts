@@ -146,6 +146,7 @@ function makeGameState(agents: Map<string, Agent>): GameState {
         forexMarketMakers: new Map(),
         shipbuilderAgents: new Map(),
         arbitrageTraders: new Map(),
+        bufferTraders: new Map(),
         tickerEvents: [],
         bankruptcies: [],
         nextEventId: 1,
@@ -333,7 +334,8 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.scale).toBe(maxScale);
+        expect(facility.scale).toBeGreaterThan(maxScale - 0.0001);
+        expect(facility.scale).toBeLessThanOrEqual(maxScale);
     });
 
     it('skips a facility under construction (type === "new")', () => {
@@ -1085,7 +1087,7 @@ describe('updateAgentProductionScale', () => {
         }
 
         expect(facility.scale).toBeGreaterThan(0);
-        expect(facility.scale).toBeLessThanOrEqual(N * PID_OUT_MAX_UP * facility.maxScale + 1e-9);
+        expect(facility.scale).toBeLessThanOrEqual(1 + N * PID_OUT_MAX_UP * facility.maxScale + 1e-9);
     });
 
     it('does NOT accumulate expansion integral while HR productivity is dragged', () => {
@@ -1359,13 +1361,13 @@ describe('updateAgentProductionScale', () => {
         }
     });
 
-    it('does not re-anchor a below-floor scale upward when the signal is neutral', () => {
+    it('anchors a below-floor scale at the never-zero floor when the signal is neutral', () => {
         const planet = makePlanetWithAvg(makeMarketResult());
         const { agents, facility } = makeSetup(planet, { scale: 0.0, maxScale: 1 });
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.scale).toBeCloseTo(0, 10);
+        expect(facility.scale).toBeCloseTo(1, 10);
     });
 
     it('initiates HR department expansion when workforce demand exceeds HR scale', () => {
@@ -2481,36 +2483,37 @@ describe('updateAgentProductionScale shell compartments for non-automated agents
 });
 
 describe('applySoftFloorScale', () => {
-    const minScale = 0.25;
-    const maxScale = 1;
+    const minScale = 2.5;
+    const maxScale = 10;
 
     it('relaxes only the below-floor portion when crossing the floor', () => {
-        const result = applySoftFloorScale(0.3, -0.1, minScale, maxScale);
-        expect(result).toBeCloseTo(0.25 - (0.25 - 0.2) * SOFT_FLOOR_RELAXATION, 10);
+        const result = applySoftFloorScale(3, -1, minScale, maxScale);
+        expect(result).toBeCloseTo(2.5 - (2.5 - 2) * SOFT_FLOOR_RELAXATION, 10);
     });
 
-    it('attenuates only the delta when already below the floor', () => {
-        const result = applySoftFloorScale(0.05, -0.01, minScale, maxScale);
-        expect(result).toBeCloseTo(0.05 - 0.01 * SOFT_FLOOR_RELAXATION, 10);
-        expect(result).toBeLessThan(0.05);
+    it('never lets the scale reach zero', () => {
+        expect(applySoftFloorScale(0.5, -1, minScale, maxScale)).toBeCloseTo(1, 10);
+        expect(applySoftFloorScale(1, -10, minScale, maxScale)).toBeCloseTo(1, 10);
     });
 
-    it('leaves an already-below-floor scale unchanged on a zero delta', () => {
-        const result = applySoftFloorScale(0.05, 0, minScale, maxScale);
-        expect(result).toBeCloseTo(0.05, 10);
+    it('recovers upward from the floor, so an idled facility is not stuck at zero', () => {
+        expect(applySoftFloorScale(1, 1, minScale, maxScale)).toBeCloseTo(2, 10);
+    });
+
+    it('lifts a below-floor scale to the never-zero floor on a zero delta', () => {
+        expect(applySoftFloorScale(0.05, 0, minScale, maxScale)).toBeCloseTo(1, 10);
     });
 
     it('does not attenuate upward movement from below the floor', () => {
-        const result = applySoftFloorScale(0.05, 0.05, minScale, maxScale);
-        expect(result).toBeCloseTo(0.1, 10);
+        const result = applySoftFloorScale(1, 0.05, minScale, maxScale);
+        expect(result).toBeCloseTo(1.05, 10);
     });
 
     it('leaves a scale above the floor untouched', () => {
-        expect(applySoftFloorScale(0.5, 0.1, minScale, maxScale)).toBeCloseTo(0.6, 10);
+        expect(applySoftFloorScale(5, 1, minScale, maxScale)).toBeCloseTo(6, 10);
     });
 
-    it('clamps to maxScale and to zero', () => {
-        expect(applySoftFloorScale(0.9, 0.5, minScale, maxScale)).toBeCloseTo(maxScale, 10);
-        expect(applySoftFloorScale(0.05, -1, minScale, maxScale)).toBeCloseTo(0, 10);
+    it('clamps to maxScale', () => {
+        expect(applySoftFloorScale(9, 5, minScale, maxScale)).toBeCloseTo(maxScale, 10);
     });
 });

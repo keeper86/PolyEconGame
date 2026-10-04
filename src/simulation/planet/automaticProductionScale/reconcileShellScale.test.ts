@@ -9,6 +9,8 @@ import {
 } from '../../utils/testHelper';
 import { reconcileShellScale } from '../automaticProductionScale';
 import type { Storage } from '../facility';
+import { coalResourceType } from '../resources';
+import { constructionServiceResourceType } from '../services';
 import type { AgentPlanetAssets } from '../planet';
 
 function fixture(): {
@@ -80,5 +82,50 @@ describe('reconcileShellScale', () => {
         expect(shell.construction).not.toBeNull();
         expect(shell.construction!.constructionTargetMaxScale).toBe(15);
         expect(remaining).toBe(0);
+    });
+
+    it('contracts an oversized shell back toward the buffer scale', () => {
+        const { planet, agent, state, storage, assets } = fixture();
+        const shell = storage.shells.solid;
+        planet.avgMarketResult[constructionServiceResourceType.name] = {
+            resourceName: constructionServiceResourceType.name,
+            clearingPrice: 10,
+            totalVolume: 1,
+            totalDemand: 1000,
+            totalSupply: 1,
+            unfilledDemand: 1000,
+            unsoldSupply: 1,
+        };
+        shell.maxScale = 500;
+        shell.scale = 500;
+
+        reconcileShellScale(planet, agent, state, assets, shell, 10, 5000);
+
+        expect(shell.maxScale).toBe(15);
+    });
+
+    it('keeps an oversized shell whose contents exceed the reduced capacity', () => {
+        const { planet, agent, state, storage, assets } = fixture();
+        const shell = storage.shells.solid;
+        planet.avgMarketResult[constructionServiceResourceType.name] = {
+            resourceName: constructionServiceResourceType.name,
+            clearingPrice: 10,
+            totalVolume: 1,
+            totalDemand: 1000,
+            totalSupply: 1,
+            unfilledDemand: 1000,
+            unsoldSupply: 1,
+        };
+        shell.maxScale = 500;
+        shell.scale = 500;
+        shell.compartments[coalResourceType.name] = 1;
+        shell.currentInStorage[coalResourceType.name] = {
+            resource: coalResourceType,
+            quantity: shell.capacity.mass * 300,
+        };
+
+        reconcileShellScale(planet, agent, state, assets, shell, 10, 5000);
+
+        expect(shell.maxScale).toBeGreaterThanOrEqual(300);
     });
 });

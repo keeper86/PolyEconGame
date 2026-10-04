@@ -127,6 +127,7 @@ function makeChainGameState(planet: Planet, facility: ProductionFacility): GameS
         forexMarketMakers: new Map(),
         shipbuilderAgents: new Map(),
         arbitrageTraders: new Map(),
+        bufferTraders: new Map(),
         tickerEvents: [],
         bankruptcies: [],
         nextEventId: 1,
@@ -486,7 +487,7 @@ describe('PID utilization response', () => {
         });
 
         it('never overshoots the rate limit in either direction', () => {
-            expect(PID_OUT_MAX_UP).toBe(PID_OUT_MAX_DOWN);
+            expect(PID_OUT_MAX_UP).toBeGreaterThanOrEqual(PID_OUT_MAX_DOWN);
             const { facility, assets } = makeStorageSignalFixture(3 * 30 * 100 * 0.5);
             const state = getDefaultPidState();
             let previous = facility.scale;
@@ -494,9 +495,8 @@ describe('PID utilization response', () => {
                 const signal = computeFacilityStorageSignal(facility, assets).maxError;
                 const delta = computePidDelta(signal, state) * facility.maxScale;
                 facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
-                expect(Math.abs(facility.scale - previous)).toBeLessThanOrEqual(
-                    PID_OUT_MAX_UP * facility.maxScale + 1e-9,
-                );
+                const rateLimit = (delta >= 0 ? PID_OUT_MAX_UP : PID_OUT_MAX_DOWN) * facility.maxScale;
+                expect(Math.abs(facility.scale - previous)).toBeLessThanOrEqual(rateLimit + 1e-9);
                 previous = facility.scale;
             }
         });

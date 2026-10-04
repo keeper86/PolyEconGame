@@ -240,6 +240,14 @@ Specialized one-off scripts for zooming into subsystems:
 - `extractSnapshot.ts` — extracts a readable subset of a persisted snapshot.
 - `_cmp.ts` — quick performance comparison between the procedural initial universe and the
   benchmark world.
+- `storageSignalProbe.ts` / `shellDetailProbe.ts` / `slotProbe.ts` — storage-signal, shell-capacity
+  and per-facility slot dumps read from a run's `checkpoint.bin`.
+- `laborMonthProbe.ts` / `laborQuitProbe.ts` / `wageCeilingProbe.ts` — monthly labour-market,
+  voluntary-quit and wage-ceiling breakdowns.
+- `costSpringMap.ts` / `bankProbe.ts` — per-resource cost-spring map and the bank balance sheet.
+- `compareSeries.ts` — the same columns of two runs' `series.csv` side by side at fixed years.
+- `waveAnalysis.ts` / `checkPredictions.ts` — spectrum/mode analysis and the pre-registered
+  verdicts; see `HANDOVER.md` and `WAVE-PREDICTIONS.md`.
 
 ## Notes
 

@@ -1,6 +1,7 @@
 import assert from 'assert';
 import { performance } from 'node:perf_hooks';
 import { arbitrageTraderTick } from './agents/arbitrageTraderTick';
+import { bufferTraderTick } from './agents/bufferTraderTick';
 import { forexMarketMakerPricing } from './agents/forexMarketMakerPricing';
 import { forexMMRepaymentTick } from './agents/forexMarketMakerTick';
 import { governmentSupportTick, governmentTick } from './agents/governmentAgent';
@@ -170,10 +171,9 @@ export function advanceTick(gameState: GameState) {
             facilityMaintenanceTick(gameState, planet);
             constructionTick(gameState, planet);
             storageLogisticsTick(gameState.agents, planet);
-            automaticWageAdjustment(gameState.agents, planet);
             updateAgentProductionScale(gameState, planet);
             if (profile.isEnabled) {
-                t = profile.markAndAccum('production', 'production + construction + wageAdjust', t);
+                t = profile.markAndAccum('production', 'production + construction', t);
             }
 
             // Must be after productionTick, to infer claim usage
@@ -188,10 +188,11 @@ export function advanceTick(gameState: GameState) {
             }
             if (isMonthBoundary(gameState.tick)) {
                 postProductionLaborMarketTick(gameState.agents, planet);
+                automaticWageAdjustment(gameState.agents, planet);
                 updatePolicyRate(planet.bank, gameState.tick);
             }
             if (profile.isEnabled) {
-                profile.markAndAccum('monthBoundary', 'monthBoundary (postProductionLaborMarketTick)', t);
+                profile.markAndAccum('monthBoundary', 'monthBoundary (laborMarket + wageAdjust)', t);
             }
 
             // ── Year boundary ──
@@ -275,6 +276,7 @@ export function advanceTick(gameState: GameState) {
         t = profile.mark();
     }
     arbitrageTraderTick(gameState);
+    bufferTraderTick(gameState);
     if (profile.isEnabled) {
         profile.markAndAccum('arbitrage', 'arbitrageTraderTick', t);
     }

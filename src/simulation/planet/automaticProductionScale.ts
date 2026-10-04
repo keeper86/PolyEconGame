@@ -76,7 +76,8 @@ import { computePidDelta, getDefaultPidState } from './automaticProductionScale/
 import { updateServiceFlowSignal } from './automaticProductionScale/serviceFlow';
 import { computeFacilityStorageSignal } from './automaticProductionScale/signalComputation';
 import { computeStorageExpansionTarget, computeStorageSignal } from './automaticProductionScale/storageAutoscale';
-import { updateAgentShellCompartments } from './automaticProductionScale/shellCompartments';
+import { updateAgentShellCompartments, scaleToHoldContents } from './automaticProductionScale/shellCompartments';
+import { bufferTraderFootprint } from '../agents/bufferTrader';
 
 export function applySoftFloorScale(currentScale: number, delta: number, minScale: number, maxScale: number): number {
     let newScale = currentScale + delta;
@@ -86,7 +87,7 @@ export function applySoftFloorScale(currentScale: number, delta: number, minScal
         } else if (delta < 0) {
             newScale = currentScale + delta * SOFT_FLOOR_RELAXATION;
         }
-        newScale = Math.max(0, newScale);
+        newScale = Math.max(1, newScale);
     }
     return Math.min(maxScale, newScale);
 }
@@ -118,9 +119,13 @@ export function reconcileShellScale(
         return remainingConstructionBudget;
     }
 
-    const bufferScale = Math.max(1, Math.ceil(requiredScale * SHELL_BUFFER_FRACTION));
+    const heldScale = scaleToHoldContents(assets.storage);
+    const heldForm = storageFormKeys().find((form) => assets.storage.shells[form] === shell);
+    const flooredRequired = heldForm ? Math.max(requiredScale, heldScale[heldForm]) : requiredScale;
 
-    if (shell.maxScale < requiredScale) {
+    const bufferScale = Math.max(1, Math.ceil(flooredRequired * SHELL_BUFFER_FRACTION));
+
+    if (shell.maxScale < flooredRequired) {
         const started = initiateCapacityExpansion(shell, assets, planet, true, bufferScale);
         if (!started) {
             return remainingConstructionBudget;
@@ -128,7 +133,7 @@ export function reconcileShellScale(
         return Math.max(0, remainingConstructionBudget - shell.construction!.maximumConstructionServiceConsumption);
     }
 
-    if (shell.maxScale > requiredScale * SHELL_OVERSHOOT_FRACTION && shell.maxScale > bufferScale) {
+    if (shell.maxScale > flooredRequired * SHELL_OVERSHOOT_FRACTION && shell.maxScale > bufferScale) {
         processFacilityContraction(planet, shell, agent, bufferScale, gameState, 0.5);
     }
 
@@ -411,10 +416,12 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                     : rawSignal;
             state.smoothedSignal = signal;
 
-            const delta = computePidDelta(signal, state) * facility.maxScale;
+            const minScale = facility.maxScale * (getMinScaleFraction() ?? MIN_SCALE_FRACTION);
+            const targetScale = signal > 0 ? facility.maxScale : minScale;
+            const gapFraction = Math.min(1, Math.abs(targetScale - facility.scale) / facility.maxScale);
+            const delta = computePidDelta(signal, state) * facility.maxScale * gapFraction;
             state.lastRawSignal = rawSignal;
             state.lastDelta = delta;
-            const minScale = facility.maxScale * (getMinScaleFraction() ?? MIN_SCALE_FRACTION);
             facility.scale = applySoftFloorScale(facility.scale, delta, minScale, facility.maxScale);
 
             const hrHealthy = (assets.hrProductivityMultiplier ?? 1) >= HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER;
@@ -784,7 +791,10 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             storageDepartment.pidState = stoState;
         }
 
-        const shellSizing = updateAgentShellCompartments(assets);
+        const shellSizing = updateAgentShellCompartments(
+            assets,
+            agent.agentRole === 'buffer_trader' ? bufferTraderFootprint(agent, planet) : undefined,
+        );
 
         for (const form of storageFormKeys()) {
             const sizing = shellSizing[form];

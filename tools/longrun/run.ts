@@ -4,7 +4,7 @@ import path from 'node:path';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
 import { setGovernmentSupportEnabled, setPopulationWealthTaxEnabled, setSupportEmployed, setSupportFoodAffordabilityMultiplier, setSupportWealthCapDays, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
-import { setPolicyRateControllerEnabled } from '../../src/simulation/financial/policyRateController';
+import { setPolicyRateControllerEnabled, setPolicyRateMaxPerYear } from '../../src/simulation/financial/policyRateController';
 import {
     setContractionIntegralThreshold,
     setExpansionIntegralThreshold,
@@ -21,12 +21,18 @@ import {
     setProductionSignalEmaAlpha,
     setStorageErrorZoomMonths,
     setStorageTrendHorizonMonths,
+    setPidKp,
+    setPidKi,
+    setPidOutMaxUp,
 } from '../../src/simulation/planet/automaticProductionScale/runtimeConfig';
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
 import { setBankruptcyDebtWriteOffFraction } from '../../src/simulation/financial/bankruptcy';
+import { setPinWagesToMinimum } from '../../src/simulation/workforce/automaticWorkerAllocation';
+import { setCostFloorBuffer, setCostSpringStrength } from '../../src/simulation/market/automaticPricing';
 import { deserializeSnapshot, serializeGameState } from '../../src/simulation/snapshotCompression';
 import { getRngState, setRngState } from '../../src/simulation/utils/stochasticRound';
 import type { GameState } from '../../src/simulation/planet/planet';
+import type { AgentPlanetAssets } from '../../src/simulation/planet/planet';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
 import { formatDuration, printYearly, yearlySeries } from './report';
 import { mineWorkerProbe } from './mineWorkerProbe';
@@ -41,6 +47,12 @@ import {
     sampleInFlightConstruction,
 } from './solverDiagnostic';
 import { buildBenchmarkWorld } from './world';
+import {
+    isBufferTraderEnabled,
+    seedBufferTraderAgents,
+    setBufferTraderEnabled,
+    setBufferTraderStorageScale,
+} from '../../src/simulation/agents/bufferTrader';
 
 const OUT_ROOT = path.join(__dirname, 'results');
 
@@ -160,6 +172,32 @@ function readCsv(filePath: string): Array<Record<string, number | undefined>> {
         });
         return row;
     });
+}
+
+type CompanySpringPatch = { resource: string; costSpringStrength: number; costFloorBuffer: number };
+
+let companySpringPatches: CompanySpringPatch[] = [];
+
+function applyCompanySpringPatches(gameState: GameState): void {
+    for (const patch of companySpringPatches) {
+        let patched = 0;
+        for (const agent of gameState.agents.values()) {
+            for (const rawAssets of Object.values(agent.assets)) {
+                const assets = rawAssets as AgentPlanetAssets;
+                const offer = assets.market?.sell[patch.resource];
+                if (!offer?.autoConfig) {
+                    continue;
+                }
+                offer.autoConfig = {
+                    ...offer.autoConfig,
+                    costSpringStrength: patch.costSpringStrength,
+                    automatedCostFloorBuffer: patch.costFloorBuffer,
+                };
+                patched++;
+            }
+        }
+        console.log(`company spring patch on ${patch.resource}: ${patched} sell offer(s) relaxed`);
+    }
 }
 
 function arg(name: string): string | undefined {
@@ -289,6 +327,13 @@ async function runScenario(
         seedComparison.inFlightConstruction = sampleInFlightConstruction(gameState);
         fs.writeFileSync(path.join(outDir, 'seedGap.txt'), formatScaleComparison(seedComparison) + '\n');
         console.log(`[${scenario.name}] world ready: ${built.agents.length} agents, 1 planet, ${totalTicks} ticks`);
+    }
+
+    applyCompanySpringPatches(gameState);
+
+    if (isBufferTraderEnabled()) {
+        seedBufferTraderAgents(gameState);
+        console.log(`buffer traders seeded: ${gameState.bufferTraders.size}`);
     }
 
     const checkpointInterval = checkpointEveryYears * TICKS_PER_YEAR;
@@ -472,10 +517,30 @@ async function main(): Promise<void> {
         setStorageSpaceClampEnabled(false);
         console.log('storage space clamp DISABLED (--noStorageClamp)');
     }
+    const policyRateMaxArg = arg('policyRateMax');
+    if (policyRateMaxArg !== undefined) {
+        setPolicyRateMaxPerYear(Number(policyRateMaxArg));
+        console.log(`policy rate ceiling overridden to ${policyRateMaxArg}`);
+    }
     const pidDownArg = arg('pidDown');
     if (pidDownArg !== undefined) {
         setPidOutMaxDown(Number(pidDownArg));
         console.log(`PID ramp-down limit overridden to ${pidDownArg}`);
+    }
+    const pidUpArg = arg('pidUp');
+    if (pidUpArg !== undefined) {
+        setPidOutMaxUp(Number(pidUpArg));
+        console.log(`PID ramp-up limit overridden to ${pidUpArg}`);
+    }
+    const pidKpArg = arg('pidKp');
+    if (pidKpArg !== undefined) {
+        setPidKp(Number(pidKpArg));
+        console.log(`PID P gain overridden to ${pidKpArg}`);
+    }
+    const pidKiArg = arg('pidKi');
+    if (pidKiArg !== undefined) {
+        setPidKi(Number(pidKiArg));
+        console.log(`PID I gain overridden to ${pidKiArg}`);
     }
     const pidKdArg = arg('pidKd');
     if (pidKdArg !== undefined) {
@@ -502,6 +567,11 @@ async function main(): Promise<void> {
         setStorageCapacityMonths(Number(storageCapacityMonthsArg));
         console.log(`goods storage capacity overridden to ${storageCapacityMonthsArg} months`);
     }
+    const pinWagesArg = arg('pinWages');
+    if (pinWagesArg !== undefined) {
+        setPinWagesToMinimum(pinWagesArg !== 'off');
+        console.log(`wages pinned to MIN_WAGE = ${pinWagesArg !== 'off'}`);
+    }
     const productionSignalEmaAlphaArg = arg('productionSignalEmaAlpha');
     if (productionSignalEmaAlphaArg !== undefined) {
         setProductionSignalEmaAlpha(Number(productionSignalEmaAlphaArg));
@@ -516,6 +586,15 @@ async function main(): Promise<void> {
     if (storageTrendMonthsArg !== undefined) {
         setStorageTrendHorizonMonths(Number(storageTrendMonthsArg));
         console.log(`storage trend horizon overridden to ${storageTrendMonthsArg} months`);
+    }
+
+    const bufferTraderArg = arg('bufferTrader');
+    if (bufferTraderArg !== undefined) {
+        const bufferStorageScaleArg = arg('bufferStorageScale');
+        if (bufferStorageScaleArg !== undefined) {
+            setBufferTraderStorageScale(Number(bufferStorageScaleArg));
+        }
+        setBufferTraderEnabled(true);
     }
     const minScaleFractionArg = arg('minScaleFraction');
     if (minScaleFractionArg !== undefined) {
@@ -536,6 +615,23 @@ async function main(): Promise<void> {
     if (serviceFillRateArg !== undefined) {
         setServiceFillRateTarget(Number(serviceFillRateArg));
         console.log(`service buyer fill-rate target overridden to ${serviceFillRateArg}`);
+    }
+    const costSpringStrengthArg = arg('costSpringStrength');
+    if (costSpringStrengthArg !== undefined) {
+        setCostSpringStrength(Number(costSpringStrengthArg));
+        console.log(`cost spring strength overridden to ${costSpringStrengthArg}`);
+    }
+    const costFloorBufferArg = arg('costFloorBuffer');
+    if (costFloorBufferArg !== undefined) {
+        setCostFloorBuffer(Number(costFloorBufferArg));
+        console.log(`cost floor buffer overridden to ${costFloorBufferArg}`);
+    }
+    const companySpringArg = arg('companySpring');
+    if (companySpringArg !== undefined) {
+        companySpringPatches = companySpringArg.split(',').map((pair) => {
+            const [resource, costSpringStrength, costFloorBuffer] = pair.split(':');
+            return { resource, costSpringStrength: Number(costSpringStrength), costFloorBuffer: Number(costFloorBuffer) };
+        });
     }
     const serviceDecayArg = arg('serviceDecayTarget');
     if (serviceDecayArg !== undefined) {

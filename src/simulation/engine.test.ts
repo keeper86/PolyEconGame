@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { advanceTick, seedRng } from './engine';
+import { TICKS_PER_MONTH, WAGE_ADJUSTMENT_RATE } from './constants';
 import { environmentTick } from './planet/environment';
 
 import type { Agent, Planet } from './planet/planet';
@@ -585,4 +586,46 @@ describe('engine tick order — restoration outcompetes expansion for constructi
         expect(facility.maxMaintenance).toBeGreaterThan(0.5);
         expect(queryStorageFacility(storage, constructionServiceResourceType.name)).toBeLessThan(restorationNeed);
     });
+});
+
+describe('wage adjustment cadence', () => {
+    it(
+        'steps wages once per month, never per tick',
+        () => {
+            seedRng(42);
+
+            const { gameState, planet, agents } = makeWorld({
+                populationByEdu: { none: 5000, primary: 3000, secondary: 1500, tertiary: 500 },
+                companyIds: ['company-1'],
+            });
+            const company = agents[1];
+            company.assets[planet.id].productionFacilities.push(
+                makeProductionFacility(
+                    { none: 5000, primary: 5000, secondary: 0, tertiary: 0 },
+                    { planetId: planet.id },
+                ),
+            );
+
+            const wage = () => company.assets[planet.id].wagePerEdu.primary;
+
+            gameState.tick = 1;
+            advanceTick(gameState);
+            const start = wage();
+            expect(start).toBeGreaterThan(0);
+
+            for (let tick = 2; tick < TICKS_PER_MONTH; tick++) {
+                gameState.tick = tick;
+                advanceTick(gameState);
+                expect(wage()).toBe(start);
+            }
+
+            gameState.tick = TICKS_PER_MONTH;
+            advanceTick(gameState);
+            const afterMonth = wage();
+
+            expect(afterMonth).toBeGreaterThan(start);
+            expect(afterMonth / start - 1).toBeLessThanOrEqual(WAGE_ADJUSTMENT_RATE + 1e-9);
+        },
+        { timeout: 20000 },
+    );
 });

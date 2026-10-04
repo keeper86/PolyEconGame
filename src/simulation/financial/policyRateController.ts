@@ -11,10 +11,17 @@ import {
 import type { Bank } from '../planet/planet';
 
 let policyRateControllerEnabled = true;
+let policyRateMaxPerYearOverride: number | null = null;
 
 export function setPolicyRateControllerEnabled(enabled: boolean): void {
     policyRateControllerEnabled = enabled;
 }
+
+export function setPolicyRateMaxPerYear(value: number | null): void {
+    policyRateMaxPerYearOverride = value;
+}
+
+export const getPolicyRateMaxPerYear = (): number => policyRateMaxPerYearOverride ?? POLICY_RATE_MAX_PER_YEAR;
 
 export function updatePolicyRate(bank: Bank, tick: number): void {
     if (!policyRateControllerEnabled || !isMonthBoundary(tick) || bank.loans <= 0) {
@@ -35,8 +42,9 @@ export function updatePolicyRate(bank: Bank, tick: number): void {
     const unclampedStep = POLICY_RATE_GAIN * error;
     const step = Math.max(-POLICY_RATE_MAX_MONTHLY_STEP, Math.min(POLICY_RATE_MAX_MONTHLY_STEP, unclampedStep));
     const next = bank.loanRatePerYear + step;
-    if (next >= POLICY_RATE_MAX_PER_YEAR) {
-        bank.loanRatePerYear = POLICY_RATE_MAX_PER_YEAR;
+    const maxRate = getPolicyRateMaxPerYear();
+    if (next >= maxRate) {
+        bank.loanRatePerYear = maxRate;
         return;
     }
     if (next <= POLICY_RATE_MIN_PER_YEAR) {

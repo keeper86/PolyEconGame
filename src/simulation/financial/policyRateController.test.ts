@@ -10,7 +10,7 @@ import {
 import type { Bank } from '../planet/planet';
 import { advanceTick, seedRng } from '../engine';
 import { makeWorld } from '../utils/testHelper';
-import { setPolicyRateControllerEnabled, updatePolicyRate } from './policyRateController';
+import { setPolicyRateControllerEnabled, setPolicyRateMaxPerYear, updatePolicyRate } from './policyRateController';
 
 function makeBank(overrides: Partial<Bank> = {}): Bank {
     return {
@@ -42,6 +42,7 @@ describe('policyRateController', () => {
 
     afterEach(() => {
         setPolicyRateControllerEnabled(false);
+        setPolicyRateMaxPerYear(null);
     });
 
     it('does nothing while disabled', () => {
@@ -99,6 +100,16 @@ describe('policyRateController', () => {
             runMonths(bank, 1, TICKS_PER_MONTH * (i + 1));
         }
         expect(bank.loanRatePerYear).toBe(POLICY_RATE_MAX_PER_YEAR);
+    });
+
+    it('clamps at an overridden ceiling under sustained negative equity', () => {
+        setPolicyRateMaxPerYear(0.07);
+        const bank = makeBank({ loans: 1_000_000 });
+        for (let i = 0; i < 240; i++) {
+            bank.deposits = 2_000_000;
+            runMonths(bank, 1, TICKS_PER_MONTH * (i + 1));
+        }
+        expect(bank.loanRatePerYear).toBe(0.07);
     });
 
     it('clamps at the floor under sustained positive equity', () => {

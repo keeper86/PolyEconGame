@@ -5,11 +5,17 @@ import { educationLevelKeys } from '../population/education';
 import type { EducationLevelType } from '../population/education';
 
 import { postProductionLaborMarketTick } from './laborMarketMonthTick';
-import { hireWorkforce } from './hireWorkforce';
+import { hireWorkforce, setFireRateLimitPerMonth } from './hireWorkforce';
+import { setHireRateLimitPerMonth } from './automaticWorkerAllocation';
 import { makeAgent, makePlanetWithPopulation, totalPopulation, sumPopOcc, agentMap } from '../utils/testHelper';
 import { assertTotalPopulationConserved } from '../utils/testAssertions';
 import type { makeWorkforceDemography } from '../utils/testHelper';
 import { NOTICE_PERIOD_MONTHS } from '../constants';
+
+beforeEach(() => {
+    setHireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+    setFireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+});
 
 function totalDepartingForEdu(workforce: ReturnType<typeof makeWorkforceDemography>, edu: EducationLevelType): number {
     let total = 0;

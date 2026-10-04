@@ -1579,3 +1579,80 @@ construction, so every goods producer is permanently squeezed to (or below) cost
 
 FIX: SELL_PRODUCTION_SMOOTHING 30 -> 3 (offer ~3 days). Sell-through ~1/3 ~= 33% (still below 60%
 but one order of magnitude less pathological), and price pressure becomes mild instead of floor-pinned.
+
+## Storage sizing: shell stock floor + never-zero operating scale (2026-09-30)
+- **Why:** with the current storage constants the 1-agent run `newstorage-s1001` went extinct at y159.75.
+  The sole coal mine's shell filled to its 13-month capacity; the storage signal (12-month target, one month
+  already reserved by `reachableTargetQuantity`) then sat permanently negative; contraction ratcheted `maxScale`
+  260 -> 1 and the operating scale to exactly 0, where the soft floor `Math.max(0, newScale)` plus the
+  ratio-preserving contraction made 0 an absorbing state. Downstream lost coal, coal demand fell to 0, and no
+  signal could rebuild the supplier. A shrinking shell also stranded its contents: 34.5M coal inside a
+  1.0M-capacity shell (`used > capacity`, free capacity 0, shell bricked).
+- **What:** (a) `applyStorageSizingForFacilities` and `reconcileShellScale` floor the required shell scale by
+  `scaleToHoldContents`, so a shell is never sized below what it holds; (b) `applySoftFloorScale` clamps at
+  `Math.max(1, newScale)` instead of `Math.max(0, newScale)`, so the operating scale is never 0 and can climb
+  back out of the floor.
+- **Rejected:** a contraction dead band (no-op - `reachableTargetQuantity` already reserves one month, so
+  12-month target + 1-month reserve = 13-month capacity) and stock trimming (makes the state consistent, but
+  the latch persists: extinct y186 vs y159). A hard floor at `MIN_SCALE_FRACTION` (25% of maxScale) is harmful:
+  the forced input bidding starved groceries (fill 1.0 -> 0.00, food price x4.3) and killed the population by y83.
+- **Evidence** (200y, singleAgent, seed 1001): no fix extinct y159.75; stock floor alone survives y200
+  (pop 30.3M, GDP 25.6B, coal mine 221/292 vs 165/165 baseline); stock + never-zero floor survives y200.
+- **Status:** DEFAULT (both unconditional; the `--fixes` override plus the trim and trend-gate flags were removed).
+
+## Labour market: quit-driven wages, turnover limits, throughput-derived crews (2026-10-03)
+- **Why:** the wage rule was a value-added bargaining rule (`WAGE_SHARE * ceiling` toward a spring
+  penalty) that raised every firm's wage regardless of whether anyone was leaving, while the quit
+  side was a flat `BASE_QUIT_RATE + QUIT_SENSITIVITY * incomeGain` that ignored fairness and barely
+  responded to outside pay. A firm could also shed its entire idle gap in one tick, and each
+  facility type carried a hand-tuned crew table unrelated to what the facility actually moves.
+- **What:**
+  - **Quits:** `quitPropensity(wage, tightness, vacancyWage, fairWage)` =
+    `QUIT_OUTSIDE_SENSITIVITY (0.05) * exitGap + QUIT_FAIRNESS_SENSITIVITY (0.005) * fairnessGap`,
+    both gaps clamped to [-1, 1], result floored at 0 and capped at 0.002; the outside option is
+    discounted by `QUIT_OUTSIDE_WAGE_BIAS = 0.9`; `fairWage = WAGE_SHARE * smoothedWageCeiling`.
+    `betterOfferStats` now returns a vacancy-weighted `medianWage` next to the mean.
+  - **Wages:** `automaticWageAdjustment` steps at most `WAGE_ADJUSTMENT_RATE (0.05)` of the current
+    wage per month toward the quit target:
+    `pressure = shortagePressure + WAGE_CHURN_GAIN (3) * (quitRate - QUIT_TARGET_RATE (0.009))`.
+    `WAGE_FEEDBACK_GAIN`, `WAGE_BARGAINING_GAIN`, `SPRING_K`, `BASE_QUIT_RATE` and
+    `QUIT_SENSITIVITY` were deleted.
+  - **Turnover:** `HIRE_RATE_LIMIT_PER_MONTH` / `FIRE_RATE_LIMIT_PER_MONTH` = 0.05, applied per
+    tick as `perTickLimit(stock, fraction) = max(1, stock * fraction / TICKS_PER_MONTH)`; firings
+    are drawn with `stochasticRound`. The `max(1, ...)` floor is deliberate anti-stall: below ~600
+    workers the limit does nothing (1/tick = 30/month), so small firms can still correct.
+  - **Crews:** `planet/workerRequirements.ts` derives `headcountPerScale` from the facility's own
+    throughput (`LABOUR_PER_TON_PER_TICK` 0.25, `LABOUR_PER_SERVICE_UNIT` 0.3, `LABOUR_MULTIPLIER`
+    1.05, floor `MINIMUM_WORKERS_PER_SCALE` 20) and spreads it over education levels with a
+    per-category profile; every authored crew table now goes through `withDerivedWorkers` except the
+    maintenance facility (100/scale) and the ship-construction facility (45/scale), which keep an
+    explicit headcount and are candidates for the same derivation.
+  - **Planet wage:** `preProductionFinancialTick` reports the worker-weighted **median** of firm
+    wages instead of the weighted mean, so a small high-wage tail can no longer move it.
+  - **Policy rate:** `POLICY_RATE_MAX_PER_YEAR` 0.25 -> 0.07; the controller steers the EMA of
+    `(loans - deposits) / loans` toward zero inside a 1 % dead band (`setPolicyRateMaxPerYear`
+    overrides the ceiling).
+- **Status:** DEFAULT (all of the above). Only `--pinWages` is reachable from `run.ts` today; the
+  hire/fire limits and the policy-rate ceiling are settable from tests only.
+
+## Buffer-trader agent (2026-10-03) — experiment only
+- **Why:** test whether an explicit inventory speculator who buys under and sells over a price/cost
+  pivot can damp the goods-market waves catalogued in `WAVE-PREDICTIONS.md`.
+- **What:** `agents/bufferTrader.ts` + `agents/bufferTraderTick.ts`. One agent per planet holds 3
+  months of average cleared volume per commodity: it bids when `price/cost` is below
+  `BUFFER_TRADER_PIVOT (1.5)` with quantum `min(1, RESPONSE (16) * |imbalance|^4) * RATE (0.01) *
+  target`, and offers the mirror rule above the pivot. It borrows on demand to fund the bid, repays
+  principal down to 10 % of its 1e12 seed, and is exempt from the bankruptcy path, so it acts as an
+  unlimited-credit, never-bankrupt market maker.
+- **Status:** OVERRIDE (`run.ts --bufferTrader [--bufferStorageScale=n]`). `seedBufferTraderAgents`
+  has no caller inside `src/`, so the shipped game keeps an empty `bufferTraders` map and the
+  unlimited-credit/no-bankruptcy combination is an experiment affordance, not a default candidate.
+
+## Open items from the 2026-10-03 review
+- `HANDOVER.md` now carries an authoritative defaults table; the append-only sections under it still
+  contain superseded numbers and are kept as history.
+- `_wageStepDebug` is written every month and read only by `tools/longrun/metrics.ts`.
+- `allocationScale`, `scale`, `maxScale` and the two derived floors are four competing notions of
+  "shell scale". Renaming or dropping `allocationScale` would change the snapshot wire format and
+  break resume from existing checkpoints, so it has to wait for a deliberate format change.
+

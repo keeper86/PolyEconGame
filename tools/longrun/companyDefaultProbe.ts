@@ -120,7 +120,10 @@ for (const r of rows) {
     );
 }
 
-const selected = [...rows.slice(0, 8), ...rows.slice(-3)];
+const nameFilter = process.argv[3];
+const selected = nameFilter
+    ? rows.filter((r) => r.name.toLowerCase().includes(nameFilter.toLowerCase()))
+    : [...rows.slice(0, 8), ...rows.slice(-3)];
 console.log('\n=== per-facility production diagnostics ===');
 for (const r of selected) {
     const agentName = r.name;

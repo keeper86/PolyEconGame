@@ -844,8 +844,34 @@ describe('loan interest and bankruptcy', () => {
         expect(gameState.agents.get('bankrupt_lastRefounded_2200')!.name).toBe('Bankrupt ♻1');
         expect(planet.bank!.bankruptcies).toBe(1);
         expect(healthyAssets.deposits).toBe(9_800);
-        expect(planet.wagePerEdu.none).toBeCloseTo(210 / 110, 6);
+        expect(planet.wagePerEdu.none).toBeCloseTo(2, 6);
         expect(bankEquity(planet.bank!)).toBe(planet.bank!.loans - planet.bank!.deposits);
+    });
+
+    it('sets the planet wage to the worker-weighted median, so a high-wage tail cannot move it', () => {
+        const medianFirm = makeAgent('median', planet.id, 'Median');
+        const tailFirm = makeAgent('tail', planet.id, 'Tail');
+        const tinyFirm = makeAgent('tiny', planet.id, 'Tiny');
+        const medianAssets = medianFirm.assets[planet.id]!;
+        const tailAssets = tailFirm.assets[planet.id]!;
+        const tinyAssets = tinyFirm.assets[planet.id]!;
+        medianAssets.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
+        tailAssets.wagePerEdu = { none: 2.0, primary: 2.0, secondary: 2.0, tertiary: 2.0 };
+        tinyAssets.wagePerEdu = { none: 1000.0, primary: 1000.0, secondary: 1000.0, tertiary: 1000.0 };
+        medianAssets.deposits = 10_000;
+        tailAssets.deposits = 10_000;
+        tinyAssets.deposits = 10_000;
+        addWorker(medianAssets, 25, 'none', 100);
+        addWorker(tailAssets, 25, 'none', 100);
+        addWorker(tinyAssets, 25, 'none', 1);
+        addEmployed(planet, 25, 'none', 201);
+        planet.bank!.deposits = 1000;
+        planet.bank!.loans = 1000;
+        const gameState = makeGameState([planet], [medianFirm, tailFirm, tinyFirm], 1);
+
+        preProductionFinancialTick(gameState.agents, planet, 1, gameState);
+
+        expect(planet.wagePerEdu.none).toBeCloseTo(2, 6);
     });
 
     it('re-points resource claims to the re-founded company', () => {

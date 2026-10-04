@@ -1,5 +1,23 @@
 # Handover — long-run stability work (2026-09-16)
 
+## Current code defaults (authoritative, 2026-10-03)
+
+Read straight out of the source. Everything below this block is the chronological log that
+produced these values, so where a dated section disagrees with this table, the table wins.
+
+| knob | file | default |
+|---|---|---|
+| `PID_KP` / `PID_KI` / `PID_KD` / `PID_IMAX` | `planet/automaticProductionScale/constants.ts` | 0.01 / 0.0001 / 0.01 / 0.0001 |
+| `PID_OUT_MAX_UP` / `PID_OUT_MAX_DOWN` | same | 0.02 / 0.01 |
+| `STORAGE_TARGET_MONTHS` / `STORAGE_CAPACITY_MONTHS` | same | 3 / 6 |
+| operating scale floor | `automaticProductionScale.ts` | soft floor `MIN_SCALE_FRACTION` 0.25, hard floor at scale 1 |
+| `WAGE_ADJUSTMENT_RATE` / `WAGE_CHURN_GAIN` / `QUIT_TARGET_RATE` | `src/simulation/constants.ts` | 0.05 / 3 / 0.009 |
+| `HIRE_RATE_LIMIT_PER_MONTH` / `FIRE_RATE_LIMIT_PER_MONTH` | same | 0.05 / 0.05 |
+| `POLICY_RATE_MAX_PER_YEAR` / `POLICY_RATE_MAX_MONTHLY_STEP` | same | 0.07 / 0.0025 |
+| `AUTOMATED_COST_FLOOR_BUFFER` / `DEFAULT_COST_SPRING_STRENGTH` | same | 1.5 / 0.5 |
+| `THEORETICAL_PRODUCTION_COST_FACTOR` / `TARGET_SELL_THROUGH` / `TARGET_FILL_RATE` | same | 1.0 / 1.2 / 0.86 |
+| facility crews | `planet/workerRequirements.ts` | derived from throughput (0.25 worker per ton, 0.3 per service unit, x1.05, floor 20 per scale) |
+
 ## Goal
 Stable 6000-year economy at 8B population / rm1000. The collapse is a ~800-year
 "doom": population grows, then a food-chain whiplash starves everyone to extinction
@@ -35,15 +53,18 @@ in ~3 years.
 - Services sell-side `sellSmoothing = 1` (no ×smoothing for services).
 - `AUTOMATED_COST_FLOOR_BUFFER = 1.5` (unchanged).
 
-## PID change being tested now
+## PID change tried on 2026-09-16 (SUPERSEDED — see the defaults table above)
 `src/simulation/planet/automaticProductionScale/constants.ts`:
 - `PID_KP`: 0.01 → **0.001**  (so `P = kp·signal ≤ outMax` → proportional, no P-term relay)
 - `PID_KI`: 0.0001 → **0.00001** (slow the integral so it settles instead of winding up)
-- (kept: PID_KD 0.001, PID_IMAX 0.0025, PID_OUT_MAX_UP/DOWN 0.001, PID_D_ALPHA 0.3,
-   STORAGE_TARGET_MONTHS 12, STORAGE_CAPACITY_MONTHS 13, STORAGE_ERROR_ZOOM_MONTHS 1)
+- (kept at the time: PID_KD 0.001, PID_IMAX 0.0025, PID_OUT_MAX_UP/DOWN 0.001, PID_D_ALPHA 0.3,
+   STORAGE_TARGET_MONTHS 12, STORAGE_CAPACITY_MONTHS 13 — storage was later retuned to 3/6 and
+   IMAX/KD to 0.0001/0.01)
 
-Note: `outMax = 0.001 = 0.1%/tick = 36%/yr` is the **scale (hiring/firing) change**,
-not the expansion (maxScale) which is ~3%/yr. The bang-bang is in the scale.
+Note: `outMax = 0.02/0.01 = 2%/1% per tick` is the **scale (hiring/firing) change**;
+the expansion (maxScale) is ~3%/yr. The bang-bang is in the scale. The fast gains are now the
+*default* (PID_KP 0.01 / KI 0.0001 / KD 0.01), chosen on the y52-160 grid: 0 famines, 22.0 M
+population, worst-capacity ratio 0.81-0.92 against the slow default's 16 famines, 6.0 M, 0.126.
 
 ## Current constants (src/simulation/constants.ts)
 - AUTOMATED_COST_FLOOR_BUFFER 1.5; THEORETICAL_PRODUCTION_COST_FACTOR 1.0
@@ -68,3 +89,135 @@ not the expansion (maxScale) which is ~3%/yr. The bang-bang is in the scale.
    or add a leaky integral.
 3. Once the oscillation decays, re-check the downstream (Pesticide/Farm over-build)
    and confirm no new starvation events.
+
+---
+
+# Wave analysis — data-driven case for the shock waves (2026-10-02)
+
+## Tool
+
+```bash
+npx tsx tools/longrun/waveAnalysis.ts <result-dir|name> [options]
+  --all              scan every numeric column instead of the curated 74
+  --monthly          analyse the raw 30-tick samples instead of yearly means
+  --from=y --to=y    window   --burn=y  drop the seed transient (default 5)
+  --top=n            rows printed (default 45)   --lags=n  max cross-corr lag (25)
+  --window=y         extra centred moving-average detrend (0 = linear only)
+  --compare=<run>    divergence test against another run
+  --col=a,b          add columns   --out=dir  CSV output dir (default <run>/wave)
+  --laws             monthly samples + section [7] IDENTIFIED LAWS
+  --selftest         validate the estimator against known spectra
+```
+
+`checkPredictions.ts` reads a run, runs `waveAnalysis --quiet` for the mode, and prints
+the pre-registered verdicts (`PASS`/`WEAK`/`FAIL`/`PENDING`) per arm against the baseline
+over the identical window. The reference run defaults to `compfix10k-s1001`; pass
+`--baseline=<run>` to compare against any other directory under `results/` — nothing in
+`results/` is committed, so a fresh clone must supply its own baseline:
+
+```bash
+npx tsx tools/longrun/checkPredictions.ts [--from=20] [--to=80] [run ...]
+```
+
+`--laws` section [7] fits the control laws straight out of the run (this is the
+"reduction" the predictions rest on):
+
+| law | form | default-run value |
+|---|---|---|
+| retail margin | distribution of `facilityPriceOverCost_groceryChain` | median 1.35, 89 % of ticks ≤ 1.5, 24 % ≤ 1.2 |
+| capacity (grocery) | `dln(facilityScaleFrac)/yr = a + b·facilitySignal` | b 0.179, R² 0.706 |
+| capacity (food processor) | same | b 0.170, R² 0.629 |
+| wanted demand | `ln(demand/pop) = a + ε·ln(price/income)` | ε 0.058, R² 0.250 |
+| cost pass-through | `dln(price) = a + β·dln(cost)`, cost = price/(price/cost) | β 0.821, R² 0.245 |
+| price vs sell-through | `dln(price) = a + c·(1−ST/1.2)`, ST = 1 − unsold/supply | c 0.018/mo, **R² 0.002** |
+
+Measured mediator across runs (the prediction hinge): grocery capacity gain/R²
+collapses as the realised margin falls — 1.35 → **0.179/0.71**, 0.50 → **0.048/0.15**.
+
+Writes `waves.csv` (per-series metrics), `episodes.csv` (famines + drawdowns),
+`trigger.csv` (lead-lag vs foodPrice), `acf.csv`, `spectrum.csv`.
+
+Estimator: linear detrend -> Hann-windowed 4x zero-padded FFT -> the largest
+*interior* peak in the 4–200 y band is the dominant mode; its half-power bandwidth
+gives Q, and zeta = 1/(2Q), the per-year amplitude pole rho = e^{-zeta*omega} and the
+half-life. A peak whose half-power edge reaches the band edge is rejected as red
+noise, not a wave. `--selftest` (6 cases: 2 sines, 3 narrow-band AR(2), 1 AR(1))
+passes: periods within 12 %, Q >= 3 on all resonances, and no spurious resonance on
+the AR(1). `--monthly` and yearly give the same periods.
+
+## What the runs show (same seed, current model)
+
+| run | span | dominant mode | famines | gap cv |
+|---|---|---|---|---|
+| `compfix10k-s1001` (default) | 245 y | **14 y, Q 7–9, band 25–50 % of the 4–200 y power, rho 0.97 (t½ 25 y)** on the whole goods chain; **11 y, Q 10** on the service/price levels; 49–57 y band on population/births/wages | 10 (4.1/century) | 0.67 |
+| `groceryspring-s1001` (grocery 0.5/2) | 287 y | 10 y Q 10 on production/glass; 60–114 y bands on food/fill/wealth | 13 (4.5/century) | 0.88 |
+| `springlow-s1001` (all 0.5/2) | 146 y | no clean resonance, broad 21–64 y bands with Q 0.5–1.8 | 5 (3.4/century) | 0.59 |
+| `refill-6of7-y2150-6000y` (older model, segment) | 562 y | one very narrow 141 y band, band 60–80 %, flatness 0.02 | 6 (1.1/century) | 1.10 |
+
+`--all` (1107 uncurated columns, default run) puts the same 14 y mode at the top for
+*unrelated* industries: `facilityScaleFrac_plasticsFactory` (Q 8.9), `facilityPriceOverCost_coalMine`
+(7.9), `facilityProfit_coalMine` (7.0), `facilitySignal_plasticsFactory` (8.9). So the
+resonance is economy-wide, not a food-chain artefact. The 93 y band sits on the labour
+series (`slotFillSecondary`, `capacitySecondary`, `allocSecondary`).
+
+## Trigger ordering (default run, cross-corr vs `foodPrice`, phase inside the 14 y period)
+
+- **lag 25–20 y** (i.e. ~1.5 periods): `facilitySignal/facilityScaleFrac` of the food
+  processor and oil well, `*ContractionIntegral` — investment/expansion response.
+- **lag 9–8 y** (≈ half period, anti-phase): `starvationSevereFraction` (r 0.49),
+  `companiesNearInsolvent`, `redistributedPerCapita` (r −0.51).
+- **lag 5–2 y**: `facilityScaleFrac_agriculturalFacility`, `facilityScaleFrac_groceryChain`,
+  `facilitySignal_groceryChain` (0.46) — the chain's capacity.
+- **lag 1 y**: `storageDeptScale` (0.72), `priceFloorHits` (0.50), `deathsThisMonth` (0.50),
+  `existentialNegativeProfitFacilities` (0.60), `companyProfitMedian` (−0.44).
+- **lag 0**: every price in phase (grocery 1.00, livingCost 0.98, beverage 0.95,
+  processedFood 0.89), and anti-phase: `totalPopulation` −0.76, `foodChainFillRatio` −0.76,
+  `groceryFillRate` −0.70, `groceryBuffer` −0.64, `wealthToFoodPrice` −0.57.
+
+Event-aligned composite at the 10 famine onsets (z-scores by years before onset): the
+only series above z=0.5 a decade out are `birthsThisMonth` (0.65 at −12 y, 0.89 at −2 y),
+`groceryTotalVolume`, `emergencyLoansGranted`, `totalPopulation` — i.e. the famine lands
+on the *demographic peak*, and `companiesProfitable` falls from +0.71 (y −4) to −1.30
+(y +2). The leading indicators are the boom itself, not any external shock.
+
+## Chaos or a driven resonance?
+
+`--compare=compfix10k-wage-s1001` (identical world, different wage channel): over the
+244 common years the mean |log difference| is **0.015–0.030 (1.5–3 %)** for every macro
+series (foodPrice 0.015, population 0.017, aggregate profit 0.015) and the first crossing
+of 5 % is at **y240–246**. A structurally different run stays macro-identical for 240 of
+244 years → no sensitive dependence, so not low-dimensional chaos at the aggregate level.
+Combined with the narrow-band 14 y mode and the irregular famine recurrence (gap cv
+0.56–1.10), the picture is a **noise-driven resonance**: a lightly damped oscillator
+(zeta 0.06, only 32 % of the amplitude lost per period) that is re-excited by the
+demographic/credit bands, with famines needing the slow band's peak to coincide with a
+big fast-mode swing — the "rare alignment" the earlier HANDOVER already suspected.
+
+## Damping levers implied
+
+Q = 1/(2·zeta) = f0/bandwidth: to kill the 14 y mode, damping must rise ~3–4x (Q 8 → 2).
+The loop has a ~3–4 y transfer delay and the price channel is a slow random walk
+(PRICE_ADJUST_MAX_UP/DOWN = 1.05/0.95, i.e. ±5 %/tick in the worst case) with
+**saturating ends** — `priceFloorHits` is strongly in-phase with the
+14 y cycle (r 0.50 at lag 1), so the cost floor/ceiling is the relay nonlinearity that
+sustains the oscillation (same mechanism as the Oil-Well bang-bang found earlier).
+Candidate experiments, one change at a time, judged by the band% and Q columns:
+1. Raise the price response speed (PRICE_ADJUST_MAX_UP/DOWN) so the loop's phase lag shrinks.
+2. Widen the sell-through band (TARGET_SELL_THROUGH) so prices stop hitting the floor/ceiling.
+3. Widen the storage buffer target (STORAGE_TARGET_MONTHS = 3) — the buffer is the loop's
+   integrator, so its size sets both the phase lag and the saturation margin.
+4. Then re-run `waveAnalysis --all` and check that band% on the 14 y mode fell.
+
+## Launch traps worth keeping (moved out of README.md)
+
+Both were caught by launching rather than by reading:
+
+1. A seed hook placed in `main()` fails because `gameState` isn't in scope there — the flags are
+   parsed in `main`, the world is built in `runScenario`. The working pattern is a module-level
+   enable flag read in `main` and consumed inside `runScenario`, like the other runtime knobs.
+2. zsh does not word-split unquoted parameters. `A10='--pidKp=0.01 --pidKi=0.0001 …'` followed by
+   `$A10` arrives as a *single* argument, `Number(...)` becomes `NaN`, and the NaN propagates into
+   `setPidKp` → the scale → `Invalid mean wealth for cohort category … meanWealth=NaN`. All eight
+   arms died in 30 ticks with an error that looked like a population-dynamics bug. Spell the flags
+   out literally when launching arms by hand.
+

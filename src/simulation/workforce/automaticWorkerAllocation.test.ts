@@ -1,8 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect } from 'vitest';
 
-import { automaticWageAdjustment, automaticWorkerAllocation } from './automaticWorkerAllocation';
+import {
+    automaticWageAdjustment,
+    automaticWorkerAllocation,
+    setHireRateLimitPerMonth,
+} from './automaticWorkerAllocation';
+import { perTickLimit, setFireRateLimitPerMonth } from './hireWorkforce';
 import { makeAgent, makePlanetWithPopulation, makeProductionFacility, agentMap } from '../utils/testHelper';
-import { MAX_WAGE, MIN_WAGE, NOTICE_PERIOD_MONTHS } from '../constants';
+import { HIRE_RATE_LIMIT_PER_MONTH, MAX_WAGE, MIN_WAGE, NOTICE_PERIOD_MONTHS } from '../constants';
+
+beforeEach(() => {
+    setHireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+    setFireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+});
 
 describe('updateAllocatedWorkers', () => {
     it('sets allocatedWorkers to buffered requirement x scale when no prior tick results', () => {
@@ -117,6 +127,29 @@ describe('updateAllocatedWorkers', () => {
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
     });
+
+    it('moves the hire target by at most the monthly rate limit, and freely when the limit is off', () => {
+        const { planet } = makePlanetWithPopulation({ none: 50000 });
+        const agent = makeAgent();
+        const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
+        fac.lastTickResults.totalUsedByEdu = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
+        fac.lastTickResults.exactUsedByEdu = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
+        agent.assets.p.productionFacilities = [fac];
+        agent.assets.p.totalSlotCapacity = { none: 100000, primary: 0, secondary: 0, tertiary: 0 };
+        agent.assets.p.allocatedWorkers = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+
+        setHireRateLimitPerMonth(HIRE_RATE_LIMIT_PER_MONTH);
+        automaticWorkerAllocation(agentMap(agent), planet);
+        const limited = agent.assets.p.allocatedWorkers.none ?? 0;
+
+        setHireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+        automaticWorkerAllocation(agentMap(agent), planet);
+        const unlimited = agent.assets.p.allocatedWorkers.none ?? 0;
+
+        expect(limited).toBeGreaterThan(0);
+        expect(limited).toBeLessThanOrEqual(perTickLimit(100, HIRE_RATE_LIMIT_PER_MONTH));
+        expect(unlimited).toBeGreaterThan(limited);
+    });
 });
 
 describe('automaticWageAdjustment', () => {
@@ -170,48 +203,27 @@ describe('automaticWageAdjustment', () => {
         expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
     });
 
-    it('raises the wage toward the labor share of value added even when slots are filled', () => {
+    it('raises the wage when the quit rate exceeds the target', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
-        agent.assets.p.wagePerEdu = { none: MIN_WAGE, primary: MIN_WAGE, secondary: MIN_WAGE, tertiary: MIN_WAGE };
-        agent.assets.p.totalSlotCapacity.none = 100;
-        agent.assets.p.workforceDemography[30].none.active = 100;
-
-        const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
-        fac.lastTickResults.totalUsedByEdu = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
-        fac.lastTickResults.exactUsedByEdu = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
-        agent.assets.p.productionFacilities = [fac];
-
-        agent.assets.p.lastMonthAcc.revenue = 1000;
-        agent.assets.p.lastMonthAcc.purchases = 0;
-        agent.assets.p.lastMonthAcc.claimPayments = 0;
-        agent.assets.p.lastMonthAcc.totalWorkersTicks = 100;
+        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+        agent.assets.p.workforceDemography[30].none.active = 1000;
+        agent.assets.p._monthlyVoluntaryQuits = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
 
         automaticWageAdjustment(agentMap(agent), planet);
 
-        expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(MIN_WAGE);
+        expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
     });
 
-    it('springs the wage back down when the average wage exceeds the affordable ceiling', () => {
+    it('lowers the wage when the quit rate is below the target', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
-        agent.assets.p.wagePerEdu = { none: 2, primary: 2, secondary: 2, tertiary: 2 };
-        agent.assets.p.totalSlotCapacity.none = 100;
-        agent.assets.p.workforceDemography[30].none.active = 1;
-
-        const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
-        fac.lastTickResults.totalUsedByEdu = { none: 50, primary: 0, secondary: 0, tertiary: 0 };
-        fac.lastTickResults.exactUsedByEdu = { none: 50, primary: 0, secondary: 0, tertiary: 0 };
-        agent.assets.p.productionFacilities = [fac];
-
-        agent.assets.p.lastMonthAcc.revenue = 100;
-        agent.assets.p.lastMonthAcc.purchases = 0;
-        agent.assets.p.lastMonthAcc.claimPayments = 0;
-        agent.assets.p.lastMonthAcc.totalWorkersTicks = 100;
+        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+        agent.assets.p.workforceDemography[30].none.active = 1000;
 
         automaticWageAdjustment(agentMap(agent), planet);
 
-        expect(agent.assets.p.wagePerEdu.none).toBeLessThan(2);
+        expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
     });
 
     it('pushes higher education wages up instead of lowering the lower education wage', () => {

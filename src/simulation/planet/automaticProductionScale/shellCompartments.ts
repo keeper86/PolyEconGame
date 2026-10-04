@@ -2,7 +2,13 @@ import { SR_HOLDING_COST_PER_TON, TICKS_PER_MONTH } from '../../constants';
 import { PRODUCED_STORAGE_QUANTITY } from '../specialFacilities';
 import type { Resource } from '../claims';
 import type { ProductionFacility, ShipConstructionFacility, Storage, StorageFacility } from '../facility';
-import { STORAGE_SHELL_CAPACITY, shellFormOfResource, storageFormKeys, type StorageForm } from '../facility';
+import {
+    STORAGE_SHELL_CAPACITY,
+    computeCompartmentShare,
+    shellFormOfResource,
+    storageFormKeys,
+    type StorageForm,
+} from '../facility';
 import type { AgentPlanetAssets } from '../planet';
 import { STORAGE_CAPACITY_MONTHS } from './constants';
 import { getStorageCapacityMonths, getStorageTargetMonths } from './runtimeConfig';
@@ -52,8 +58,9 @@ export const allocateShellCells = (
         return { shares: {}, feasible: true, requiredScale: 0 };
     }
 
-    const volCap = volCapPerScale * scale;
-    const massCap = massCapPerScale * scale;
+    const required = requiredScaleOf(footprint, volCapPerScale, massCapPerScale);
+    const volCap = volCapPerScale * required;
+    const massCap = massCapPerScale * required;
 
     const declared = live.map((r) => bindingShare(r.volume, r.mass, volCap, massCap));
     const declaredScale = declared.reduce((a, b) => a + b, 0);
@@ -107,6 +114,9 @@ export const resolveFormShell = (
     }
     for (const res of footprint) {
         shell.compartments[res.name] = allocation.shares[res.name] ?? 0;
+    }
+    if (allocation.requiredScale > 0) {
+        shell.allocationScale = allocation.requiredScale;
     }
     return allocation;
 };
@@ -197,11 +207,43 @@ export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<Stor
 // so the caller can grow or shrink a shell via construction once its installed scale drops shy or
 // overshoots the held footprint. Only resources in the authored footprint receive a compartment; anything
 // else has no allocated capacity until it is explicitly authored (see facility.ts computeCompartmentShare).
+export const mergeResidency = (
+    base: Partial<Record<StorageForm, StorageResidency[]>>,
+    additional?: Partial<Record<StorageForm, StorageResidency[]>>,
+): Partial<Record<StorageForm, StorageResidency[]>> => {
+    if (!additional) {
+        return base;
+    }
+    const merged: Partial<Record<StorageForm, StorageResidency[]>> = {};
+    for (const form of storageFormKeys()) {
+        const byName = new Map<string, StorageResidency>();
+        for (const entry of base[form] ?? []) {
+            byName.set(entry.name, entry);
+        }
+        for (const entry of additional[form] ?? []) {
+            const existing = byName.get(entry.name);
+            if (existing) {
+                existing.targetQuantity += entry.targetQuantity;
+                existing.volume += entry.volume;
+                existing.mass += entry.mass;
+            } else {
+                byName.set(entry.name, entry);
+            }
+        }
+        const values = [...byName.values()];
+        if (values.length > 0) {
+            merged[form] = values;
+        }
+    }
+    return merged;
+};
+
 export const updateAgentShellCompartments = (
     assets: AgentPlanetAssets,
+    additionalResidency?: Partial<Record<StorageForm, StorageResidency[]>>,
 ): Partial<Record<StorageForm, CellAllocation>> => {
     const result: Partial<Record<StorageForm, CellAllocation>> = {};
-    const footprint = footprintPerForm(assets);
+    const footprint = mergeResidency(footprintPerForm(assets), additionalResidency);
     for (const form of storageFormKeys()) {
         const residency = footprint[form];
         if (residency && residency.length > 0) {
@@ -216,8 +258,6 @@ export type StorageSizing = {
     department: number;
 };
 
-// Shell scale per form so that every resource an agent touches holds `STORAGE_CAPACITY_MONTHS` of its
-// own flow in its own compartment. Empty forms stay at the minimum single scale.
 export const shellScalesForFootprint = (
     footprint: Partial<Record<StorageForm, StorageResidency[]>>,
 ): Record<StorageForm, number> => {
@@ -231,7 +271,6 @@ export const shellScalesForFootprint = (
     return scales;
 };
 
-// Logistics department scale is driven by the physical throughput it moves, not by how full any shell is.
 const logisticsScaleForFootprint = (footprint: Partial<Record<StorageForm, StorageResidency[]>>): number => {
     const monthsTicks = residencyMonthsTicks();
     let throughputPerTick = 0;
@@ -257,16 +296,35 @@ export const storageSizingForFacilities = (
     };
 };
 
+export const scaleToHoldContents = (storage: Storage): Record<StorageForm, number> => {
+    const required: Record<StorageForm, number> = { solid: 1, liquid: 1, pieces: 1 };
+    for (const form of storageFormKeys()) {
+        const shell = storage.shells[form];
+        for (const entry of Object.values(shell.currentInStorage)) {
+            const share = computeCompartmentShare(shell, entry.resource);
+            if (share <= 0 || entry.quantity <= 0) {
+                continue;
+            }
+            const byVolume = (entry.quantity * entry.resource.volumePerQuantity) / (shell.capacity.volume * share);
+            const byMass = (entry.quantity * entry.resource.massPerQuantity) / (shell.capacity.mass * share);
+            required[form] = Math.max(required[form], Math.ceil(Math.max(byVolume, byMass)));
+        }
+    }
+    return required;
+};
+
 export const applyStorageSizingForFacilities = (
     storage: Storage,
     productionFacilities: ProductionFacility[],
     shipConstructionFacilities: ShipConstructionFacility[] = [],
 ): void => {
     const sizing = storageSizingForFacilities(productionFacilities, shipConstructionFacilities);
+    const stockFloor = scaleToHoldContents(storage);
     for (const form of storageFormKeys()) {
         const shell = storage.shells[form];
-        shell.scale = sizing.shells[form];
-        shell.maxScale = sizing.shells[form];
+        const target = Math.max(sizing.shells[form], stockFloor[form]);
+        shell.scale = target;
+        shell.maxScale = target;
     }
     const department = storage.department;
     if (department) {

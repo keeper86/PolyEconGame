@@ -1,6 +1,8 @@
 let storageSpaceClampEnabled = true;
 let pidOutMaxDown: number | null = null;
-const pidOutMaxUp: number | null = null;
+let pidOutMaxUp: number | null = null;
+let pidKp: number | null = null;
+let pidKi: number | null = null;
 let pidKd: number | null = null;
 let expansionIntegralThreshold: number | null = null;
 let contractionIntegralThreshold: number | null = null;
@@ -21,6 +23,18 @@ export const setStorageSpaceClampEnabled = (enabled: boolean): void => {
 
 export const setPidOutMaxDown = (value: number | null): void => {
     pidOutMaxDown = value;
+};
+
+export const setPidOutMaxUp = (value: number | null): void => {
+    pidOutMaxUp = value;
+};
+
+export const setPidKp = (value: number | null): void => {
+    pidKp = value;
+};
+
+export const setPidKi = (value: number | null): void => {
+    pidKi = value;
 };
 
 export const setPidKd = (value: number | null): void => {
@@ -78,6 +92,8 @@ export const setStorageTrendHorizonMonths = (value: number | null): void => {
 export const isStorageSpaceClampEnabled = (): boolean => storageSpaceClampEnabled;
 export const getPidOutMaxDown = (): number | null => pidOutMaxDown;
 export const getPidOutMaxUp = (): number | null => pidOutMaxUp;
+export const getPidKp = (): number | null => pidKp;
+export const getPidKi = (): number | null => pidKi;
 export const getPidKd = (): number | null => pidKd;
 export const getExpansionIntegralThreshold = (): number | null => expansionIntegralThreshold;
 export const getContractionIntegralThreshold = (): number | null => contractionIntegralThreshold;

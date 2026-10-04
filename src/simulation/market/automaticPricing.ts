@@ -50,19 +50,30 @@ export { buyVolumeFraction, sellVolumeFraction };
 // Each takes an optional config + the resource (to pick service-appropriate defaults),
 // and returns a fully resolved config with all fields populated.
 
+let costSpringStrengthOverride: number | null = null;
+let costFloorBufferOverride: number | null = null;
+
+export const setCostSpringStrength = (value: number | null): void => {
+    costSpringStrengthOverride = value;
+};
+
+export const setCostFloorBuffer = (value: number | null): void => {
+    costFloorBufferOverride = value;
+};
+
 function resolveOfferConfig(config: AutomatedPricingConfig | undefined, resource: Resource) {
     const c = config ?? {};
     return {
         priceAdjustMaxUp: c.priceAdjustMaxUp ?? PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: c.priceAdjustMaxDown ?? PRICE_ADJUST_MAX_DOWN,
-        costSpringStrength: c.costSpringStrength ?? DEFAULT_COST_SPRING_STRENGTH,
+        costSpringStrength: costSpringStrengthOverride ?? c.costSpringStrength ?? DEFAULT_COST_SPRING_STRENGTH,
         targetSellThrough:
             c.targetSellThrough ??
             (resource.form === 'services'
                 ? (getServiceSellThroughTarget() ?? TARGET_SELL_THROUGH_SERVICES)
                 : TARGET_SELL_THROUGH),
         askVolumeFloorFraction: c.askVolumeFloorFraction ?? ASK_VOLUME_FLOOR_FRACTION,
-        automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? AUTOMATED_COST_FLOOR_BUFFER,
+        automatedCostFloorBuffer: costFloorBufferOverride ?? c.automatedCostFloorBuffer ?? AUTOMATED_COST_FLOOR_BUFFER,
         freeRetainment: c.freeRetainment ?? 0,
         freeRetainmentSmoothingMaxExtra: c.freeRetainmentSmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
         sellProductionSmoothing: c.sellProductionSmoothing ?? SELL_PRODUCTION_SMOOTHING,
@@ -74,7 +85,7 @@ function resolveBidConfig(config: AutomatedPricingConfig | undefined, resource: 
     return {
         priceAdjustMaxUp: c.priceAdjustMaxUp ?? PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: c.priceAdjustMaxDown ?? PRICE_ADJUST_MAX_DOWN,
-        costSpringStrength: c.costSpringStrength ?? DEFAULT_COST_SPRING_STRENGTH,
+        costSpringStrength: costSpringStrengthOverride ?? c.costSpringStrength ?? DEFAULT_COST_SPRING_STRENGTH,
         inventorySmoothingMaxExtra: c.inventorySmoothingMaxExtra ?? INVENTORY_SMOOTHING_MAX_EXTRA,
         inputBufferTargetTicks:
             c.inputBufferTargetTicks ??

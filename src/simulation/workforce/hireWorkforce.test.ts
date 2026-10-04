@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
-    BASE_QUIT_RATE,
+    FIRE_RATE_LIMIT_PER_MONTH,
     WAGE_DURATION_DECAY,
     MIN_EMPLOYABLE_AGE,
     NOTICE_PERIOD_MONTHS,
     SEARCH_HORIZON_TICKS,
+    TICKS_PER_MONTH,
 } from '../constants';
 import { type Agent, type Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
@@ -23,8 +24,8 @@ import {
     sumPopOcc,
     totalPopulation,
 } from '../utils/testHelper';
-import { assertBackfillProgress, hireWorkforce } from './hireWorkforce';
-import { automaticWorkerAllocation } from './automaticWorkerAllocation';
+import { assertBackfillProgress, hireWorkforce, perTickLimit, setFireRateLimitPerMonth } from './hireWorkforce';
+import { automaticWorkerAllocation, setHireRateLimitPerMonth } from './automaticWorkerAllocation';
 import {
     acceptProbability,
     betterOfferMeanWage,
@@ -35,6 +36,11 @@ import {
     reservationWage,
 } from './laborMarket';
 import { workforceDemographicTick } from './workforceDemographicTick';
+
+beforeEach(() => {
+    setHireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+    setFireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+});
 
 function totalActiveForEdu(workforce: ReturnType<typeof makeWorkforceDemography>, edu: EducationLevelType): number {
     let total = 0;
@@ -71,9 +77,21 @@ describe('labor market helpers', () => {
         expect(acceptProbability(1_000_000, 100)).toBeCloseTo(0.05, 4);
     });
 
-    it('quitPropensity starts at the base rate and rises with a better outside option', () => {
-        expect(quitPropensity(100, 0, 0)).toBe(BASE_QUIT_RATE);
-        expect(quitPropensity(100, 1, 200)).toBeGreaterThan(quitPropensity(100, 0, 0));
+    it('quitPropensity quits only when a better offer outweighs the current pay, tilted by unfairness', () => {
+        expect(quitPropensity(100, 0, 0, 100)).toBe(0);
+        expect(quitPropensity(100, 0, 0, 250)).toBe(0);
+        expect(quitPropensity(100, 1, 50, 100)).toBe(0);
+        expect(quitPropensity(100, 1, 95, 100)).toBe(0);
+        expect(quitPropensity(100, 1, 200, 100)).toBeGreaterThan(0);
+        expect(quitPropensity(100, 1, 105, 1000)).toBeGreaterThan(0);
+        expect(quitPropensity(100, 1, 105, 100)).toBe(0);
+        expect(quitPropensity(100, 1, 100000, 100)).toBe(0.002);
+    });
+
+    it('quitPropensity biases the outside wage so a parity offer is not a better offer', () => {
+        expect(quitPropensity(100, 1, 100, 100)).toBe(0);
+        expect(quitPropensity(100, 1, 105, 100)).toBe(0);
+        expect(quitPropensity(100, 1, 130, 100)).toBeGreaterThan(0);
     });
 
     it('reservationWage anchors to the going tier rate and does NOT depend on cost of living', () => {
@@ -186,6 +204,46 @@ describe('computeLaborMarket — reachable outside options', () => {
 
         expect(market.reachableVacancies.tertiary).toBe(0);
         expect(market.reachableVacancyWage.tertiary).toBe(0);
+    });
+});
+
+describe('perTickLimit', () => {
+    it('spreads a monthly fraction evenly over the ticks', () => {
+        expect(perTickLimit(600 * TICKS_PER_MONTH, 1)).toBe(600);
+        expect(perTickLimit(500 * TICKS_PER_MONTH, 0.05)).toBe(25);
+    });
+
+    it('never rounds down to zero, so a tiny stock still moves one worker per tick', () => {
+        expect(perTickLimit(30, 1)).toBe(1);
+        expect(perTickLimit(0, 1)).toBe(1);
+    });
+});
+
+describe('labour turnover rate limits', () => {
+    it('sheds one tick worth of the idle gap instead of firing the whole gap at once', () => {
+        const { planet } = makePlanetWithPopulation({ none: 10000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers.none = 500;
+        agent.assets.p.wagePerEdu.none = 1e9;
+        hireWorkforce(agentMap(agent), planet);
+
+        const wf = agent.assets.p.workforceDemography!;
+        for (let age = 0; age < wf.length; age++) {
+            const cat = wf[age].none;
+            cat.active += cat.onboarding[NOTICE_PERIOD_MONTHS - 1];
+            cat.onboarding[NOTICE_PERIOD_MONTHS - 1] = 0;
+        }
+        const activeBefore = totalActiveForEdu(wf, 'none');
+        expect(activeBefore).toBeGreaterThan(0);
+
+        agent.assets.p.allocatedWorkers.none = activeBefore - 300;
+        setFireRateLimitPerMonth(FIRE_RATE_LIMIT_PER_MONTH);
+        hireWorkforce(agentMap(agent), planet);
+
+        const fired = activeBefore - totalActiveForEdu(wf, 'none');
+        expect(fired).toBeGreaterThan(0);
+        expect(fired).toBeLessThanOrEqual(Math.ceil(perTickLimit(activeBefore, FIRE_RATE_LIMIT_PER_MONTH)));
+        expect(fired).toBeLessThan(300);
     });
 });
 
@@ -541,7 +599,7 @@ describe('per-education level isolation', () => {
 });
 
 describe('voluntary quit rate', () => {
-    it('produces correct numbers with large workforce', () => {
+    it('does not quit without a reachable better offer', () => {
         const planet = makePlanet();
         const agent = makeAgent();
 
@@ -550,22 +608,17 @@ describe('voluntary quit rate', () => {
         hireWorkforce(agentMap(agent), planet);
 
         const wf = agent.assets.p.workforceDemography!;
-        const activeAfterHire = totalActiveForEdu(wf, 'none');
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        const expectedQuits = Math.floor(activeAfterHire * BASE_QUIT_RATE);
-
-        let allDeparting = 0;
+        let voluntaryDepartures = 0;
         for (let age = 0; age < wf.length; age++) {
-            const cat = wf[age].none;
-            for (let m = 0; m < cat.voluntaryDeparting.length; m++) {
-                allDeparting += cat.voluntaryDeparting[m];
-                allDeparting += cat.departingRetired[m];
+            for (const m of wf[age].none.voluntaryDeparting) {
+                voluntaryDepartures += m;
             }
         }
 
-        expect(Math.abs(allDeparting - expectedQuits)).toBeLessThanOrEqual(1);
+        expect(voluntaryDepartures).toBe(0);
     });
 
     it('does not affect a single worker (floor rounds to 0)', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 
-import { BASE_QUIT_RATE, NOTICE_PERIOD_MONTHS } from '../constants';
+import { NOTICE_PERIOD_MONTHS } from '../constants';
 import { RETIREMENT_AGE } from '../population/retirement';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import type { Agent, Planet } from '../planet/planet';
@@ -51,16 +51,30 @@ describe('workforceDemographicTick — voluntary quits', () => {
         ({ planet } = makePlanetWithPopulation({ none: 100000 }));
     });
 
-    it('moves a fraction of active workers into the voluntary departing pipeline', () => {
+    it('does not quit when no better offer is reachable', () => {
         const wf = agent.assets.p.workforceDemography!;
         wf[30].none.active = 10000;
         planet.population.demography[30].employed.none.total = 10000;
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        const expectedQuitters = Math.floor(10000 * BASE_QUIT_RATE);
-        expect(wf[30].none.active).toBeLessThanOrEqual(10000 - expectedQuitters);
-        expect(wf[30].none.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBeGreaterThanOrEqual(expectedQuitters);
+        expect(wf[30].none.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBe(0);
+    });
+
+    it('quits when a rival posts better-paying vacancies', () => {
+        const wf = agent.assets.p.workforceDemography!;
+        wf[30].none.active = 10000;
+        planet.population.demography[30].employed.none.total = 10000;
+        agent.assets.p.wagePerEdu = { none: 1, primary: 1, secondary: 1, tertiary: 1 };
+        agent.assets.p._smoothedWageCeiling = 100;
+
+        const rival = makeAgent('agent-2');
+        rival.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+        rival.assets.p.totalSlotCapacity = { none: 100000, primary: 0, secondary: 0, tertiary: 0 };
+
+        workforceDemographicTick(agentMap(agent, rival), planet);
+
+        expect(wf[30].none.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBeGreaterThan(0);
     });
 
     it('does not move workers when active count is too small (floor rounds to 0)', () => {
@@ -79,8 +93,14 @@ describe('workforceDemographicTick — voluntary quits', () => {
         wf[40].primary.active = 50000;
         planet.population.demography[30].employed.none.total = 50000;
         planet.population.demography[40].employed.primary.total = 50000;
+        agent.assets.p.wagePerEdu = { none: 1, primary: 1, secondary: 1, tertiary: 1 };
+        agent.assets.p._smoothedWageCeiling = 100;
 
-        workforceDemographicTick(agentMap(agent), planet);
+        const rival = makeAgent('agent-2');
+        rival.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+        rival.assets.p.totalSlotCapacity = { none: 100000, primary: 100000, secondary: 0, tertiary: 0 };
+
+        workforceDemographicTick(agentMap(agent, rival), planet);
 
         expect(wf[30].none.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBeGreaterThan(0);
         expect(wf[40].primary.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBeGreaterThan(0);

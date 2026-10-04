@@ -97,7 +97,7 @@ export type AgentListSummary = {
     associatedPlanetId: string;
     balance: number;
     automated: boolean;
-    agentRole?: 'shipbuilder' | 'arbitrage_trader';
+    agentRole?: 'shipbuilder' | 'arbitrage_trader' | 'buffer_trader';
     facilityCount: number;
     avgEfficiency: number | null;
     totalWorkers: number;
