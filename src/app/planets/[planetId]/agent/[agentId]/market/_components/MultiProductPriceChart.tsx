@@ -68,7 +68,7 @@ import {
 } from '@/simulation/planet/services';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useLocale, useTranslations } from 'next-intl';
 import { useIsSmallScreen } from '@/hooks/useMobile';
@@ -263,12 +263,22 @@ function ProductSelector({
     onChange: (names: string[]) => void;
 }) {
     const tl = useTranslations('Levels');
+    const t = useTranslations('Market');
     const toggle = (name: string) => {
         if (selected.includes(name)) {
             onChange(selected.filter((s) => s !== name));
         } else {
             onChange([...selected, name]);
         }
+    };
+    const selectAllInLevel = (names: string[]) => {
+        const missing = names.filter((name) => !selected.includes(name));
+        if (missing.length > 0) {
+            onChange([...selected, ...missing]);
+        }
+    };
+    const selectNoneInLevel = (names: string[]) => {
+        onChange(selected.filter((name) => !names.includes(name)));
     };
 
     const groups = useMemo(() => {
@@ -288,8 +298,26 @@ function ProductSelector({
         <div className='space-y-3'>
             {groups.map(({ level, names }) => (
                 <div key={level}>
-                    <div className='text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1 select-none'>
-                        {tl(LEVEL_LABEL_KEYS[level])}
+                    <div className='flex items-center justify-between w-[325px] mb-1'>
+                        <div className='text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 select-none'>
+                            {tl(LEVEL_LABEL_KEYS[level])}
+                        </div>
+                        <div className='flex gap-1'>
+                            <button
+                                type='button'
+                                onClick={() => selectAllInLevel(names)}
+                                className='px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors'
+                            >
+                                {t('selectAll')}
+                            </button>
+                            <button
+                                type='button'
+                                onClick={() => selectNoneInLevel(names)}
+                                className='px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors'
+                            >
+                                {t('selectNone')}
+                            </button>
+                        </div>
                     </div>
                     <div className='flex flex-wrap gap-2 w-[325px]'>
                         {names.map((name) => (
@@ -378,7 +406,26 @@ function usesLogScale(points: MergedPoint[], productNames: string[]): boolean {
     return lo > 0 && hi / lo >= 10;
 }
 
-type QueryResult = { productName: string; history: Row[]; isLoading: boolean };
+type QueryResult = { productName: string; granularity: Granularity; history: Row[]; isLoading: boolean };
+
+function resultKey(granularity: Granularity, productName: string): string {
+    return `${granularity}:${productName}`;
+}
+
+export function pickResults(
+    resultsMap: Record<string, QueryResult>,
+    selectedProducts: string[],
+    granularity: Granularity,
+): QueryResult[] {
+    const arr: QueryResult[] = [];
+    for (const name of selectedProducts) {
+        const r = resultsMap[resultKey(granularity, name)];
+        if (r) {
+            arr.push(r);
+        }
+    }
+    return arr;
+}
 
 function ProductQuerySlot({
     planetId,
@@ -389,7 +436,7 @@ function ProductQuerySlot({
     planetId: string;
     productName: string;
     granularity: Granularity;
-    onResult: (name: string, history: Row[], isLoading: boolean) => void;
+    onResult: (name: string, granularity: Granularity, history: Row[], isLoading: boolean) => void;
 }): null {
     const trpc = useTRPC();
     const limit = HISTORY_BUCKET_LIMIT[granularity];
@@ -402,18 +449,17 @@ function ProductQuerySlot({
         }),
     );
 
-    const prevDataRef = useRef<Row[] | undefined>(undefined);
     useEffect(() => {
+        if (query.isPlaceholderData) {
+            return;
+        }
         const history = (query.data?.history ?? []).map((r) => ({
             bucket: r.bucket,
             avgPrice: r.avgPrice,
             priceFloor: r.priceFloor,
         }));
-        if (history !== prevDataRef.current) {
-            prevDataRef.current = history;
-            onResult(productName, history, query.isLoading);
-        }
-    }, [query.data, query.isLoading, productName, onResult]);
+        onResult(productName, granularity, history, query.isLoading);
+    }, [query.data, query.isLoading, query.isPlaceholderData, productName, granularity, onResult]);
 
     return null;
 }
@@ -421,9 +467,10 @@ function ProductQuerySlot({
 function useQueryResults() {
     const [results, setResults] = useState<Record<string, QueryResult>>({});
 
-    const onResult = useCallback((name: string, history: Row[], isLoading: boolean) => {
+    const onResult = useCallback((name: string, granularity: Granularity, history: Row[], isLoading: boolean) => {
+        const key = resultKey(granularity, name);
         setResults((prev) => {
-            const existing = prev[name];
+            const existing = prev[key];
             if (
                 existing &&
                 existing.isLoading === isLoading &&
@@ -437,15 +484,11 @@ function useQueryResults() {
             ) {
                 return prev;
             }
-            return { ...prev, [name]: { productName: name, history, isLoading } };
+            return { ...prev, [key]: { productName: name, granularity, history, isLoading } };
         });
     }, []);
 
-    const clear = useCallback(() => {
-        setResults({});
-    }, []);
-
-    return { results, onResult, clear };
+    return { results, onResult };
 }
 
 const EMPTY_WINDOWS: Record<Granularity, { unit: number; buckets: number }> = {
@@ -485,7 +528,7 @@ export default function MultiProductPriceChart({
     };
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
     const [rescaleMode, setRescaleMode] = usePriceScaleModePreference();
-    const { results: resultsMap, onResult, clear } = useQueryResults();
+    const { results: resultsMap, onResult } = useQueryResults();
 
     const { data: marketOverview } = useSimulationQuery(
         trpc.simulation.getPlanetMarketOverview.queryOptions({ planetId, average: false }, { enabled: isOpen }),
@@ -504,21 +547,10 @@ export default function MultiProductPriceChart({
         return map;
     }, [marketOverview]);
 
-    // Clear results when granularity changes (different data shape)
-    useEffect(() => {
-        clear();
-    }, [granularity, clear]);
-
-    const results: QueryResult[] = useMemo(() => {
-        const arr: QueryResult[] = [];
-        for (const name of selectedProducts) {
-            const r = resultsMap[name];
-            if (r) {
-                arr.push(r);
-            }
-        }
-        return arr;
-    }, [selectedProducts, resultsMap]);
+    const results: QueryResult[] = useMemo(
+        () => pickResults(resultsMap, selectedProducts, granularity),
+        [resultsMap, selectedProducts, granularity],
+    );
 
     const isLoading = results.length < selectedProducts.length || results.some((r) => r.isLoading);
 

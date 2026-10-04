@@ -398,6 +398,8 @@
         "ceilingSpringCurve": "Ceiling spring curve",
         "costSpringCurve": "Cost spring curve",
         "clear": "Clear",
+        "selectAll": "All",
+        "selectNone": "None",
         "selectProductsPrompt": "Select products to compare price trends",
         "onlyRelevantResources": "Only relevant resources",
         "emptyPlaceholder": "-empty-",
