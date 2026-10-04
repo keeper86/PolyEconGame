@@ -5,9 +5,9 @@ import {
     automaticWorkerAllocation,
     setHireRateLimitPerMonth,
 } from './automaticWorkerAllocation';
-import { setFireRateLimitPerMonth } from './hireWorkforce';
+import { perTickLimit, setFireRateLimitPerMonth } from './hireWorkforce';
 import { makeAgent, makePlanetWithPopulation, makeProductionFacility, agentMap } from '../utils/testHelper';
-import { MAX_WAGE, MIN_WAGE, NOTICE_PERIOD_MONTHS } from '../constants';
+import { HIRE_RATE_LIMIT_PER_MONTH, MAX_WAGE, MIN_WAGE, NOTICE_PERIOD_MONTHS } from '../constants';
 
 beforeEach(() => {
     setHireRateLimitPerMonth(Number.POSITIVE_INFINITY);
@@ -126,6 +126,29 @@ describe('updateAllocatedWorkers', () => {
         automaticWorkerAllocation(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
+    });
+
+    it('moves the hire target by at most the monthly rate limit, and freely when the limit is off', () => {
+        const { planet } = makePlanetWithPopulation({ none: 50000 });
+        const agent = makeAgent();
+        const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
+        fac.lastTickResults.totalUsedByEdu = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
+        fac.lastTickResults.exactUsedByEdu = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
+        agent.assets.p.productionFacilities = [fac];
+        agent.assets.p.totalSlotCapacity = { none: 100000, primary: 0, secondary: 0, tertiary: 0 };
+        agent.assets.p.allocatedWorkers = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+
+        setHireRateLimitPerMonth(HIRE_RATE_LIMIT_PER_MONTH);
+        automaticWorkerAllocation(agentMap(agent), planet);
+        const limited = agent.assets.p.allocatedWorkers.none ?? 0;
+
+        setHireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+        automaticWorkerAllocation(agentMap(agent), planet);
+        const unlimited = agent.assets.p.allocatedWorkers.none ?? 0;
+
+        expect(limited).toBeGreaterThan(0);
+        expect(limited).toBeLessThanOrEqual(perTickLimit(100, HIRE_RATE_LIMIT_PER_MONTH));
+        expect(unlimited).toBeGreaterThan(limited);
     });
 });
 

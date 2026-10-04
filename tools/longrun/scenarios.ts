@@ -64,7 +64,7 @@ export const SCENARIOS: Scenario[] = [
     {
         name: 'policyRateController',
         description:
-            'The policy rate is steered by the flow-balance controller, targeting smoothed (interest collected - debt written off) per loan at zero. Tests whether the bank equity drain and money-supply growth become stationary.',
+            'The policy rate is steered monthly on the EMA of the bank equity ratio (loans - deposits) / loans, toward zero within a 1 % dead band, clamped to 0-7 % per year and 0.25 pp per month. Tests whether the bank equity drain and money-supply growth become stationary.',
         seed: 1001,
         years: 30,
         world: { policyRateController: true },

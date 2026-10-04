@@ -1,5 +1,8 @@
 # Agent expectations vs. what the runs show (2026-10-02)
 
+Evidence only: the runs live under the gitignored `tools/longrun/results/`, so these are
+observations from local runs and are not reproducible from a fresh clone.
+
 Premise under test: **the system should survive if every node behaves well enough — there
 is no principal shortage.** So any failure is a *behaviour* failure, and it should be
 visible as a gap between what an agent ought to do and what it measurably does.

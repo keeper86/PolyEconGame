@@ -240,6 +240,14 @@ Specialized one-off scripts for zooming into subsystems:
 - `extractSnapshot.ts` — extracts a readable subset of a persisted snapshot.
 - `_cmp.ts` — quick performance comparison between the procedural initial universe and the
   benchmark world.
+- `storageSignalProbe.ts` / `shellDetailProbe.ts` / `slotProbe.ts` — storage-signal, shell-capacity
+  and per-facility slot dumps read from a run's `checkpoint.bin`.
+- `laborMonthProbe.ts` / `laborQuitProbe.ts` / `wageCeilingProbe.ts` — monthly labour-market,
+  voluntary-quit and wage-ceiling breakdowns.
+- `costSpringMap.ts` / `bankProbe.ts` — per-resource cost-spring map and the bank balance sheet.
+- `compareSeries.ts` — the same columns of two runs' `series.csv` side by side at fixed years.
+- `waveAnalysis.ts` / `checkPredictions.ts` — spectrum/mode analysis and the pre-registered
+  verdicts; see `HANDOVER.md` and `WAVE-PREDICTIONS.md`.
 
 ## Notes
 
@@ -248,10 +256,3 @@ Specialized one-off scripts for zooming into subsystems:
 - The RNG is seeded once before world creation, so scenarios are fully reproducible.
 - Do not run these while a `npm run test:all` or a heavy dev-server build is active; timing
   numbers will be distorted by CPU contention.
-
-## Two bugs worth keeping
-
-Both were caught by launching rather than by reading, and both are your kind of trap:
-
-1. My first seed hook landed in `main()`, where `gameState` isn't in scope — the flags are parsed in `main`, the world is built in `runScenario`. Fixed with a module-level enable flag read in `main` and consumed inside `runScenario`, the same pattern as the existing runtime knobs.
-2. __zsh does not word-split unquoted parameters.__ `A10='--pidKp=0.01 --pidKi=0.0001 …'` then `$A10` arrived as a *single* argument, `Number(...)` became `NaN`, and the NaN propagated into `setPidKp` → the scale → `Invalid mean wealth for cohort category … meanWealth=NaN`. All eight arms died in 30 ticks with an error that looked like a population-dynamics bug. Every launch now spells the flags out literally — worth knowing if you launch arms by hand.

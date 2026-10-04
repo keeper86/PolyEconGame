@@ -1,5 +1,9 @@
 # Wave predictions — pre-registered (2026-10-02)
 
+Evidence only. Every number below was measured on local runs under `tools/longrun/results/`,
+which is gitignored, so a fresh clone has to re-run the arms to reproduce them. Nothing here
+has been promoted into a default.
+
 Goal: **predict, then measure**, without fixing anything. Every prediction below is
 stated before the run, with a falsification threshold. Measure with
 
