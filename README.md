@@ -45,7 +45,9 @@ Keycloak only imports a realm that does not already exist. On an existing deploy
 1. Admin UI → Clients → `polyecongame-app` → Settings → Capability config → turn on **Service accounts roles** → Save. Keycloak then creates the `service-account-polyecongame-app` user automatically - do not add a user manually; it is a special, non-login user that is not shown in the Users list.
 2. Open the client's **Service account roles** tab → **Assign role** → change the filter to **Filter by clients** → pick `realm-management` → check **`view-users`** → Assign.
 
-Fresh deployments and local development pick this up from the imported realm automatically.
+Fresh deployments and local development pick this up from the imported realm automatically: the realm JSON declares the `service-account-polyecongame-app` user with the `realm-management → view-users` role. That declarative entry is what grants the role on import (`serviceAccountsEnabled: true` alone creates the account but assigns it no roles), so do not remove it as redundant.
+
+The sync only inserts new users and refreshes `email`/`username` for existing ones; game-owned columns (`display_name`, `agent_id`, `planet_id`, `avatar`, `has_assessment_published`) are preserved, so a rename in Keycloak does not overwrite a player's chosen display name.
 
 ### Start
 

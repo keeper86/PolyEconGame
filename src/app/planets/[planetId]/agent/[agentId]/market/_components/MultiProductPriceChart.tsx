@@ -253,7 +253,7 @@ function getLevelForResource(name: string): ResourceProcessLevel {
     return 'raw';
 }
 
-function ProductSelector({
+export function ProductSelector({
     allResourceNames,
     selected,
     onChange,
@@ -306,14 +306,16 @@ function ProductSelector({
                             <button
                                 type='button'
                                 onClick={() => selectAllInLevel(names)}
-                                className='px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors'
+                                disabled={names.every((name) => selected.includes(name))}
+                                className='px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors disabled:opacity-40 disabled:pointer-events-none'
                             >
                                 {t('selectAll')}
                             </button>
                             <button
                                 type='button'
                                 onClick={() => selectNoneInLevel(names)}
-                                className='px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors'
+                                disabled={names.every((name) => !selected.includes(name))}
+                                className='px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors disabled:opacity-40 disabled:pointer-events-none'
                             >
                                 {t('selectNone')}
                             </button>

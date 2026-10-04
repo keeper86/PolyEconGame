@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getDb } from 'tests/vitest/setupTestcontainer';
 import type { FetchLike, KeycloakSyncConfig, KeycloakUser } from './keycloakUserSync';
+import { logger } from './logger';
 
 const config: KeycloakSyncConfig = {
     baseUrl: 'http://keycloak.test',
@@ -94,7 +95,6 @@ describe('syncKeycloakUsers', () => {
             database: getDb(),
             config,
             fetchImpl: impl,
-            signal: AbortSignal.timeout(5000),
         });
 
         expect(result).toMatchObject({ added: 1, updated: 0, unchanged: 0, skipped: 0 });
@@ -127,7 +127,6 @@ describe('syncKeycloakUsers', () => {
             database: db,
             config,
             fetchImpl: impl,
-            signal: AbortSignal.timeout(5000),
         });
         expect(result).toMatchObject({ added: 0, updated: 1, unchanged: 0 });
 
@@ -160,7 +159,6 @@ describe('syncKeycloakUsers', () => {
             database: db,
             config,
             fetchImpl: impl,
-            signal: AbortSignal.timeout(5000),
         });
         expect(result).toMatchObject({ added: 0, updated: 0, unchanged: 1 });
     });
@@ -180,7 +178,7 @@ describe('syncKeycloakUsers', () => {
 
         const { syncKeycloakUsers } = await loadModule();
         const { impl } = mockKeycloakFetch([[{ id: 'kc-sync-present', email: 'present@example.com' }]]);
-        await syncKeycloakUsers({ database: db, config, fetchImpl: impl, signal: AbortSignal.timeout(5000) });
+        await syncKeycloakUsers({ database: db, config, fetchImpl: impl });
 
         expect(await db('user_data').where({ user_id: 'kc-sync-local' }).first()).toBeDefined();
     });
@@ -199,11 +197,24 @@ describe('syncKeycloakUsers', () => {
             database: getDb(),
             config,
             fetchImpl: impl,
-            signal: AbortSignal.timeout(5000),
         });
 
         expect(result.added).toBe(101);
         expect(calls.filter((url) => url.includes('/admin/realms/'))).toHaveLength(2);
+    });
+
+    it('fails instead of looping forever when Keycloak keeps returning full pages', async () => {
+        const fullPage: KeycloakUser[] = Array.from({ length: 100 }, (_, i) => ({
+            id: `kc-sync-loop-${i}`,
+            email: `loop-${i}@example.com`,
+        }));
+        const { syncKeycloakUsers } = await loadModule();
+        const { impl, calls } = mockKeycloakFetch(Array.from({ length: 100 }, () => fullPage));
+
+        await expect(syncKeycloakUsers({ database: getDb(), config, fetchImpl: impl })).rejects.toThrow(
+            /exceeded 100 pages/,
+        );
+        expect(calls.filter((url) => url.includes('/admin/realms/'))).toHaveLength(100);
     });
 
     it('skips disabled and service-account users from the list', async () => {
@@ -221,7 +232,6 @@ describe('syncKeycloakUsers', () => {
             database: getDb(),
             config,
             fetchImpl: impl,
-            signal: AbortSignal.timeout(5000),
         });
 
         expect(result).toMatchObject({ added: 1, skipped: 3 });
@@ -237,9 +247,7 @@ describe('syncKeycloakUsers', () => {
         const { syncKeycloakUsers } = await loadModule();
         const { impl } = mockKeycloakFetch([[]], { tokenStatus: 400 });
 
-        await expect(
-            syncKeycloakUsers({ database: db, config, fetchImpl: impl, signal: AbortSignal.timeout(5000) }),
-        ).rejects.toThrow();
+        await expect(syncKeycloakUsers({ database: db, config, fetchImpl: impl })).rejects.toThrow();
 
         const after = await db('user_data')
             .where('user_id', 'like', 'kc-sync-%')
@@ -272,6 +280,23 @@ describe('resolveKeycloakSyncConfig', () => {
             expect(() => resolveKeycloakSyncConfig()).toThrow();
         } finally {
             process.env.KEYCLOAK_ISSUER = previous;
+        }
+    });
+
+    it('warns when the client secret is missing', async () => {
+        const { resolveKeycloakSyncConfig } = await loadModule();
+        const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+        const previousIssuer = process.env.KEYCLOAK_ISSUER;
+        const previousSecret = process.env.KEYCLOAK_CLIENT_SECRET;
+        process.env.KEYCLOAK_ISSUER = 'https://auth.example.com/realms/polyecongame';
+        delete process.env.KEYCLOAK_CLIENT_SECRET;
+        try {
+            resolveKeycloakSyncConfig();
+            expect(warn).toHaveBeenCalled();
+        } finally {
+            warn.mockRestore();
+            process.env.KEYCLOAK_ISSUER = previousIssuer;
+            process.env.KEYCLOAK_CLIENT_SECRET = previousSecret;
         }
     });
 });

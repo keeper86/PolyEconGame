@@ -6,6 +6,7 @@ const GLOBAL_KEY = Symbol.for('__polyecon_keycloak_user_sync__');
 const g = globalThis as unknown as { [GLOBAL_KEY]?: boolean };
 
 const PAGE_SIZE = 100;
+const MAX_PAGES = 100;
 const REQUEST_TIMEOUT_MS = 5000;
 const RETRY_DELAYS_MS = [2000, 5000, 10000];
 
@@ -57,11 +58,18 @@ export function resolveKeycloakSyncConfig(): KeycloakSyncConfig {
         throw new Error('KEYCLOAK_ISSUER is not configured; cannot derive the Keycloak base URL');
     }
     const baseUrl = issuer.slice(0, issuer.indexOf('/realms/')).replace(/\/+$/, '');
+    const clientSecret = process.env.KEYCLOAK_CLIENT_SECRET ?? '';
+    if (clientSecret.length === 0) {
+        logger.warn(
+            { component: 'keycloak-user-sync' },
+            'KEYCLOAK_CLIENT_SECRET is not set; the Keycloak user sync cannot authenticate',
+        );
+    }
     return {
         baseUrl,
         realm: process.env.KEYCLOAK_REALM ?? 'polyecongame',
         clientId: process.env.KEYCLOAK_CLIENT_ID ?? 'polyecongame-app',
-        clientSecret: process.env.KEYCLOAK_CLIENT_SECRET ?? '',
+        clientSecret,
     };
 }
 
@@ -90,11 +98,7 @@ export function keycloakUserToRow(user: KeycloakUser): ProvisionRow | null {
     };
 }
 
-async function fetchServiceAccountToken(
-    config: KeycloakSyncConfig,
-    fetchImpl: FetchLike,
-    signal: AbortSignal,
-): Promise<string> {
+async function fetchServiceAccountToken(config: KeycloakSyncConfig, fetchImpl: FetchLike): Promise<string> {
     const response = await fetchImpl(`${config.baseUrl}/realms/${config.realm}/protocol/openid-connect/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -103,7 +107,7 @@ async function fetchServiceAccountToken(
             client_id: config.clientId,
             client_secret: config.clientSecret,
         }).toString(),
-        signal,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -121,13 +125,13 @@ async function fetchAllKeycloakUsers(
     config: KeycloakSyncConfig,
     token: string,
     fetchImpl: FetchLike,
-    signal: AbortSignal,
 ): Promise<KeycloakUser[]> {
     const users: KeycloakUser[] = [];
-    for (let first = 0; ; first += PAGE_SIZE) {
+    for (let pageIndex = 0; pageIndex < MAX_PAGES; pageIndex += 1) {
+        const first = pageIndex * PAGE_SIZE;
         const response = await fetchImpl(
             `${config.baseUrl}/admin/realms/${config.realm}/users?first=${first}&max=${PAGE_SIZE}&briefRepresentation=false`,
-            { headers: { Authorization: `Bearer ${token}` }, signal },
+            { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) },
         );
 
         if (!response.ok) {
@@ -140,6 +144,7 @@ async function fetchAllKeycloakUsers(
             return users;
         }
     }
+    throw new Error(`Keycloak users listing exceeded ${MAX_PAGES} pages`);
 }
 
 export async function reconcileKeycloakUsers(database: Knex, rows: ProvisionRow[]): Promise<KeycloakSyncResult> {
@@ -147,58 +152,56 @@ export async function reconcileKeycloakUsers(database: Knex, rows: ProvisionRow[
         return { added: 0, updated: 0, unchanged: 0, skipped: 0 };
     }
 
-    const existing: { user_id: string; email: string; username: string | null }[] = await database('user_data')
-        .whereIn(
-            'user_id',
-            rows.map((row) => row.user_id),
-        )
-        .select('user_id', 'email', 'username');
-    const existingById = new Map(existing.map((row) => [row.user_id, row]));
+    return database.transaction(async (trx) => {
+        const existing: { user_id: string; email: string; username: string | null }[] = await trx('user_data')
+            .whereIn(
+                'user_id',
+                rows.map((row) => row.user_id),
+            )
+            .select('user_id', 'email', 'username');
+        const existingById = new Map(existing.map((row) => [row.user_id, row]));
 
-    const toInsert: ProvisionRow[] = [];
-    const toUpdate: ProvisionRow[] = [];
-    for (const row of rows) {
-        const current = existingById.get(row.user_id);
-        if (!current) {
-            toInsert.push(row);
-            continue;
+        const toInsert: ProvisionRow[] = [];
+        const toUpdate: ProvisionRow[] = [];
+        for (const row of rows) {
+            const current = existingById.get(row.user_id);
+            if (!current) {
+                toInsert.push(row);
+                continue;
+            }
+            if (current.email !== row.email || (current.username ?? null) !== row.username) {
+                toUpdate.push(row);
+            }
         }
-        if (current.email !== row.email || (current.username ?? null) !== row.username) {
-            toUpdate.push(row);
+
+        if (toInsert.length > 0) {
+            await trx('user_data').insert(toInsert).onConflict('user_id').ignore();
         }
-    }
 
-    if (toInsert.length > 0) {
-        await database('user_data').insert(toInsert).onConflict('user_id').ignore();
-    }
+        for (const row of toUpdate) {
+            await trx('user_data').where({ user_id: row.user_id }).update({ email: row.email, username: row.username });
+        }
 
-    for (const row of toUpdate) {
-        await database('user_data')
-            .where({ user_id: row.user_id })
-            .update({ email: row.email, username: row.username });
-    }
-
-    return {
-        added: toInsert.length,
-        updated: toUpdate.length,
-        unchanged: rows.length - toInsert.length - toUpdate.length,
-        skipped: 0,
-    };
+        return {
+            added: toInsert.length,
+            updated: toUpdate.length,
+            unchanged: rows.length - toInsert.length - toUpdate.length,
+            skipped: 0,
+        };
+    });
 }
 
 export async function syncKeycloakUsers(options?: {
     database?: Knex;
     fetchImpl?: FetchLike;
     config?: KeycloakSyncConfig;
-    signal?: AbortSignal;
 }): Promise<KeycloakSyncResult> {
     const database = options?.database ?? db;
     const fetchImpl = options?.fetchImpl ?? (fetch as unknown as FetchLike);
     const config = options?.config ?? resolveKeycloakSyncConfig();
-    const signal = options?.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS);
 
-    const token = await fetchServiceAccountToken(config, fetchImpl, signal);
-    const users = await fetchAllKeycloakUsers(config, token, fetchImpl, signal);
+    const token = await fetchServiceAccountToken(config, fetchImpl);
+    const users = await fetchAllKeycloakUsers(config, token, fetchImpl);
 
     const rows: ProvisionRow[] = [];
     let skipped = 0;
