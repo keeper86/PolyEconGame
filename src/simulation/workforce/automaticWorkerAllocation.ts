@@ -5,9 +5,8 @@ import {
     WAGE_ADJUSTMENT_RATE,
     WAGE_CEILING_SMOOTHING,
     WAGE_CHURN_GAIN,
-    HIRE_RATE_LIMIT_PER_MONTH,
 } from '../constants';
-import { perTickLimit } from './hireWorkforce';
+import { hireRateLimit, perTickLimit } from './hireWorkforce';
 import type { Agent, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
@@ -45,19 +44,13 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
                 newTarget[edu] = rawTarget;
                 continue;
             }
-            const maxStep = perTickLimit(headcount, hireRateLimitPerMonth);
+            const maxStep = perTickLimit(headcount, hireRateLimit());
             newTarget[edu] = Math.round(Math.max(previous - maxStep, Math.min(previous + maxStep, rawTarget)));
         }
 
         assets.allocatedWorkers = newTarget;
     }
 }
-
-let hireRateLimitPerMonth = HIRE_RATE_LIMIT_PER_MONTH;
-
-export const setHireRateLimitPerMonth = (value: number): void => {
-    hireRateLimitPerMonth = value;
-};
 
 let pinWagesToMinimum = false;
 

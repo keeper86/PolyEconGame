@@ -1,4 +1,10 @@
-import { FIRE_RATE_LIMIT_PER_MONTH, MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS, TICKS_PER_MONTH } from '../constants';
+import {
+    FIRE_RATE_LIMIT_PER_MONTH,
+    HIRE_RATE_LIMIT_PER_MONTH,
+    MIN_EMPLOYABLE_AGE,
+    NOTICE_PERIOD_MONTHS,
+    TICKS_PER_MONTH,
+} from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { hasActiveLicense } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
@@ -41,6 +47,14 @@ let fireRateLimitPerMonth = FIRE_RATE_LIMIT_PER_MONTH;
 export const setFireRateLimitPerMonth = (value: number): void => {
     fireRateLimitPerMonth = value;
 };
+
+let hireRateLimitPerMonth = HIRE_RATE_LIMIT_PER_MONTH;
+
+export const setHireRateLimitPerMonth = (value: number): void => {
+    hireRateLimitPerMonth = value;
+};
+
+export const hireRateLimit = (): number => hireRateLimitPerMonth;
 
 export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profiler?: TickProfiler): void {
     let t: number = 0;
@@ -88,71 +102,67 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
             t = profiler.markAndAccum('hirePreCount', '  hire_preCount', t);
         }
 
-        const eduIndex = new Map(educationLevelKeys.map((edu, i) => [edu, i]));
+        let carriedJobs = 0;
 
         for (const edu of educationLevelKeys) {
-            const target = assets.allocatedWorkers[edu] ?? 0;
+            const cover = (assets.allocatedWorkers[edu] ?? 0) + carriedJobs;
             const currentActive = currentActiveByEdu[edu];
             const activeOnly = totalActiveForEdu(workforce, edu);
 
-            const gap = target - currentActive;
-            const gapActive = target - activeOnly;
+            const shortfall = cover - currentActive;
 
-            if (gap > 0) {
-                // --- HIRING (with cross-tier fallback: when a lower tier's native pool is depleted,
-                // higher-tier workers backfill the remaining slots at their own tier's wage) ---
-                let remainingGap = gap;
-                for (let wi = eduIndex.get(edu)!; wi < educationLevelKeys.length && remainingGap > 0; wi++) {
-                    const workerEdu = educationLevelKeys[wi];
-                    const wage = assets.wagePerEdu[workerEdu] ?? 0;
-                    const threshold = reservationWage(
-                        laborMarket.reachableTightness[workerEdu],
-                        smoothedReachableVacancyWage(planet, workerEdu, laborMarket.reachableVacancyWage[workerEdu]),
+            let hires = 0;
+            let totalAvail = 0;
+
+            if (shortfall > 0) {
+                const wage = assets.wagePerEdu[edu] ?? 0;
+                const threshold = reservationWage(
+                    laborMarket.reachableTightness[edu],
+                    smoothedReachableVacancyWage(planet, edu, laborMarket.reachableVacancyWage[edu]),
+                );
+
+                type Bucket = { age: number; avail: number; probToAccept: number };
+                const buckets: Bucket[] = [];
+                let totalWilling = 0;
+
+                for (let age = MIN_EMPLOYABLE_AGE; age < workforce.length; age++) {
+                    const avail = demography[age].unoccupied[edu].total;
+                    if (avail <= 0) {
+                        continue;
+                    }
+                    const probToAccept = acceptProbability(wage, threshold);
+                    buckets.push({ age, avail, probToAccept });
+                    totalWilling += avail * probToAccept;
+                    totalAvail += avail;
+                }
+
+                const maxHires = perTickLimit(Math.max(currentActive, cover), hireRateLimitPerMonth);
+                const toHire = Math.floor(Math.min(shortfall, totalWilling, maxHires));
+                assertBackfillProgress(edu, edu, shortfall, totalWilling, toHire);
+                if (toHire > 0) {
+                    const allocatedBuckets = distributeProportionally(
+                        toHire,
+                        buckets.map((b) => b.avail * b.probToAccept),
                     );
 
-                    type Bucket = { age: number; avail: number; probToAccept: number };
-                    const buckets: Bucket[] = [];
-                    let totalWilling = 0;
+                    for (let i = 0; i < buckets.length; i++) {
+                        const { age } = buckets[i];
+                        const actual = allocatedBuckets[i];
+                        if (actual > 0) {
+                            transferPopulation(
+                                planet,
+                                { age, occ: 'unoccupied', edu },
+                                { age, occ: 'employed', edu },
+                                actual,
+                            );
 
-                    for (let age = MIN_EMPLOYABLE_AGE; age < workforce.length; age++) {
-                        const avail = demography[age].unoccupied[workerEdu].total;
-                        if (avail <= 0) {
-                            continue;
+                            workforce[age][edu].onboarding[NOTICE_PERIOD_MONTHS - 1] += actual;
                         }
-
-                        const probToAccept = acceptProbability(wage, threshold);
-                        buckets.push({ age, avail, probToAccept });
-                        totalWilling += avail * probToAccept;
                     }
-
-                    const toHire = Math.floor(Math.min(remainingGap, totalWilling));
-                    assertBackfillProgress(edu, workerEdu, remainingGap, totalWilling, toHire);
-                    if (toHire > 0) {
-                        const allocatedBuckets = distributeProportionally(
-                            toHire,
-                            buckets.map((b) => b.avail * b.probToAccept),
-                        );
-
-                        for (let i = 0; i < buckets.length; i++) {
-                            const { age } = buckets[i];
-                            const actual = allocatedBuckets[i];
-                            if (actual > 0) {
-                                transferPopulation(
-                                    planet,
-                                    { age, occ: 'unoccupied', edu: workerEdu },
-                                    { age, occ: 'employed', edu: workerEdu },
-                                    actual,
-                                );
-
-                                workforce[age][workerEdu].onboarding[NOTICE_PERIOD_MONTHS - 1] += actual;
-                            }
-                        }
-                        remainingGap -= toHire;
-                    }
+                    hires = toHire;
                 }
-            } else if (gapActive < -activeOnly * ACCEPTABLE_IDLE_FRACTION) {
-                // --- FIRING (active-only, so in-training workers are never fired) ---
-                let toFire = Math.min(-gapActive, perTickLimit(activeOnly, fireRateLimitPerMonth));
+            } else if (shortfall < -activeOnly * ACCEPTABLE_IDLE_FRACTION) {
+                let toFire = Math.min(-shortfall, perTickLimit(activeOnly, fireRateLimitPerMonth));
                 for (let age = 0; age < workforce.length && toFire > 0; age++) {
                     const cat = workforce[age][edu];
                     const fire = Math.min(stochasticRound(toFire), cat.active);
@@ -163,6 +173,7 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
                     }
                 }
             }
+            carriedJobs = totalAvail <= hires ? Math.max(0, shortfall - hires) : 0;
         }
         if (profiler?.isEnabled) {
             t = profiler.markAndAccum('hireMatch', '  hire_match', t);

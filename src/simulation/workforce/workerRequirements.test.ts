@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { educationLevelKeys } from '../population/education';
-import { coalDepositResourceType } from './landBoundResources';
-import { coalResourceType } from './resources';
-import { administrativeServiceResourceType } from './services';
+import { coalDepositResourceType } from '../planet/landBoundResources';
+import { coalResourceType } from '../planet/resources';
+import { administrativeServiceResourceType } from '../planet/services';
 import {
     headcountPerScaleFor,
     LABOUR_MULTIPLIER,

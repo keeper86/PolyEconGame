@@ -2,7 +2,7 @@ import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { distributeProportionally } from '../utils/distributeProportionally';
 import { stochasticRound } from '../utils/stochasticRound';
-import type { ResourceQuantity } from './claims';
+import type { ResourceQuantity } from '../planet/claims';
 
 export const LABOUR_PER_TON_PER_TICK = 0.35;
 export const LABOUR_PER_SERVICE_UNIT = 0.5;

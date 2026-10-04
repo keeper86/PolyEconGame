@@ -1,6 +1,6 @@
 import type { ResourceProcessLevel } from './claims';
 import type { Facility, ProductionFacility } from './facility';
-import { withDerivedWorkers, workerProfiles, workers } from './workerRequirements';
+import { withDerivedWorkers, workerProfiles, workers } from '../workforce/workerRequirements';
 import {
     arableLandResourceType,
     coalDepositResourceType,

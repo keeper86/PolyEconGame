@@ -5,8 +5,7 @@ import { educationLevelKeys } from '../population/education';
 import type { EducationLevelType } from '../population/education';
 
 import { postProductionLaborMarketTick } from './laborMarketMonthTick';
-import { hireWorkforce, setFireRateLimitPerMonth } from './hireWorkforce';
-import { setHireRateLimitPerMonth } from './automaticWorkerAllocation';
+import { hireWorkforce, setFireRateLimitPerMonth, setHireRateLimitPerMonth } from './hireWorkforce';
 import { makeAgent, makePlanetWithPopulation, totalPopulation, sumPopOcc, agentMap } from '../utils/testHelper';
 import { assertTotalPopulationConserved } from '../utils/testAssertions';
 import type { makeWorkforceDemography } from '../utils/testHelper';

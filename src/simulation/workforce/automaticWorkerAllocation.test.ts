@@ -1,11 +1,7 @@
 import { beforeEach, describe, it, expect } from 'vitest';
 
-import {
-    automaticWageAdjustment,
-    automaticWorkerAllocation,
-    setHireRateLimitPerMonth,
-} from './automaticWorkerAllocation';
-import { perTickLimit, setFireRateLimitPerMonth } from './hireWorkforce';
+import { automaticWageAdjustment, automaticWorkerAllocation } from './automaticWorkerAllocation';
+import { perTickLimit, setFireRateLimitPerMonth, setHireRateLimitPerMonth } from './hireWorkforce';
 import { makeAgent, makePlanetWithPopulation, makeProductionFacility, agentMap } from '../utils/testHelper';
 import { HIRE_RATE_LIMIT_PER_MONTH, MAX_WAGE, MIN_WAGE, NOTICE_PERIOD_MONTHS } from '../constants';
 

@@ -8,7 +8,7 @@ import type {
     TrainingsDepartment,
 } from './facility';
 import { nullWagePidState, STORAGE_SHELL_CAPACITY, storageFormKeys } from './facility';
-import { withDerivedWorkers, workerProfiles, workers } from './workerRequirements';
+import { withDerivedWorkers, workerProfiles, workers } from '../workforce/workerRequirements';
 import {
     administrativeServiceResourceType,
     educationServiceResourceType,
