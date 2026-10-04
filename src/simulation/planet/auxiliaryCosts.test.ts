@@ -22,6 +22,8 @@ import {
     auxiliaryCostPerTick,
     auxiliaryCostRates,
     facilityThroughputMass,
+    hrCostTemplate as hrTemplate,
+    storageCostTemplate as storageTemplate,
     storageScaleForFacility,
 } from './auxiliaryCosts';
 import { waterFacility } from './productionFacilities';
@@ -31,21 +33,12 @@ import {
     constructionServiceResourceType,
     maintenanceServiceResourceType,
 } from './services';
-import {
-    ESTIMATED_HR_OVERHEAD,
-    PRODUCED_HR_QUANTITY,
-    PRODUCED_STORAGE_QUANTITY,
-    humanResourcesOfficeFacilityType,
-    logisticsDepartmentFacilityType,
-} from './specialFacilities';
+import { ESTIMATED_HR_OVERHEAD, PRODUCED_HR_QUANTITY, PRODUCED_STORAGE_QUANTITY } from './specialFacilities';
 
 describe('auxiliaryCostRates', () => {
     it('prices HR and storage overhead from the department operating costs', () => {
         const planet = makePlanet();
         const rates = auxiliaryCostRates(planet);
-
-        const hrTemplate = humanResourcesOfficeFacilityType('catalog', 'preview');
-        const storageTemplate = logisticsDepartmentFacilityType('catalog', 'preview');
 
         const adminPrice = (planet.marketPrices.Administration ?? 0) * SERVICE_DEPRECIATION_COST_MULTIPLIER;
         const logisticsPrice = (planet.marketPrices.Logistics ?? 0) * SERVICE_DEPRECIATION_COST_MULTIPLIER;

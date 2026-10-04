@@ -27,8 +27,8 @@ import {
 const CATALOG_PLANET = 'catalog';
 const CATALOG_ID = 'preview';
 
-const hrTemplate = humanResourcesOfficeFacilityType(CATALOG_PLANET, CATALOG_ID);
-const storageTemplate = logisticsDepartmentFacilityType(CATALOG_PLANET, CATALOG_ID);
+export const hrCostTemplate = humanResourcesOfficeFacilityType(CATALOG_PLANET, CATALOG_ID);
+export const storageCostTemplate = logisticsDepartmentFacilityType(CATALOG_PLANET, CATALOG_ID);
 
 const facilityWorkerCount = (facility: ManagementFacility | ProductionFacility): number =>
     (facility.workerRequirement.none ?? 0) +
@@ -113,16 +113,16 @@ export const auxiliaryCostRates = (planet: Planet): AuxiliaryCostRates => {
     const upkeepRates = { maintenanceCostPerScale, constructionServicePrice };
 
     const hrDepartmentCost =
-        facilityInputCostPerTick(hrTemplate, planet) +
-        facilityWageCostPerTick(hrTemplate, planet) +
-        facilityUpkeepCostPerTick(hrTemplate, upkeepRates);
+        facilityInputCostPerTick(hrCostTemplate, planet) +
+        facilityWageCostPerTick(hrCostTemplate, planet) +
+        facilityUpkeepCostPerTick(hrCostTemplate, upkeepRates);
     const hrCostPerWorker = (ESTIMATED_HR_OVERHEAD * hrDepartmentCost) / PRODUCED_HR_QUANTITY;
 
     const storageCostPerScale =
-        facilityInputCostPerTick(storageTemplate, planet) +
-        facilityWageCostPerTick(storageTemplate, planet) +
-        facilityWorkerCount(storageTemplate) * hrCostPerWorker +
-        facilityUpkeepCostPerTick(storageTemplate, upkeepRates);
+        facilityInputCostPerTick(storageCostTemplate, planet) +
+        facilityWageCostPerTick(storageCostTemplate, planet) +
+        facilityWorkerCount(storageCostTemplate) * hrCostPerWorker +
+        facilityUpkeepCostPerTick(storageCostTemplate, upkeepRates);
 
     return { hrCostPerWorker, storageCostPerScale, maintenanceCostPerScale, constructionServicePrice };
 };
