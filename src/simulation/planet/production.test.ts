@@ -2,8 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { seedRng } from '../utils/stochasticRound';
 import { MIN_SCALE_FRACTION } from './automaticProductionScale/constants';
 import { queryStorageFacility } from './facility';
-import { ageProductivityMultiplier, computeStorageSpaceFactor, constructionTick, productionTick } from './production';
-import { productivityFromXP } from '../workforce/workforce';
+import { computeStorageSpaceFactor, constructionTick, productionTick } from './production';
 
 import { makePool } from '../initialUniverse/resourceClaimFactory';
 import type { TransportShipType } from '../ships/ships';
@@ -1474,9 +1473,6 @@ describe('productionTick — XP boost effect on production', () => {
         seedRng(12345);
     });
 
-    const expectedWorkerEfficiency = (meanAge: number, avgXp: number, headcount: number, demand: number): number =>
-        Math.min(1, (headcount * ageProductivityMultiplier(meanAge) * productivityFromXP(avgXp)) / demand);
-
     it('workers with high XP produce more effective output from the same headcount', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('xp-company');
@@ -1519,9 +1515,8 @@ describe('productionTick — XP boost effect on production', () => {
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'xp-fac');
         expect(recorded).toBeDefined();
 
-        const demand = facility.workerRequirement.secondary! * facility.scale;
-        const expectedEfficiency = expectedWorkerEfficiency(30, 40, 1, demand);
-        expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(expectedEfficiency);
+        const expectedEfficiency = 0.32916667;
+        expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(expectedEfficiency, 4);
 
         const storedIron = queryStorageFacility(agent.assets.p.storage, ironOreResourceType.name);
         expect(storedIron).toBeCloseTo(facility.produces[0]!.quantity * facility.scale * expectedEfficiency, 4);
@@ -1566,9 +1561,8 @@ describe('productionTick — XP boost effect on production', () => {
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'no-xp-fac');
         expect(recorded).toBeDefined();
 
-        const demand = facility.workerRequirement.secondary! * facility.scale;
-        const expectedEfficiency = expectedWorkerEfficiency(30, 0, 1, demand);
-        expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(expectedEfficiency);
+        const expectedEfficiency = 0.25;
+        expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(expectedEfficiency, 4);
 
         const storedIron = queryStorageFacility(agent.assets.p.storage, ironOreResourceType.name);
         expect(storedIron).toBeCloseTo(facility.produces[0]!.quantity * facility.scale * expectedEfficiency, 4);
@@ -1618,12 +1612,8 @@ describe('productionTick — XP boost effect on production', () => {
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'mixed-xp-fac');
         expect(recorded).toBeDefined();
 
-        const meanAge = (30 + 50) / 2;
-        const avgXp = (0 + 80) / 2;
-        const headcount = 2;
-        const demand = facility.workerRequirement.secondary! * facility.scale;
-        const expectedEfficiency = expectedWorkerEfficiency(meanAge, avgXp, headcount, demand);
-        expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(expectedEfficiency);
+        const expectedEfficiency = 0.65833333;
+        expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(expectedEfficiency, 4);
 
         const storedIron = queryStorageFacility(agent.assets.p.storage, ironOreResourceType.name);
         expect(storedIron).toBeCloseTo(facility.produces[0]!.quantity * facility.scale * expectedEfficiency, 4);

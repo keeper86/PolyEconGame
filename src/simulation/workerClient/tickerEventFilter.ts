@@ -53,3 +53,14 @@ export function filterTickerEvents(
         return true;
     });
 }
+
+export function selectTickerEvents(
+    events: TickerEvent[],
+    filter: TickerEventFilter,
+    agentsById: ReadonlyMap<string, Agent>,
+    lastSeenId: number | undefined,
+): { tickerEvents: TickerEvent[]; lastEventId: number | undefined } {
+    const afterWatermark = lastSeenId !== undefined ? events.filter((event) => event.id > lastSeenId) : events;
+    const lastEventId = afterWatermark.length > 0 ? Math.max(...afterWatermark.map((event) => event.id)) : lastSeenId;
+    return { tickerEvents: filterTickerEvents(afterWatermark, filter, agentsById), lastEventId };
+}

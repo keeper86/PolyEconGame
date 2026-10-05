@@ -32,8 +32,7 @@ export function assertBackfillProgress(
     if (process.env.SIM_DEBUG === '1' && toHire === 0 && remainingGap > 0 && totalWilling >= 1) {
         throw new Error(
             `[hireWorkforce] backfill stall: slot edu=${slotEdu} worker edu=${workerEdu} ` +
-                `remainingGap=${remainingGap} willing=${totalWilling} — willing workers skipped while slots remain ` +
-                `(cross-tier double-deduction regression)`,
+                `remainingGap=${remainingGap} willing=${totalWilling} — willing workers skipped while slots remain`,
         );
     }
 }

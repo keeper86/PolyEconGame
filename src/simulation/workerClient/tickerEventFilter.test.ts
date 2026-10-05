@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { TickerEvent } from '../../server/controller/simulation';
 import type { Agent } from '../planet/planet';
 import { HR_DEPARTMENT_NAME } from '../planet/specialFacilities';
-import { defaultTickerEventFilter, filterTickerEvents, type TickerEventFilter } from './tickerEventFilter';
+import {
+    defaultTickerEventFilter,
+    filterTickerEvents,
+    selectTickerEvents,
+    type TickerEventFilter,
+} from './tickerEventFilter';
 
 function event(params: {
     id: number;
@@ -81,5 +86,46 @@ describe('filterTickerEvents', () => {
 
         expect(hidden.map((e) => e.id)).toEqual([2]);
         expect(shown.map((e) => e.id)).toEqual([1, 2]);
+    });
+});
+
+describe('selectTickerEvents', () => {
+    it('returns every filtered event and the highest id without a watermark', () => {
+        const events = [created(1), created(2), facilityCompleted(3, 'Refinery')];
+
+        const result = selectTickerEvents(
+            events,
+            withFilter({ categories: ['agentCreated'] }),
+            fleet(false),
+            undefined,
+        );
+
+        expect(result.tickerEvents.map((e) => e.id)).toEqual([1, 2]);
+        expect(result.lastEventId).toBe(3);
+    });
+
+    it('only returns events newer than the watermark', () => {
+        const events = [created(1), created(2), created(3)];
+
+        const result = selectTickerEvents(events, defaultTickerEventFilter(), fleet(false), 1);
+
+        expect(result.tickerEvents.map((e) => e.id)).toEqual([2, 3]);
+        expect(result.lastEventId).toBe(3);
+    });
+
+    it('advances the watermark past events that are filtered out', () => {
+        const events = [created(1), facilityCompleted(2, 'Refinery')];
+
+        const result = selectTickerEvents(events, withFilter({ categories: ['agentCreated'] }), fleet(false), 0);
+
+        expect(result.tickerEvents.map((e) => e.id)).toEqual([1]);
+        expect(result.lastEventId).toBe(2);
+    });
+
+    it('keeps the watermark when there is nothing new', () => {
+        const result = selectTickerEvents([created(1)], defaultTickerEventFilter(), fleet(false), 5);
+
+        expect(result.tickerEvents).toEqual([]);
+        expect(result.lastEventId).toBe(5);
     });
 });

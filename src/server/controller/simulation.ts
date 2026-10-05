@@ -46,7 +46,7 @@ import {
 } from '../../simulation/workerClient/syncQueries';
 import {
     defaultTickerEventFilter,
-    filterTickerEvents,
+    selectTickerEvents,
     tickerEventFilterSchema,
 } from '../../simulation/workerClient/tickerEventFilter';
 import { db } from '../db';
@@ -969,19 +969,14 @@ export const getTickerEvents = () =>
                 .default({}),
         )
         .output(z.object({ tickerEvents: z.array(tickerEventSchema), lastEventId: z.number().optional() }))
-        .query(async ({ input }) => {
-            const { tickerEvents } = getTickerEventsSync();
-            const afterWatermark =
-                input.lastSeenId !== undefined ? tickerEvents.filter((e) => e.id > input.lastSeenId!) : tickerEvents;
-            const lastEventId =
-                afterWatermark.length > 0 ? Math.max(...afterWatermark.map((e) => e.id)) : input.lastSeenId;
-            const filtered = filterTickerEvents(
-                afterWatermark,
+        .query(async ({ input }) =>
+            selectTickerEvents(
+                getTickerEventsSync().tickerEvents,
                 input.filter ?? defaultTickerEventFilter(),
                 getAgentsByIdSync(),
-            );
-            return { tickerEvents: filtered, lastEventId };
-        });
+                input.lastSeenId,
+            ),
+        );
 
 const ALL_TRANSPORT_SHIP_TYPES = [
     ...Object.values(shiptypes.solid),

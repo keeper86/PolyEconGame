@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { FIRE_RATE_LIMIT_PER_MONTH, HIRE_RATE_LIMIT_PER_MONTH, NOTICE_PERIOD_MONTHS, TICKS_PER_MONTH } from '../constants';
+import {
+    FIRE_RATE_LIMIT_PER_MONTH,
+    HIRE_RATE_LIMIT_PER_MONTH,
+    NOTICE_PERIOD_MONTHS,
+    TICKS_PER_MONTH,
+} from '../constants';
 import type { EducationLevelType } from '../population/education';
 import { agentMap, makeAgent, makePlanetWithPopulation, sumPopOcc } from '../utils/testHelper';
 import { hireWorkforce, setFireRateLimitPerMonth, setHireRateLimitPerMonth } from './hireWorkforce';
