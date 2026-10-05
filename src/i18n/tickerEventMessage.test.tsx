@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import de from './messages/de.json';
 import en from './messages/en.json';
-import type { TickerEventDetails } from '@/server/controller/simulation';
+import type { TickerEventDetails } from '@/lib/tickerEvents';
 import { renderTickerEvent, tickerEventText } from './tickerEventMessage';
 
 const translator = (locale: 'en' | 'de') =>
@@ -69,6 +69,7 @@ const eventVariants: TickerEventDetails[] = [
     { kind: 'companyDissolved' },
     { kind: 'companyRefounded', successorName: 'New Co' },
     { kind: 'companyRestructured', successorName: 'New Co' },
+    { kind: 'populationMilestone', planetName: 'Gune', population: 8_000_000_000 },
 ];
 
 describe('renderTickerEvent', () => {

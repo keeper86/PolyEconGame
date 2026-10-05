@@ -22,6 +22,7 @@ import type { GameState } from './planet/planet';
 import { accumulatePlanetPrices, resetAgentMetrics } from './planet/planet';
 import { constructionTick, productionTick, updateProductionCostFloors } from './planet/production';
 import { populationAdvanceYearTick, populationTick, resetPopulationMonthCounters } from './population/populationTick';
+import { emitPopulationMilestone } from './population/populationMilestone';
 import { shipTick } from './ships/ships';
 import { seedRng } from './utils/stochasticRound';
 import { assertPerCellWorkforcePopulationConsistency } from './utils/testHelper';
@@ -108,7 +109,8 @@ export function advanceTick(gameState: GameState) {
                 t = profile.markAndAccum('workforceDemographicTick', 'workforceDemographicTick', t);
             }
 
-            populationTick(planet, workforceEvents, profile);
+            const populationTotal = populationTick(planet, workforceEvents, profile);
+            emitPopulationMilestone(gameState, planet, populationTotal);
 
             if (process.env.SIM_DEBUG) {
                 assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'after');

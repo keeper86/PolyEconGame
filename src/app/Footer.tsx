@@ -4,13 +4,21 @@ import { cn } from '@/lib/utils';
 import { renderTickerEvent, tickerEventText } from '@/i18n/tickerEventMessage';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import type { TickerEvent } from '@/server/controller/simulation';
+import type { TickerEvent } from '@/lib/tickerEvents';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Maximize, Minimize } from 'lucide-react';
 import { mapTickToDate } from '@/components/client/TickDisplay';
+import { EventFilterMenu } from '@/components/client/EventFilterMenu';
 import { PlanetIcon } from '@/components/client/PlanetIcon';
 import { CompanyLogo } from '@/components/client/CompanyLogo';
 import { useIsSmallScreen } from '@/hooks/useMobile';
+import {
+    useEventCategoriesPreference,
+    useEventsHideAutomatedPreference,
+    useEventsLocalPlanetOnlyPreference,
+    useEventsShowHrCompletionPreference,
+} from '@/hooks/uiPreferences';
+import { useDocumentVisibility } from '@/hooks/useDocumentVisibility';
+import { useResetOnChange } from '@/hooks/useResetOnChange';
 import { useLocale, useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
 
@@ -52,58 +60,41 @@ function textColor(category: string): string {
 }
 
 export default function Footer() {
-    const [isFullscreen, setIsFullscreen] = useState(false);
     const params = useParams();
     const planetId = typeof params?.planetId === 'string' ? params.planetId : undefined;
     const locale = useLocale();
     const tEvents = useTranslations('Events');
     const tFooter = useTranslations('Footer');
 
-    const toggleFullscreen = useCallback(async () => {
-        try {
-            if (!document.fullscreenElement) {
-                await document.documentElement.requestFullscreen();
-                setIsFullscreen(true);
-            } else {
-                await document.exitFullscreen();
-                setIsFullscreen(false);
-            }
-        } catch (err) {
-            console.error('Fullscreen failed:', err);
-        }
-    }, []);
+    const [categories] = useEventCategoriesPreference();
+    const [hideAutomated] = useEventsHideAutomatedPreference();
+    const [localPlanetOnly] = useEventsLocalPlanetOnlyPreference();
+    const [showHrCompletion] = useEventsShowHrCompletionPreference();
 
-    useEffect(() => {
-        const handleChange = () => {
-            setIsFullscreen(!!document.fullscreenElement);
-        };
-
-        document.addEventListener('fullscreenchange', handleChange);
-        return () => document.removeEventListener('fullscreenchange', handleChange);
-    }, []);
+    const filterKey = `${planetId ?? ''}|${[...categories].sort().join(',')}|${hideAutomated}|${localPlanetOnly}|${showHrCompletion}`;
 
     const trpc = useTRPC();
     const [lastSeenId, setLastSeenId] = useState<number | undefined>(undefined);
     const [events, setEvents] = useState<TickerEvent[]>([]);
 
     const { data } = useSimulationQuery({
-        ...trpc.simulation.getTickerEvents.queryOptions({ lastSeenId }),
+        ...trpc.simulation.getTickerEvents.queryOptions({
+            lastSeenId,
+            filter: { categories, hideAutomated, localPlanetOnly, planetId, showHrCompletion },
+        }),
     });
 
     useEffect(() => {
-        const newEvents =
-            data?.tickerEvents.filter((e) => {
-                if (planetId && e.planetId !== planetId) {
-                    return false;
-                }
-                return e.category !== 'shipArrived' && e.category !== 'shipDispatched';
-            }) ?? [];
-        if (!newEvents || newEvents.length === 0) {
+        if (!data) {
             return;
         }
-        setEvents((prev) => [...prev, ...newEvents].slice(-MAX_LOCAL_EVENTS));
-        setLastSeenId(Math.max(...newEvents.map((e) => e.id)));
-    }, [data, planetId]);
+        if (data.tickerEvents.length > 0) {
+            setEvents((prev) => [...prev, ...data.tickerEvents].slice(-MAX_LOCAL_EVENTS));
+        }
+        if (data.lastEventId !== undefined) {
+            setLastSeenId(data.lastEventId);
+        }
+    }, [data]);
 
     const isSmallScreen = useIsSmallScreen();
 
@@ -127,6 +118,18 @@ export default function Footer() {
     const lastSpawnSpeedRef = useRef<number>(BASE_SPEED_PX_PER_SEC);
     const pauseStartRef = useRef<number>(0);
     const totalPausedDurationRef = useRef<number>(0);
+
+    const resetTicker = useCallback(() => {
+        setLastSeenId(undefined);
+        setEvents([]);
+        setDisplayedEvents([]);
+        lastDisplayedIdRef.current = undefined;
+        lastSpawnTimeRef.current = -Infinity;
+        lastSpawnWidthRef.current = 0;
+        totalPausedDurationRef.current = 0;
+    }, []);
+
+    useResetOnChange(filterKey, resetTicker);
 
     useLayoutEffect(() => {
         const el = containerRef.current;
@@ -251,6 +254,8 @@ export default function Footer() {
         setIsPaused(false);
     }, []);
 
+    useDocumentVisibility(pause, resume);
+
     return (
         <footer className='shrink-0 w-full border-t border-border bg-background h-12'>
             <div className='flex h-full'>
@@ -314,14 +319,7 @@ export default function Footer() {
                     ))}
                 </div>
 
-                <button
-                    onClick={toggleFullscreen}
-                    className='shrink-0 h-full px-3 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border-l border-border z-20'
-                    aria-label={isFullscreen ? tFooter('exitFullscreen') : tFooter('enterFullscreen')}
-                    title={isFullscreen ? tFooter('exitFullscreen') : tFooter('enterFullscreen')}
-                >
-                    {isFullscreen ? <Minimize className='h-4 w-4' /> : <Maximize className='h-4 w-4' />}
-                </button>
+                <EventFilterMenu planetId={planetId} />
             </div>
         </footer>
     );

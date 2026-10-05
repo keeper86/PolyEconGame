@@ -2,6 +2,12 @@
 
 import type { Granularity } from '@/components/client/GranularityButtonGroup';
 import { useLocalStorageState } from '@/hooks/useLocalStorageState';
+import {
+    isTickerEventCategoryList,
+    TICKER_EVENT_CATEGORIES,
+    TICKER_EVENT_FILTER_DEFAULTS,
+    type TickerEventCategory,
+} from '@/lib/tickerEvents';
 
 export type PriceScaleMode = 'absolute' | 'relative';
 
@@ -51,4 +57,39 @@ export function useShowAllCompaniesPreference(): [boolean, (showAll: boolean) =>
 
 export function useHideAutomatedCompaniesPreference(): [boolean, (hideAutomated: boolean) => void] {
     return useLocalStorageState<boolean>('polyecon:ui:hideAutomatedCompanies', true, isBoolean);
+}
+
+export function useEventCategoriesPreference(): [
+    TickerEventCategory[],
+    (next: TickerEventCategory[] | ((prev: TickerEventCategory[]) => TickerEventCategory[])) => void,
+] {
+    return useLocalStorageState<TickerEventCategory[]>(
+        'polyecon:ui:tickerEventCategories',
+        [...TICKER_EVENT_CATEGORIES],
+        isTickerEventCategoryList,
+    );
+}
+
+export function useEventsHideAutomatedPreference(): [boolean, (hideAutomated: boolean) => void] {
+    return useLocalStorageState<boolean>(
+        'polyecon:ui:tickerHideAutomated',
+        TICKER_EVENT_FILTER_DEFAULTS.hideAutomated,
+        isBoolean,
+    );
+}
+
+export function useEventsLocalPlanetOnlyPreference(): [boolean, (localPlanetOnly: boolean) => void] {
+    return useLocalStorageState<boolean>(
+        'polyecon:ui:tickerLocalPlanetOnly',
+        TICKER_EVENT_FILTER_DEFAULTS.localPlanetOnly,
+        isBoolean,
+    );
+}
+
+export function useEventsShowHrCompletionPreference(): [boolean, (showHrCompletion: boolean) => void] {
+    return useLocalStorageState<boolean>(
+        'polyecon:ui:tickerShowHrCompletion',
+        TICKER_EVENT_FILTER_DEFAULTS.showHrCompletion,
+        isBoolean,
+    );
 }

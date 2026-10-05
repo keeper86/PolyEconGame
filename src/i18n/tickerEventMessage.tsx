@@ -2,7 +2,7 @@ import { isValidElement, type ReactNode } from 'react';
 import type { useTranslations } from 'next-intl';
 import { PLANET_NAMES } from '@/lib/planetAssets';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
-import type { TickerEventDetails } from '@/server/controller/simulation';
+import type { TickerEventDetails } from '@/lib/tickerEvents';
 import type { Locale } from './config';
 import { termFor } from './terms';
 
@@ -100,6 +100,12 @@ export const renderTickerEvent = (
                 entity: entityTag,
                 agentName,
                 successorName: details.successorName,
+            });
+        case 'populationMilestone':
+            return t.rich('populationMilestone', {
+                entity: entityTag,
+                planet: details.planetName,
+                population: formatNumberWithUnit(details.population, 'persons', undefined, locale),
             });
     }
 };

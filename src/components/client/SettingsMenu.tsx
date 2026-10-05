@@ -1,7 +1,7 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import { Check, Monitor, Moon, Settings, Sun } from 'lucide-react';
+import { Check, Maximize, Minimize, Monitor, Moon, Settings, Sun } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { useTransition } from 'react';
@@ -14,6 +14,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useFullscreen } from '@/hooks/useFullscreen';
 import { setLocale } from '@/i18n/actions';
 import { locales, type Locale, type LocaleSetting } from '@/i18n/config';
 import { LocaleFlag } from './LocaleFlag';
@@ -29,6 +30,7 @@ const THEMES: { name: ThemeName; icon: LucideIcon }[] = [
 export function SettingsMenu({ explicitLocale }: { explicitLocale: Locale | null }) {
     const t = useTranslations('Settings');
     const { theme, setTheme } = useTheme();
+    const { isFullscreen, toggleFullscreen } = useFullscreen();
     const [isPending, startTransition] = useTransition();
 
     const changeLocale = (locale: LocaleSetting) => {
@@ -66,6 +68,11 @@ export function SettingsMenu({ explicitLocale }: { explicitLocale: Locale | null
                     <Monitor />
                     {t('system')}
                     {explicitLocale === null ? <Check className='ml-auto' /> : null}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={toggleFullscreen}>
+                    {isFullscreen ? <Minimize /> : <Maximize />}
+                    {isFullscreen ? t('exitFullscreen') : t('enterFullscreen')}
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

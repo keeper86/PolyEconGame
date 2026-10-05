@@ -1,5 +1,5 @@
 import type { DomainErrorPacket } from 'src/server/domainError';
-import type { TickerEvent } from 'src/server/controller/simulation';
+import type { TickerEvent } from 'src/lib/tickerEvents';
 import type { ResourceQuantity } from '../planet/claims';
 import type { WireGameState } from '../snapshotCompression';
 import type { AutomatedPricingConfig } from '../planet/planet';

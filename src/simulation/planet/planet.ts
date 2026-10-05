@@ -1,4 +1,4 @@
-import type { TickerEvent } from 'src/server/controller/simulation';
+import type { TickerEvent } from '../../lib/tickerEvents';
 import type { Loan } from '../financial/loanTypes';
 import type { EducationLevelType, Population } from '../population/population';
 import type {
@@ -153,6 +153,7 @@ export type Planet = {
 
     // Pre-computed derived values — set by the worker after each tick, used as O(1) cache by controllers
     _populationTotal?: number;
+    populationMilestone?: number;
     _costOfLiving?: number;
     _costOfLivingRich?: number;
     _freeResources?: { name: string; freeCapacity: number }[];

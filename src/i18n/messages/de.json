@@ -146,6 +146,7 @@
         "companyDissolved": "<entity>{agentName}</entity> ist insolvent und aufgelöst",
         "companyRefounded": "<entity>{agentName}</entity> ist insolvent und wurde als <entity>{successorName}</entity> neu gegründet",
         "companyRestructured": "<entity>{agentName}</entity> ist insolvent und wurde als <entity>{successorName}</entity> unter Insolvenzverwaltung neu aufgestellt",
+        "populationMilestone": "<entity>{planet}</entity> hat eine Bevölkerung von <entity>{population}</entity> erreicht",
         "load": {
             "empty": "leer",
             "cargo": "Ladung <entity>{quantity}</entity>",
@@ -212,7 +213,9 @@
         "system": "System",
         "language": "Sprache",
         "en": "Englisch",
-        "de": "Deutsch"
+        "de": "Deutsch",
+        "enterFullscreen": "Vollbild aktivieren",
+        "exitFullscreen": "Vollbild beenden"
     },
     "Login": {
         "pageTitle": "Anmeldung",
@@ -220,9 +223,27 @@
         "action": "Anmelden / Registrieren"
     },
     "Footer": {
-        "ticker": "Simulationsereignis-Ticker",
-        "enterFullscreen": "Vollbild aktivieren",
-        "exitFullscreen": "Vollbild beenden"
+        "ticker": "Simulationsereignis-Ticker"
+    },
+    "EventFilter": {
+        "title": "Ereignisfilter",
+        "filters": "Filter",
+        "localPlanetOnly": "Nur dieser Planet",
+        "hideAutomated": "Automatisierte Unternehmen ausblenden",
+        "showHrCompletion": "Abschluss der HR-Abteilung anzeigen",
+        "types": "Ereignistypen",
+        "agentCreated": "Unternehmen gegründet",
+        "shipDispatched": "Schiff entsandt",
+        "shipArrived": "Schiff angekommen",
+        "shipCompleted": "Schiff fertiggestellt",
+        "facilityCompleted": "Gebäude fertiggestellt",
+        "facilityScrapped": "Gebäude abgebaut",
+        "licenseAcquired": "Lizenz erworben",
+        "agentBankrupt": "Unternehmen insolvent",
+        "contractAccepted": "Auftrag angenommen",
+        "loanRollover": "Kreditverlängerung",
+        "priceSpike": "Preisspitze",
+        "populationMilestone": "Bevölkerungsmeilenstein"
     },
     "Metadata": {
         "title": "Enterprise Engine",

@@ -93,7 +93,7 @@ export const totalWorkersInCategory = (category: WorkforceCategory): number =>
     category.active + totalOnboarding(category) + totalDeparting(category);
 
 export const productivityFromXP = (xp: number): number => {
-    const A = 1;
+    const A = 1 / 3;
     const Y = 0.95;
     const T = 40;
     return A * (1 - Math.pow(1 - Y, xp / T)) + 1;

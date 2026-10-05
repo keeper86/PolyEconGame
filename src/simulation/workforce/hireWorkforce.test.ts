@@ -24,8 +24,14 @@ import {
     sumPopOcc,
     totalPopulation,
 } from '../utils/testHelper';
-import { assertBackfillProgress, hireWorkforce, perTickLimit, setFireRateLimitPerMonth } from './hireWorkforce';
-import { automaticWorkerAllocation, setHireRateLimitPerMonth } from './automaticWorkerAllocation';
+import {
+    assertBackfillProgress,
+    hireWorkforce,
+    perTickLimit,
+    setFireRateLimitPerMonth,
+    setHireRateLimitPerMonth,
+} from './hireWorkforce';
+import { automaticWorkerAllocation } from './automaticWorkerAllocation';
 import {
     acceptProbability,
     betterOfferMeanWage,
@@ -728,11 +734,11 @@ describe('cross-tier backfill double-deduction', () => {
         agent.assets.p.wagePerEdu.secondary = 1e9;
         agent.assets.p.wagePerEdu.tertiary = 1e9;
 
-        hireWorkforce(agentMap(agent), planet);
+        for (let tick = 0; tick < 3; tick++) {
+            hireWorkforce(agentMap(agent), planet);
+        }
 
         const wf = agent.assets.p.workforceDemography!;
-        // The none-tier backfill hires ~100 secondary, so the secondary tier must still hire the
-        // remaining ~95 natives instead of skipping them and jumping straight to tertiary.
         expect(totalOnboardingForEdu(wf, 'secondary')).toBeGreaterThan(190);
         expect(totalOnboardingForEdu(wf, 'tertiary')).toBeLessThan(10);
         expect(sumPopOcc(planet, 'secondary', 'unoccupied')).toBeLessThan(1810);

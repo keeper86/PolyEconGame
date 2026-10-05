@@ -5,9 +5,8 @@ import {
     WAGE_ADJUSTMENT_RATE,
     WAGE_CEILING_SMOOTHING,
     WAGE_CHURN_GAIN,
-    HIRE_RATE_LIMIT_PER_MONTH,
 } from '../constants';
-import { perTickLimit } from './hireWorkforce';
+import { hireRateLimit, perTickLimit } from './hireWorkforce';
 import type { Agent, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
@@ -45,7 +44,7 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
                 newTarget[edu] = rawTarget;
                 continue;
             }
-            const maxStep = perTickLimit(headcount, hireRateLimitPerMonth);
+            const maxStep = perTickLimit(headcount, hireRateLimit());
             newTarget[edu] = Math.round(Math.max(previous - maxStep, Math.min(previous + maxStep, rawTarget)));
         }
 
@@ -53,17 +52,14 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
     }
 }
 
-let hireRateLimitPerMonth = HIRE_RATE_LIMIT_PER_MONTH;
-
-export const setHireRateLimitPerMonth = (value: number): void => {
-    hireRateLimitPerMonth = value;
-};
-
 let pinWagesToMinimum = false;
 
 export const setPinWagesToMinimum = (value: boolean): void => {
     pinWagesToMinimum = value;
 };
+
+const capAtAffordability = (wage: number, ceiling: number): number =>
+    ceiling >= MIN_WAGE ? Math.min(wage, ceiling) : wage;
 
 export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
@@ -111,14 +107,15 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
 
             const maxStep = WAGE_ADJUSTMENT_RATE * current;
             const step = pinWagesToMinimum ? 0 : Math.max(-maxStep, Math.min(maxStep, current * pressure));
-            assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, current + step));
+            const raised = capAtAffordability(current + step, ceiling);
+            assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, raised));
         }
 
-        for (let i = 0; i < educationLevelKeys.length - 1; i++) {
-            const currentEdu = educationLevelKeys[i];
-            const nextEdu = educationLevelKeys[i + 1];
-            if (assets.wagePerEdu[currentEdu] > assets.wagePerEdu[nextEdu]) {
-                assets.wagePerEdu[nextEdu] = assets.wagePerEdu[currentEdu];
+        for (let i = educationLevelKeys.length - 2; i >= 0; i--) {
+            const lowerEdu = educationLevelKeys[i];
+            const higherEdu = educationLevelKeys[i + 1];
+            if (assets.wagePerEdu[lowerEdu] > assets.wagePerEdu[higherEdu]) {
+                assets.wagePerEdu[lowerEdu] = assets.wagePerEdu[higherEdu];
             }
         }
 

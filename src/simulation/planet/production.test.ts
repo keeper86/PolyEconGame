@@ -1514,11 +1514,12 @@ describe('productionTick — XP boost effect on production', () => {
 
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'xp-fac');
         expect(recorded).toBeDefined();
-        expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(0.4875);
 
-        const storedIron = queryStorageFacility(agent.assets.p.storage, 'Iron Ore');
-        expect(storedIron).toBeGreaterThan(950);
-        expect(storedIron).toBeLessThan(1000);
+        const expectedEfficiency = 0.32916667;
+        expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(expectedEfficiency, 4);
+
+        const storedIron = queryStorageFacility(agent.assets.p.storage, ironOreResourceType.name);
+        expect(storedIron).toBeCloseTo(facility.produces[0]!.quantity * facility.scale * expectedEfficiency, 4);
     });
 
     it('workers with zero XP produce less than those with high XP (same headcount)', () => {
@@ -1559,11 +1560,12 @@ describe('productionTick — XP boost effect on production', () => {
 
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'no-xp-fac');
         expect(recorded).toBeDefined();
-        expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(0.25);
 
-        const storedIron = queryStorageFacility(agent.assets.p.storage, 'Iron Ore');
-        expect(storedIron).toBeGreaterThan(450);
-        expect(storedIron).toBeLessThan(550);
+        const expectedEfficiency = 0.25;
+        expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(expectedEfficiency, 4);
+
+        const storedIron = queryStorageFacility(agent.assets.p.storage, ironOreResourceType.name);
+        expect(storedIron).toBeCloseTo(facility.produces[0]!.quantity * facility.scale * expectedEfficiency, 4);
     });
 
     it('XP is averaged across all workers in the same edu category', () => {
@@ -1610,10 +1612,10 @@ describe('productionTick — XP boost effect on production', () => {
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'mixed-xp-fac');
         expect(recorded).toBeDefined();
 
-        expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(0.975);
+        const expectedEfficiency = 0.65833333;
+        expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(expectedEfficiency, 4);
 
-        const storedIron = queryStorageFacility(agent.assets.p.storage, 'Iron Ore');
-        expect(storedIron).toBeGreaterThan(1900);
-        expect(storedIron).toBeLessThan(2000);
+        const storedIron = queryStorageFacility(agent.assets.p.storage, ironOreResourceType.name);
+        expect(storedIron).toBeCloseTo(facility.produces[0]!.quantity * facility.scale * expectedEfficiency, 4);
     });
 });

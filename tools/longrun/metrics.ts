@@ -48,6 +48,7 @@ import {
     totalActiveForEdu,
     totalVoluntaryDepartingForEdu,
 } from '../../src/simulation/workforce/workforceAggregates';
+import { productivityFromXP, totalWorkersInCategory } from '../../src/simulation/workforce/workforce';
 import { facilityNameToKey } from './solverDiagnostic';
 import { computeCompanyNetWorth, computeWealthTax } from '../../src/simulation/agents/governmentAgent';
 import { computeLoanConditions } from '../../src/simulation/financial/loanConditions';
@@ -382,6 +383,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let facilityCount = 0;
     let wageSum = 0;
     let wageCount = 0;
+    let xpProdSum = 0;
+    let xpProdWeight = 0;
+    let hrMultSum = 0;
+    let hrMultCount = 0;
     let loansWageCoverage = 0;
     let loansBufferCoverage = 0;
     let loansRollover = 0;
@@ -965,6 +970,8 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             wageSum += assets.wagePerEdu.none;
             wageCount += 1;
         }
+        hrMultSum += assets.hrProductivityMultiplier ?? 1;
+        hrMultCount += 1;
         const wf = assets.workforceDemography;
         const slotsFilled = sumTotalUsedByEdu(assets);
         const slotFill = sumSlotFillByEdu(assets);
@@ -983,6 +990,16 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             if (wf) {
                 activeByEdu[edu] += totalActiveForEdu(wf, edu);
                 voluntaryDepartingTotal += totalVoluntaryDepartingForEdu(wf, edu);
+                let totalXP = 0;
+                let totalWorkers = 0;
+                for (const age of wf) {
+                    totalXP += age[edu].workforceExperience;
+                    totalWorkers += totalWorkersInCategory(age[edu]);
+                }
+                if (totalWorkers > 0) {
+                    xpProdSum += productivityFromXP(totalXP / totalWorkers) * totalWorkers;
+                    xpProdWeight += totalWorkers;
+                }
             }
             const debug = assets._wageStepDebug?.[edu];
             if (debug) {
@@ -1511,6 +1528,8 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         wealthTaxCollected,
         workerUtilization: totalSlots > 0 ? usedWorkers / totalSlots : 0,
         avgWage: wageCount > 0 ? wageSum / wageCount : 0,
+        xpProd: xpProdWeight > 0 ? xpProdSum / xpProdWeight : 0,
+        hrMult: hrMultCount > 0 ? hrMultSum / hrMultCount : 0,
         existentialAgentCount,
         nonExistentialAgentCount,
         existentialSlotCapacity,
@@ -1903,6 +1922,8 @@ export const METRIC_KEYS: string[] = [
     'wealthTaxCollected',
     'workerUtilization',
     'avgWage',
+    'xpProd',
+    'hrMult',
     'existentialAgentCount',
     'nonExistentialAgentCount',
     'existentialSlotCapacity',

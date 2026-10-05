@@ -12,6 +12,12 @@ import { getTransportStarvation } from '@/simulation/planet/facility';
 import { TRADABLE_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { shiptypes } from '@/simulation/ships/ships';
+import {
+    TICKER_EVENT_CATEGORIES,
+    type TickerEvent,
+    type TickerEventDetails,
+    type TickerEventLoad,
+} from '@/lib/tickerEvents';
 import { z } from 'zod';
 import { LOAN_TYPES, totalOutstandingLoans } from '../../simulation/financial/loanTypes';
 import {
@@ -35,6 +41,7 @@ import { getLatestTick } from '../../simulation/workerClient/manager';
 import {
     getAgentAssetValueSync,
     getAgentSync,
+    getAgentsByIdSync,
     getAllAgentsSync,
     getAllPlanetsSync,
     getLoanConditionsSync,
@@ -42,6 +49,11 @@ import {
     getShipCapitalMarketSync,
     getTickerEventsSync,
 } from '../../simulation/workerClient/syncQueries';
+import {
+    defaultTickerEventFilter,
+    selectTickerEvents,
+    tickerEventFilterSchema,
+} from '../../simulation/workerClient/tickerEventFilter';
 import { db } from '../db';
 import { generateAndLogNewsPrompt } from '../newsAgent/monthlyReportExtractor';
 import { resolveBankruptcyForUser } from '../bankruptcy';
@@ -875,20 +887,7 @@ export const getLoanConditions = () =>
             return { conditions: conditions ?? null, activeLoans: activeLoans ?? [] };
         });
 
-const tickerEventCategorySchema = z.enum([
-    'agentCreated',
-    'shipDispatched',
-    'shipArrived',
-    'shipCompleted',
-    'facilityCompleted',
-    'facilityScrapped',
-    'licenseAcquired',
-    'agentBankrupt',
-    'contractAccepted',
-    'loanRollover',
-    'priceSpike',
-    'populationMilestone',
-]);
+const tickerEventCategorySchema = z.enum([...TICKER_EVENT_CATEGORIES]);
 
 const resourceFormSchema = z.enum([
     'solid',
@@ -900,7 +899,7 @@ const resourceFormSchema = z.enum([
     'internal',
 ]);
 
-const tickerEventLoadSchema = z.discriminatedUnion('kind', [
+const tickerEventLoadSchema: z.ZodType<TickerEventLoad> = z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('empty') }),
     z.object({ kind: z.literal('cargo'), quantity: z.number(), resourceForm: resourceFormSchema }),
     z.object({
@@ -914,7 +913,7 @@ const tickerEventLoadSchema = z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('passenger') }),
 ]);
 
-const tickerEventDetailsSchema = z.discriminatedUnion('kind', [
+const tickerEventDetailsSchema: z.ZodType<TickerEventDetails> = z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('agentCreated'), planetName: z.string() }),
     z.object({ kind: z.literal('licenseAcquired'), planetName: z.string(), licenseType: z.string() }),
     z.object({ kind: z.literal('facilityCompleted'), planetName: z.string(), facilityName: z.string() }),
@@ -941,38 +940,39 @@ const tickerEventDetailsSchema = z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('companyDissolved') }),
     z.object({ kind: z.literal('companyRefounded'), successorName: z.string() }),
     z.object({ kind: z.literal('companyRestructured'), successorName: z.string() }),
+    z.object({ kind: z.literal('populationMilestone'), planetName: z.string(), population: z.number() }),
 ]);
 
-export type TickerEventDetails = z.infer<typeof tickerEventDetailsSchema>;
-
-const baseTickerEventSchema = z.object({
+const tickerEventSchema: z.ZodType<TickerEvent> = z.object({
     id: z.number(),
     planetId: z.string(),
     tick: z.number(),
     agentLogo: z.string(),
+    category: tickerEventCategorySchema,
+    agentId: z.string().optional(),
+    agentName: z.string().optional(),
+    details: tickerEventDetailsSchema,
 });
-
-const tickerEventSchema = baseTickerEventSchema.extend(
-    z.object({
-        category: tickerEventCategorySchema,
-        agentId: z.string().optional(),
-        agentName: z.string().optional(),
-        details: tickerEventDetailsSchema,
-    }).shape,
-);
-
-export type TickerEvent = z.infer<typeof tickerEventSchema>;
 
 export const getTickerEvents = () =>
     protectedProcedure
-        .input(z.object({ lastSeenId: z.number().optional() }).default({}))
-        .output(z.object({ tickerEvents: z.array(tickerEventSchema) }))
-        .query(async ({ input }) => {
-            const { tickerEvents } = getTickerEventsSync();
-            const filtered =
-                input.lastSeenId !== undefined ? tickerEvents.filter((e) => e.id > input.lastSeenId!) : tickerEvents;
-            return { tickerEvents: filtered };
-        });
+        .input(
+            z
+                .object({
+                    lastSeenId: z.number().optional(),
+                    filter: tickerEventFilterSchema.optional(),
+                })
+                .default({}),
+        )
+        .output(z.object({ tickerEvents: z.array(tickerEventSchema), lastEventId: z.number().optional() }))
+        .query(async ({ input }) =>
+            selectTickerEvents(
+                getTickerEventsSync().tickerEvents,
+                input.filter ?? defaultTickerEventFilter(),
+                getAgentsByIdSync(),
+                input.lastSeenId,
+            ),
+        );
 
 const ALL_TRANSPORT_SHIP_TYPES = [
     ...Object.values(shiptypes.solid),
