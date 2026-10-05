@@ -17,6 +17,7 @@ import {
     useEventsLocalPlanetOnlyPreference,
     useEventsShowHrCompletionPreference,
 } from '@/hooks/uiPreferences';
+import { useDocumentVisibility } from '@/hooks/useDocumentVisibility';
 import { useLocale, useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
 
@@ -237,6 +238,8 @@ export default function Footer() {
         isPausedRef.current = false;
         setIsPaused(false);
     }, []);
+
+    useDocumentVisibility(pause, resume);
 
     return (
         <footer className='shrink-0 w-full border-t border-border bg-background h-12'>

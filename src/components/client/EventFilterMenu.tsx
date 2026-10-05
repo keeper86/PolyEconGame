@@ -1,6 +1,7 @@
 'use client';
 
-import { Check, ListFilter } from 'lucide-react';
+import { Check } from 'lucide-react';
+import { ImFilter } from 'react-icons/im';
 import { useTranslations } from 'next-intl';
 import {
     DropdownMenu,
@@ -42,7 +43,7 @@ export function EventFilterMenu({ planetId }: { planetId?: string }) {
                     aria-label={t('title')}
                     title={t('title')}
                 >
-                    <ListFilter className='h-4 w-4' />
+                    <ImFilter className='h-5 w-5' />
                 </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align='end' className='w-64'>
