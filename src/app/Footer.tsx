@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { renderTickerEvent, tickerEventText } from '@/i18n/tickerEventMessage';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import type { TickerEvent } from '@/server/controller/simulation';
+import type { TickerEvent } from '@/lib/tickerEvents';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { mapTickToDate } from '@/components/client/TickDisplay';
 import { EventFilterMenu } from '@/components/client/EventFilterMenu';
@@ -18,6 +18,7 @@ import {
     useEventsShowHrCompletionPreference,
 } from '@/hooks/uiPreferences';
 import { useDocumentVisibility } from '@/hooks/useDocumentVisibility';
+import { useResetOnChange } from '@/hooks/useResetOnChange';
 import { useLocale, useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
 
@@ -70,6 +71,8 @@ export default function Footer() {
     const [localPlanetOnly] = useEventsLocalPlanetOnlyPreference();
     const [showHrCompletion] = useEventsShowHrCompletionPreference();
 
+    const filterKey = `${planetId ?? ''}|${[...categories].sort().join(',')}|${hideAutomated}|${localPlanetOnly}|${showHrCompletion}`;
+
     const trpc = useTRPC();
     const [lastSeenId, setLastSeenId] = useState<number | undefined>(undefined);
     const [events, setEvents] = useState<TickerEvent[]>([]);
@@ -115,6 +118,18 @@ export default function Footer() {
     const lastSpawnSpeedRef = useRef<number>(BASE_SPEED_PX_PER_SEC);
     const pauseStartRef = useRef<number>(0);
     const totalPausedDurationRef = useRef<number>(0);
+
+    const resetTicker = useCallback(() => {
+        setLastSeenId(undefined);
+        setEvents([]);
+        setDisplayedEvents([]);
+        lastDisplayedIdRef.current = undefined;
+        lastSpawnTimeRef.current = -Infinity;
+        lastSpawnWidthRef.current = 0;
+        totalPausedDurationRef.current = 0;
+    }, []);
+
+    useResetOnChange(filterKey, resetTicker);
 
     useLayoutEffect(() => {
         const el = containerRef.current;

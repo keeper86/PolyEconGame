@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import type { InboundMessage, OutboundMessage } from '../worker';
 import type { Planet, Agent, BankruptcyRecord } from '../planet/planet';
 import type { ShipCapitalMarket } from '../ships/ships';
-import type { TickerEvent } from '../../server/controller/simulation';
+import type { TickerEvent } from '../../lib/tickerEvents';
 
 export type MessageHandler = (msg: OutboundMessage) => void;
 

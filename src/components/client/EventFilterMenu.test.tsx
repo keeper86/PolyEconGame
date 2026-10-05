@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithIntl } from 'tests/vitest/renderWithIntl';
-import type { TickerEventCategory } from '@/lib/tickerEventCategories';
+import type { TickerEventCategory } from '@/lib/tickerEvents';
 
 const setCategories = vi.fn();
 const setHideAutomated = vi.fn();

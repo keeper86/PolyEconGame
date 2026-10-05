@@ -1,8 +1,7 @@
 import { z } from 'zod';
-import { TICKER_EVENT_CATEGORIES } from '../../lib/tickerEventCategories';
+import { TICKER_EVENT_CATEGORIES, TICKER_EVENT_FILTER_DEFAULTS, type TickerEvent } from '../../lib/tickerEvents';
 import type { Agent } from '../planet/planet';
 import { HR_DEPARTMENT_NAME } from '../planet/specialFacilities';
-import type { TickerEvent } from '../../server/controller/simulation';
 
 export const tickerEventFilterSchema = z.object({
     categories: z.array(z.enum([...TICKER_EVENT_CATEGORIES])),
@@ -17,9 +16,7 @@ export type TickerEventFilter = z.infer<typeof tickerEventFilterSchema>;
 export function defaultTickerEventFilter(): TickerEventFilter {
     return {
         categories: [...TICKER_EVENT_CATEGORIES],
-        hideAutomated: false,
-        localPlanetOnly: false,
-        showHrCompletion: true,
+        ...TICKER_EVENT_FILTER_DEFAULTS,
     };
 }
 

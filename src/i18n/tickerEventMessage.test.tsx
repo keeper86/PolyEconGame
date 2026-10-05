@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import de from './messages/de.json';
 import en from './messages/en.json';
-import type { TickerEventDetails } from '@/server/controller/simulation';
+import type { TickerEventDetails } from '@/lib/tickerEvents';
 import { renderTickerEvent, tickerEventText } from './tickerEventMessage';
 
 const translator = (locale: 'en' | 'de') =>

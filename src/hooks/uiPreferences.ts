@@ -5,8 +5,9 @@ import { useLocalStorageState } from '@/hooks/useLocalStorageState';
 import {
     isTickerEventCategoryList,
     TICKER_EVENT_CATEGORIES,
+    TICKER_EVENT_FILTER_DEFAULTS,
     type TickerEventCategory,
-} from '@/lib/tickerEventCategories';
+} from '@/lib/tickerEvents';
 
 export type PriceScaleMode = 'absolute' | 'relative';
 
@@ -70,13 +71,25 @@ export function useEventCategoriesPreference(): [
 }
 
 export function useEventsHideAutomatedPreference(): [boolean, (hideAutomated: boolean) => void] {
-    return useLocalStorageState<boolean>('polyecon:ui:tickerHideAutomated', false, isBoolean);
+    return useLocalStorageState<boolean>(
+        'polyecon:ui:tickerHideAutomated',
+        TICKER_EVENT_FILTER_DEFAULTS.hideAutomated,
+        isBoolean,
+    );
 }
 
 export function useEventsLocalPlanetOnlyPreference(): [boolean, (localPlanetOnly: boolean) => void] {
-    return useLocalStorageState<boolean>('polyecon:ui:tickerLocalPlanetOnly', true, isBoolean);
+    return useLocalStorageState<boolean>(
+        'polyecon:ui:tickerLocalPlanetOnly',
+        TICKER_EVENT_FILTER_DEFAULTS.localPlanetOnly,
+        isBoolean,
+    );
 }
 
 export function useEventsShowHrCompletionPreference(): [boolean, (showHrCompletion: boolean) => void] {
-    return useLocalStorageState<boolean>('polyecon:ui:tickerShowHrCompletion', true, isBoolean);
+    return useLocalStorageState<boolean>(
+        'polyecon:ui:tickerShowHrCompletion',
+        TICKER_EVENT_FILTER_DEFAULTS.showHrCompletion,
+        isBoolean,
+    );
 }

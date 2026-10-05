@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { TickerEvent } from '../../server/controller/simulation';
+import type { TickerEvent } from '../../lib/tickerEvents';
 import type { Agent } from '../planet/planet';
 import { HR_DEPARTMENT_NAME } from '../planet/specialFacilities';
 import {

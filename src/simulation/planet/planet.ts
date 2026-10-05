@@ -1,4 +1,4 @@
-import type { TickerEvent } from 'src/server/controller/simulation';
+import type { TickerEvent } from '../../lib/tickerEvents';
 import type { Loan } from '../financial/loanTypes';
 import type { EducationLevelType, Population } from '../population/population';
 import type {

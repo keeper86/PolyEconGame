@@ -1,7 +1,8 @@
 import { getCachedGameState, getLatestTick, type SnapshotCache } from './manager';
 import type { Planet, Agent, BankruptcyRecord } from '../planet/planet';
 import type { ShipCapitalMarket } from '../ships/ships';
-import type { TickerEvent, LoanConditions } from '../../server/controller/simulation';
+import type { TickerEvent } from '../../lib/tickerEvents';
+import type { LoanConditions } from '../../server/controller/simulation';
 import type { Loan } from '../financial/loanTypes';
 import { computeLoanConditions } from '../financial/loanConditions';
 import { computeAssetValueBreakdown } from '../financial/assetValuation';

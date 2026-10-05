@@ -17,7 +17,7 @@ import {
     useEventsLocalPlanetOnlyPreference,
     useEventsShowHrCompletionPreference,
 } from '@/hooks/uiPreferences';
-import { TICKER_EVENT_CATEGORIES, type TickerEventCategory } from '@/lib/tickerEventCategories';
+import { TICKER_EVENT_CATEGORIES, type TickerEventCategory } from '@/lib/tickerEvents';
 import { cn } from '@/lib/utils';
 
 export function EventFilterMenu({ planetId }: { planetId?: string }) {
