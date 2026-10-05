@@ -136,8 +136,7 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
                     totalAvail += avail;
                 }
 
-                const maxHires = perTickLimit(Math.max(currentActive, cover), hireRateLimitPerMonth);
-                const toHire = Math.floor(Math.min(shortfall, totalWilling, maxHires));
+                const toHire = Math.floor(Math.min(shortfall, totalWilling));
                 assertBackfillProgress(edu, edu, shortfall, totalWilling, toHire);
                 if (toHire > 0) {
                     const allocatedBuckets = distributeProportionally(

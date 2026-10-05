@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { FIRE_RATE_LIMIT_PER_MONTH, HIRE_RATE_LIMIT_PER_MONTH, NOTICE_PERIOD_MONTHS } from '../constants';
+import { FIRE_RATE_LIMIT_PER_MONTH, HIRE_RATE_LIMIT_PER_MONTH, NOTICE_PERIOD_MONTHS, TICKS_PER_MONTH } from '../constants';
 import type { EducationLevelType } from '../population/education';
 import { agentMap, makeAgent, makePlanetWithPopulation, sumPopOcc } from '../utils/testHelper';
-import { hireWorkforce, perTickLimit, setFireRateLimitPerMonth, setHireRateLimitPerMonth } from './hireWorkforce';
+import { hireWorkforce, setFireRateLimitPerMonth, setHireRateLimitPerMonth } from './hireWorkforce';
 import { automaticWorkerAllocation } from './automaticWorkerAllocation';
 
 const makeOnlySecondaryPlanet = (): ReturnType<typeof makePlanetWithPopulation> =>
@@ -67,21 +67,32 @@ describe('cross-tier fallback bookkeeping', () => {
         ).toBeLessThanOrEqual(1050);
     });
 
-    it('fills at most one tick worth of the hire gap even with unlimited willing workers', () => {
-        const { planet } = makePlanetWithPopulation({ primary: 100_000 });
+    it('fills low-tier slots from a higher tier over repeated ticks when no fitting employable exists', () => {
+        const { planet } = makePlanetWithPopulation({ secondary: 100_000 });
         const agent = makeAgent();
         const assets = agent.assets.p;
-        assets.totalSlotCapacity.primary = 100_000;
-        assets.allocatedWorkers.primary = 100_000;
-        assets.wagePerEdu.primary = 1e9;
+        assets.totalSlotCapacity.none = 1000;
+        for (const edu of ['none', 'primary', 'secondary', 'tertiary'] as EducationLevelType[]) {
+            assets.allocatedWorkers[edu] = edu === 'none' ? 1000 : 0;
+            assets.wagePerEdu[edu] = 1e9;
+        }
         setHireRateLimitPerMonth(HIRE_RATE_LIMIT_PER_MONTH);
+        setFireRateLimitPerMonth(FIRE_RATE_LIMIT_PER_MONTH);
 
-        hireWorkforce(agentMap(agent), planet);
+        for (let tick = 0; tick < TICKS_PER_MONTH; tick++) {
+            automaticWorkerAllocation(agentMap(agent), planet);
+            hireWorkforce(agentMap(agent), planet);
+        }
+        const afterOneMonth = sumPopOcc(planet, 'secondary', 'employed');
+        expect(afterOneMonth).toBeGreaterThan(0);
 
-        const workforce = agent.assets.p.workforceDemography!;
-        const onboarded = totalOnboardingForEdu(workforce, 'primary');
-        expect(onboarded).toBeGreaterThan(0);
-        expect(onboarded).toBeLessThanOrEqual(perTickLimit(100_000, HIRE_RATE_LIMIT_PER_MONTH));
+        for (let tick = 0; tick < TICKS_PER_MONTH * 2; tick++) {
+            automaticWorkerAllocation(agentMap(agent), planet);
+            hireWorkforce(agentMap(agent), planet);
+        }
+        const afterRampUp = sumPopOcc(planet, 'secondary', 'employed');
+        expect(afterRampUp).toBeGreaterThanOrEqual(1000);
+        expect(afterRampUp).toBeLessThanOrEqual(1050);
     });
 
     it('does not fire a higher-tier worker who is filling a lower-tier slot', () => {

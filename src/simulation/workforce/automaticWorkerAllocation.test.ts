@@ -149,7 +149,7 @@ describe('updateAllocatedWorkers', () => {
 });
 
 describe('automaticWageAdjustment', () => {
-    it('raises the wage when short of workers', () => {
+    it('absorbs a low-tier shortage by substitution instead of raising its wage', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
@@ -157,7 +157,18 @@ describe('automaticWageAdjustment', () => {
 
         automaticWageAdjustment(agentMap(agent), planet);
 
-        expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
+        expect(agent.assets.p.wagePerEdu.none).toBe(agent.assets.p.wagePerEdu.primary);
+    });
+
+    it('raises the wage of the top tier when short of workers', () => {
+        const { planet } = makePlanetWithPopulation({});
+        const agent = makeAgent();
+        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+        agent.assets.p.totalSlotCapacity.tertiary = 100;
+
+        automaticWageAdjustment(agentMap(agent), planet);
+
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeGreaterThan(100);
     });
 
     it('does not treat overqualified slot-filling as a shortage', () => {
@@ -199,16 +210,31 @@ describe('automaticWageAdjustment', () => {
         expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
     });
 
+    it('never pays above the affordable ceiling implied by last month accounting', () => {
+        const { planet } = makePlanetWithPopulation({});
+        const agent = makeAgent();
+        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+        agent.assets.p.totalSlotCapacity.tertiary = 100;
+        agent.assets.p.lastMonthAcc.revenue = 1000;
+        agent.assets.p.lastMonthAcc.purchases = 0;
+        agent.assets.p.lastMonthAcc.claimPayments = 0;
+        agent.assets.p.lastMonthAcc.totalWorkersTicks = 100;
+
+        automaticWageAdjustment(agentMap(agent), planet);
+
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeLessThanOrEqual(10);
+    });
+
     it('raises the wage when the quit rate exceeds the target', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
-        agent.assets.p.workforceDemography[30].none.active = 1000;
-        agent.assets.p._monthlyVoluntaryQuits = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
+        agent.assets.p.workforceDemography[30].tertiary.active = 1000;
+        agent.assets.p._monthlyVoluntaryQuits = { none: 0, primary: 0, secondary: 0, tertiary: 100 };
 
         automaticWageAdjustment(agentMap(agent), planet);
 
-        expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeGreaterThan(100);
     });
 
     it('lowers the wage when the quit rate is below the target', () => {
@@ -222,18 +248,17 @@ describe('automaticWageAdjustment', () => {
         expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
     });
 
-    it('pushes higher education wages up instead of lowering the lower education wage', () => {
+    it('caps lower education wages by the next higher tier', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
-        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
-        agent.assets.p.totalSlotCapacity.none = 100;
+        agent.assets.p.wagePerEdu = { none: 300, primary: 200, secondary: 100, tertiary: 50 };
 
         automaticWageAdjustment(agentMap(agent), planet);
 
-        expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
-        expect(agent.assets.p.wagePerEdu.primary).toBeGreaterThanOrEqual(agent.assets.p.wagePerEdu.none);
-        expect(agent.assets.p.wagePerEdu.secondary).toBeGreaterThanOrEqual(agent.assets.p.wagePerEdu.primary);
-        expect(agent.assets.p.wagePerEdu.tertiary).toBeGreaterThanOrEqual(agent.assets.p.wagePerEdu.secondary);
+        const wage = agent.assets.p.wagePerEdu;
+        expect(wage.primary).toBeGreaterThanOrEqual(wage.none);
+        expect(wage.secondary).toBeGreaterThanOrEqual(wage.primary);
+        expect(wage.tertiary).toBeGreaterThanOrEqual(wage.secondary);
     });
 
     it('never lowers the wage below MIN_WAGE', () => {
@@ -255,6 +280,6 @@ describe('automaticWageAdjustment', () => {
 
         automaticWageAdjustment(agentMap(agent), planet);
 
-        expect(agent.assets.p.wagePerEdu.none).toBe(MAX_WAGE);
+        expect(agent.assets.p.wagePerEdu.none).toBeLessThanOrEqual(MAX_WAGE);
     });
 });

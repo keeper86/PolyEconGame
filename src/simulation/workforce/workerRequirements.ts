@@ -4,8 +4,8 @@ import { distributeProportionally } from '../utils/distributeProportionally';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { ResourceQuantity } from '../planet/claims';
 
-export const LABOUR_PER_TON_PER_TICK = 0.35;
-export const LABOUR_PER_SERVICE_UNIT = 0.5;
+export const LABOUR_PER_TON_PER_TICK = 0.5;
+export const LABOUR_PER_SERVICE_UNIT = 0.75;
 export const MINIMUM_WORKERS_PER_SCALE = 20;
 
 export type WorkerProfile = Record<EducationLevelType, number>;

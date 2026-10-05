@@ -600,13 +600,10 @@ describe('wage adjustment cadence', () => {
             });
             const company = agents[1];
             company.assets[planet.id].productionFacilities.push(
-                makeProductionFacility(
-                    { none: 5000, primary: 5000, secondary: 0, tertiary: 0 },
-                    { planetId: planet.id },
-                ),
+                makeProductionFacility({ none: 0, primary: 0, secondary: 0, tertiary: 5000 }, { planetId: planet.id }),
             );
 
-            const wage = () => company.assets[planet.id].wagePerEdu.primary;
+            const wage = () => company.assets[planet.id].wagePerEdu.tertiary;
 
             gameState.tick = 1;
             advanceTick(gameState);
