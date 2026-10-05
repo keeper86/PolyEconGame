@@ -4,9 +4,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 
 const setLocale = vi.fn();
+const toggleFullscreen = vi.fn();
 
 vi.mock('@/i18n/actions', () => ({
     setLocale: (locale: string) => setLocale(locale),
+}));
+
+vi.mock('@/hooks/useFullscreen', () => ({
+    useFullscreen: () => ({ isFullscreen: false, toggleFullscreen }),
 }));
 
 import { SettingsMenu } from './SettingsMenu';
@@ -56,5 +61,14 @@ describe('SettingsMenu', () => {
         await userEvent.click(screen.getByRole('menuitem', { name: 'German' }));
 
         expect(setLocale).toHaveBeenCalledWith('de');
+    });
+
+    it('toggles fullscreen from the menu', async () => {
+        renderWithIntl(<SettingsMenu explicitLocale={null} />);
+        await openMenu();
+
+        await userEvent.click(screen.getByRole('menuitem', { name: 'Enter fullscreen' }));
+
+        expect(toggleFullscreen).toHaveBeenCalled();
     });
 });

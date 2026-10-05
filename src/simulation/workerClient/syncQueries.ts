@@ -136,6 +136,14 @@ export function getTickerEventsSync(): { tickerEvents: TickerEvent[] } {
     return { tickerEvents: cache.tickerEvents as TickerEvent[] };
 }
 
+export function getAgentsByIdSync(): ReadonlyMap<string, Agent> {
+    const cache = getCache();
+    if (!cache) {
+        return new Map();
+    }
+    return cache.agentsById;
+}
+
 export function getBankruptciesSync(): { bankruptcies: BankruptcyRecord[] } {
     const cache = getCache();
     if (!cache) {

@@ -212,7 +212,9 @@
         "system": "System",
         "language": "Language",
         "en": "English",
-        "de": "German"
+        "de": "German",
+        "enterFullscreen": "Enter fullscreen",
+        "exitFullscreen": "Exit fullscreen"
     },
     "Login": {
         "pageTitle": "Login",
@@ -220,9 +222,27 @@
         "action": "Login / Register"
     },
     "Footer": {
-        "ticker": "Simulation event ticker",
-        "enterFullscreen": "Enter fullscreen",
-        "exitFullscreen": "Exit fullscreen"
+        "ticker": "Simulation event ticker"
+    },
+    "EventFilter": {
+        "title": "Event filter",
+        "filters": "Filters",
+        "localPlanetOnly": "Only this planet",
+        "hideAutomated": "Hide automated companies",
+        "showHrCompletion": "Show HR Department completion",
+        "types": "Event types",
+        "agentCreated": "Company founded",
+        "shipDispatched": "Ship dispatched",
+        "shipArrived": "Ship arrived",
+        "shipCompleted": "Ship completed",
+        "facilityCompleted": "Building completed",
+        "facilityScrapped": "Building scrapped",
+        "licenseAcquired": "License acquired",
+        "agentBankrupt": "Company bankrupt",
+        "contractAccepted": "Contract accepted",
+        "loanRollover": "Loan rollover",
+        "priceSpike": "Price spike",
+        "populationMilestone": "Population milestone"
     },
     "Metadata": {
         "title": "Enterprise Engine",
