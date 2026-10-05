@@ -91,7 +91,7 @@ describe('cross-tier fallback bookkeeping', () => {
         const afterOneMonth = sumPopOcc(planet, 'secondary', 'employed');
         expect(afterOneMonth).toBeGreaterThan(0);
 
-        for (let tick = 0; tick < TICKS_PER_MONTH * 2; tick++) {
+        for (let tick = 0; tick < TICKS_PER_MONTH * 12; tick++) {
             automaticWorkerAllocation(agentMap(agent), planet);
             hireWorkforce(agentMap(agent), planet);
         }

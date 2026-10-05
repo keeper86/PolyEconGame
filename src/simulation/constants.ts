@@ -124,7 +124,7 @@ export const WAGE_SHARE = 0.6;
 export const WAGE_CHURN_GAIN = 3;
 export const WAGE_CEILING_SMOOTHING = 0.1;
 
-export const HIRE_RATE_LIMIT_PER_MONTH = 0.05;
+export const HIRE_RATE_LIMIT_PER_MONTH = 0.35;
 export const FIRE_RATE_LIMIT_PER_MONTH = 0.05;
 
 export const SEARCH_HORIZON_TICKS = TICKS_PER_MONTH / 2;

@@ -6,7 +6,6 @@ import {
     WAGE_CEILING_SMOOTHING,
     WAGE_CHURN_GAIN,
 } from '../constants';
-import { hireRateLimit, perTickLimit } from './hireWorkforce';
 import type { Agent, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
@@ -34,18 +33,9 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
         const slotFill = sumSlotFillByEdu(assets);
 
         const newTarget: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-        const previousTarget = assets.allocatedWorkers;
         for (const edu of educationLevelKeys) {
             const ownUnfilled = Math.max(0, totalSlotCapacity[edu] - slotFill[edu]);
-            const headcount = totalUsed[edu] + slotFill[edu];
-            const rawTarget = Math.ceil((totalUsed[edu] + ownUnfilled) * (1 + ACCEPTABLE_IDLE_FRACTION));
-            const previous = previousTarget?.[edu] ?? rawTarget;
-            if (headcount <= 0) {
-                newTarget[edu] = rawTarget;
-                continue;
-            }
-            const maxStep = perTickLimit(headcount, hireRateLimit());
-            newTarget[edu] = Math.round(Math.max(previous - maxStep, Math.min(previous + maxStep, rawTarget)));
+            newTarget[edu] = Math.ceil((totalUsed[edu] + ownUnfilled) * (1 + ACCEPTABLE_IDLE_FRACTION));
         }
 
         assets.allocatedWorkers = newTarget;

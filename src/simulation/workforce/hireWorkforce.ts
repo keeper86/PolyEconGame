@@ -53,8 +53,6 @@ export const setHireRateLimitPerMonth = (value: number): void => {
     hireRateLimitPerMonth = value;
 };
 
-export const hireRateLimit = (): number => hireRateLimitPerMonth;
-
 export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profiler?: TickProfiler): void {
     let t: number = 0;
 
@@ -135,7 +133,8 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
                     totalAvail += avail;
                 }
 
-                const toHire = Math.floor(Math.min(shortfall, totalWilling));
+                const maxHires = perTickLimit(shortfall, hireRateLimitPerMonth);
+                const toHire = Math.floor(Math.min(shortfall, totalWilling, maxHires));
                 assertBackfillProgress(edu, edu, shortfall, totalWilling, toHire);
                 if (toHire > 0) {
                     const allocatedBuckets = distributeProportionally(

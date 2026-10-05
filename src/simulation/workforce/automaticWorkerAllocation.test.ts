@@ -1,7 +1,7 @@
 import { beforeEach, describe, it, expect } from 'vitest';
 
 import { automaticWageAdjustment, automaticWorkerAllocation } from './automaticWorkerAllocation';
-import { perTickLimit, setFireRateLimitPerMonth, setHireRateLimitPerMonth } from './hireWorkforce';
+import { setFireRateLimitPerMonth, setHireRateLimitPerMonth } from './hireWorkforce';
 import { makeAgent, makePlanetWithPopulation, makeProductionFacility, agentMap } from '../utils/testHelper';
 import { HIRE_RATE_LIMIT_PER_MONTH, MAX_WAGE, MIN_WAGE, NOTICE_PERIOD_MONTHS } from '../constants';
 
@@ -124,7 +124,7 @@ describe('updateAllocatedWorkers', () => {
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
     });
 
-    it('moves the hire target by at most the monthly rate limit, and freely when the limit is off', () => {
+    it('sets the target straight to the buffered requirement instead of throttling it', () => {
         const { planet } = makePlanetWithPopulation({ none: 50000 });
         const agent = makeAgent();
         const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
@@ -136,15 +136,8 @@ describe('updateAllocatedWorkers', () => {
 
         setHireRateLimitPerMonth(HIRE_RATE_LIMIT_PER_MONTH);
         automaticWorkerAllocation(agentMap(agent), planet);
-        const limited = agent.assets.p.allocatedWorkers.none ?? 0;
 
-        setHireRateLimitPerMonth(Number.POSITIVE_INFINITY);
-        automaticWorkerAllocation(agentMap(agent), planet);
-        const unlimited = agent.assets.p.allocatedWorkers.none ?? 0;
-
-        expect(limited).toBeGreaterThan(0);
-        expect(limited).toBeLessThanOrEqual(perTickLimit(100, HIRE_RATE_LIMIT_PER_MONTH));
-        expect(unlimited).toBeGreaterThan(limited);
+        expect(agent.assets.p.allocatedWorkers.none).toBeGreaterThan(100000);
     });
 });
 
