@@ -29,7 +29,7 @@ import {
     hireWorkforce,
     perTickLimit,
     setFireRateLimitPerMonth,
-    setHireRateLimitPerMonth,
+    setHireFlowMultiplier,
 } from './hireWorkforce';
 import { automaticWorkerAllocation } from './automaticWorkerAllocation';
 import {
@@ -44,7 +44,7 @@ import {
 import { workforceDemographicTick } from './workforceDemographicTick';
 
 beforeEach(() => {
-    setHireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+    setHireFlowMultiplier(Number.POSITIVE_INFINITY);
     setFireRateLimitPerMonth(Number.POSITIVE_INFINITY);
 });
 

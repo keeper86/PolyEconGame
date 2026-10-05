@@ -1,12 +1,14 @@
 import {
     FIRE_RATE_LIMIT_PER_MONTH,
-    HIRE_RATE_LIMIT_PER_MONTH,
+    HIRE_HR_SERVICE_PER_WORKER,
+    HIRE_RAMP_MONTHS,
     MIN_EMPLOYABLE_AGE,
     NOTICE_PERIOD_MONTHS,
     TICKS_PER_MONTH,
 } from '../constants';
-import type { Agent, Planet } from '../planet/planet';
+import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import { hasActiveLicense } from '../planet/planet';
+import { ESTIMATED_HR_OVERHEAD, PRODUCED_HR_QUANTITY } from '../planet/specialFacilities';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import { transferPopulation } from '../population/population';
 import type { TickProfiler } from '../TickProfiler';
@@ -47,13 +49,20 @@ export const setFireRateLimitPerMonth = (value: number): void => {
     fireRateLimitPerMonth = value;
 };
 
-let hireRateLimitPerMonth = HIRE_RATE_LIMIT_PER_MONTH;
+let hireFlowMultiplier = 1;
 
-export const setHireRateLimitPerMonth = (value: number): void => {
-    hireRateLimitPerMonth = value;
+export const setHireFlowMultiplier = (value: number): void => {
+    hireFlowMultiplier = value;
 };
 
-export const hireRateLimit = (): number => hireRateLimitPerMonth;
+export const maxHiresPerTick = (assets: AgentPlanetAssets): number => {
+    if (!Number.isFinite(hireFlowMultiplier)) {
+        return Number.POSITIVE_INFINITY;
+    }
+    const hrScale = assets.humanResourcesDepartment?.scale ?? 0;
+    const servedWorkforce = (hrScale * PRODUCED_HR_QUANTITY) / ESTIMATED_HR_OVERHEAD;
+    return Math.max(1, (hireFlowMultiplier * servedWorkforce) / (HIRE_RAMP_MONTHS * TICKS_PER_MONTH));
+};
 
 export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profiler?: TickProfiler): void {
     let t: number = 0;
@@ -135,7 +144,12 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
                     totalAvail += avail;
                 }
 
-                const toHire = Math.floor(Math.min(shortfall, totalWilling));
+                const maxHires = maxHiresPerTick(assets);
+                const hrDepartment = assets.humanResourcesDepartment;
+                const maxByHrPoints = hrDepartment
+                    ? Math.floor(hrDepartment.hrBuffer / HIRE_HR_SERVICE_PER_WORKER)
+                    : Number.POSITIVE_INFINITY;
+                const toHire = Math.floor(Math.min(shortfall, totalWilling, maxHires, maxByHrPoints));
                 assertBackfillProgress(edu, edu, shortfall, totalWilling, toHire);
                 if (toHire > 0) {
                     const allocatedBuckets = distributeProportionally(
@@ -156,6 +170,12 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
 
                             workforce[age][edu].onboarding[NOTICE_PERIOD_MONTHS - 1] += actual;
                         }
+                    }
+                    if (hrDepartment) {
+                        hrDepartment.hrBuffer = Math.max(
+                            0,
+                            hrDepartment.hrBuffer - toHire * HIRE_HR_SERVICE_PER_WORKER,
+                        );
                     }
                     hires = toHire;
                 }

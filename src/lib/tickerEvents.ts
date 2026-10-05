@@ -53,7 +53,7 @@ export type TickerEvent = {
 };
 
 export const TICKER_EVENT_FILTER_DEFAULTS = {
-    hideAutomated: false,
+    hideAutomated: true,
     localPlanetOnly: true,
-    showHrCompletion: true,
+    showHrCompletion: false,
 } as const;
