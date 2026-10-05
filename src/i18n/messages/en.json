@@ -146,6 +146,7 @@
         "companyDissolved": "<entity>{agentName}</entity> bankrupt; company dissolved",
         "companyRefounded": "<entity>{agentName}</entity> bankrupt; refounded as <entity>{successorName}</entity>",
         "companyRestructured": "<entity>{agentName}</entity> bankrupt; restructured as <entity>{successorName}</entity> under automated administration",
+        "populationMilestone": "<entity>{planet}</entity> reached a population of <entity>{population}</entity>",
         "load": {
             "empty": "empty",
             "cargo": "cargo <entity>{quantity}</entity>",

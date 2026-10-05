@@ -69,6 +69,7 @@ const eventVariants: TickerEventDetails[] = [
     { kind: 'companyDissolved' },
     { kind: 'companyRefounded', successorName: 'New Co' },
     { kind: 'companyRestructured', successorName: 'New Co' },
+    { kind: 'populationMilestone', planetName: 'Gune', population: 8_000_000_000 },
 ];
 
 describe('renderTickerEvent', () => {

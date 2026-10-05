@@ -101,6 +101,12 @@ export const renderTickerEvent = (
                 agentName,
                 successorName: details.successorName,
             });
+        case 'populationMilestone':
+            return t.rich('populationMilestone', {
+                entity: entityTag,
+                planet: details.planetName,
+                population: formatNumberWithUnit(details.population, 'persons', undefined, locale),
+            });
     }
 };
 

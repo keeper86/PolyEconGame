@@ -153,6 +153,7 @@ export type Planet = {
 
     // Pre-computed derived values — set by the worker after each tick, used as O(1) cache by controllers
     _populationTotal?: number;
+    populationMilestone?: number;
     _costOfLiving?: number;
     _costOfLivingRich?: number;
     _freeResources?: { name: string; freeCapacity: number }[];

@@ -935,6 +935,7 @@ const tickerEventDetailsSchema = z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('companyDissolved') }),
     z.object({ kind: z.literal('companyRefounded'), successorName: z.string() }),
     z.object({ kind: z.literal('companyRestructured'), successorName: z.string() }),
+    z.object({ kind: z.literal('populationMilestone'), planetName: z.string(), population: z.number() }),
 ]);
 
 export type TickerEventDetails = z.infer<typeof tickerEventDetailsSchema>;

@@ -33,7 +33,7 @@ export function populationTick(
     planet: Planet,
     workforceEvents: WorkforceEventAccumulator,
     profiler?: TickProfiler,
-): void {
+): number {
     const { population } = planet;
 
     let t: number = 0;
@@ -50,7 +50,7 @@ export function populationTick(
     }
 
     if (counters.populationTotal === 0) {
-        return;
+        return 0;
     }
 
     if (profiler?.isEnabled) {
@@ -79,6 +79,8 @@ export function populationTick(
     if (profiler?.isEnabled) {
         profiler.markAndAccum('popBirths', '  popBirths', t);
     }
+
+    return counters.populationTotal;
 }
 
 export function populationAdvanceYearTick(planet: Planet): void {
