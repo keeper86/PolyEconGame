@@ -1,14 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import {
-    FIRE_RATE_LIMIT_PER_MONTH,
-    HIRE_RATE_LIMIT_PER_MONTH,
-    NOTICE_PERIOD_MONTHS,
-    TICKS_PER_MONTH,
-} from '../constants';
+import { FIRE_RATE_LIMIT_PER_MONTH, NOTICE_PERIOD_MONTHS, TICKS_PER_MONTH } from '../constants';
 import type { EducationLevelType } from '../population/education';
-import { agentMap, makeAgent, makePlanetWithPopulation, sumPopOcc } from '../utils/testHelper';
-import { hireWorkforce, setFireRateLimitPerMonth, setHireRateLimitPerMonth } from './hireWorkforce';
+import { agentMap, makeAgent, makeHRFacility, makePlanetWithPopulation, sumPopOcc } from '../utils/testHelper';
+import { hireWorkforce, setFireRateLimitPerMonth, setHireFlowMultiplier } from './hireWorkforce';
 import { automaticWorkerAllocation } from './automaticWorkerAllocation';
 
 const makeOnlySecondaryPlanet = (): ReturnType<typeof makePlanetWithPopulation> =>
@@ -38,7 +33,7 @@ const totalOnboardingForEdu = (
 
 describe('cross-tier fallback bookkeeping', () => {
     beforeEach(() => {
-        setHireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+        setHireFlowMultiplier(Number.POSITIVE_INFINITY);
         setFireRateLimitPerMonth(FIRE_RATE_LIMIT_PER_MONTH);
     });
 
@@ -81,7 +76,8 @@ describe('cross-tier fallback bookkeeping', () => {
             assets.allocatedWorkers[edu] = edu === 'none' ? 1000 : 0;
             assets.wagePerEdu[edu] = 1e9;
         }
-        setHireRateLimitPerMonth(HIRE_RATE_LIMIT_PER_MONTH);
+        assets.humanResourcesDepartment = makeHRFacility(undefined, { scale: 0.513, hrBuffer: 5000 });
+        setHireFlowMultiplier(1);
         setFireRateLimitPerMonth(FIRE_RATE_LIMIT_PER_MONTH);
 
         for (let tick = 0; tick < TICKS_PER_MONTH; tick++) {
@@ -91,13 +87,29 @@ describe('cross-tier fallback bookkeeping', () => {
         const afterOneMonth = sumPopOcc(planet, 'secondary', 'employed');
         expect(afterOneMonth).toBeGreaterThan(0);
 
-        for (let tick = 0; tick < TICKS_PER_MONTH * 12; tick++) {
+        for (let tick = 0; tick < TICKS_PER_MONTH * 4; tick++) {
             automaticWorkerAllocation(agentMap(agent), planet);
             hireWorkforce(agentMap(agent), planet);
         }
         const afterRampUp = sumPopOcc(planet, 'secondary', 'employed');
         expect(afterRampUp).toBeGreaterThanOrEqual(1000);
         expect(afterRampUp).toBeLessThanOrEqual(1050);
+    });
+
+    it('stops hiring when the HR service buffer runs out', () => {
+        const { planet } = makePlanetWithPopulation({ none: 100_000 });
+        const agent = makeAgent();
+        const assets = agent.assets.p;
+        assets.totalSlotCapacity.none = 1000;
+        assets.allocatedWorkers.none = 1000;
+        assets.wagePerEdu.none = 1e9;
+        assets.humanResourcesDepartment = makeHRFacility(undefined, { scale: 10, hrBuffer: 25 });
+        setHireFlowMultiplier(Number.POSITIVE_INFINITY);
+
+        hireWorkforce(agentMap(agent), planet);
+
+        expect(sumPopOcc(planet, 'none', 'employed')).toBe(25);
+        expect(agent.assets.p.humanResourcesDepartment?.hrBuffer).toBe(0);
     });
 
     it('does not fire a higher-tier worker who is filling a lower-tier slot', () => {

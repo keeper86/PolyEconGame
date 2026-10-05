@@ -1,12 +1,12 @@
 import { beforeEach, describe, it, expect } from 'vitest';
 
 import { automaticWageAdjustment, automaticWorkerAllocation } from './automaticWorkerAllocation';
-import { setFireRateLimitPerMonth, setHireRateLimitPerMonth } from './hireWorkforce';
+import { setFireRateLimitPerMonth, setHireFlowMultiplier } from './hireWorkforce';
 import { makeAgent, makePlanetWithPopulation, makeProductionFacility, agentMap } from '../utils/testHelper';
-import { HIRE_RATE_LIMIT_PER_MONTH, MAX_WAGE, MIN_WAGE, NOTICE_PERIOD_MONTHS } from '../constants';
+import { MAX_WAGE, MIN_WAGE, NOTICE_PERIOD_MONTHS } from '../constants';
 
 beforeEach(() => {
-    setHireRateLimitPerMonth(Number.POSITIVE_INFINITY);
+    setHireFlowMultiplier(Number.POSITIVE_INFINITY);
     setFireRateLimitPerMonth(Number.POSITIVE_INFINITY);
 });
 
@@ -134,7 +134,6 @@ describe('updateAllocatedWorkers', () => {
         agent.assets.p.totalSlotCapacity = { none: 100000, primary: 0, secondary: 0, tertiary: 0 };
         agent.assets.p.allocatedWorkers = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
 
-        setHireRateLimitPerMonth(HIRE_RATE_LIMIT_PER_MONTH);
         automaticWorkerAllocation(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBeGreaterThan(100000);
