@@ -1,4 +1,5 @@
 import {
+    AUTOMATED_COST_FLOOR_BUFFER,
     DEFAULT_REFERENCE_MONTHLY_INCOME,
     EDUCATION_WEALTH_SATURATION_MONTHS,
     GROCERY_WEALTH_SATURATION_MONTHS,
@@ -48,6 +49,13 @@ export type ServiceDefinition = {
         wealth: GaussianMoments,
         referenceMonthlyIncome: number,
     ) => number;
+    readonly priceResponse: ServicePriceResponse;
+};
+
+export type ServicePriceResponse = {
+    readonly chokeMarkup: number;
+    readonly appetiteMultiple: number;
+    readonly rationFloor: number;
 };
 
 export const serviceKeyOf = (def: ServiceDefinition): ServiceName => def.resource.name.toLowerCase() as ServiceName;
@@ -64,6 +72,42 @@ export const referenceMonthlyIncome = (planet: Planet): number => {
     }
     const avgWage = count > 0 ? sum / count : MIN_WAGE;
     return Math.max(MIN_WAGE, avgWage) * TICKS_PER_MONTH;
+};
+
+let servicePriceResponseEnabled = true;
+
+let serviceNeutralMarkup = AUTOMATED_COST_FLOOR_BUFFER;
+
+export const setServicePriceResponseEnabled = (enabled: boolean): void => {
+    servicePriceResponseEnabled = enabled;
+};
+
+export const setServiceNeutralMarkup = (value: number): void => {
+    serviceNeutralMarkup = value;
+};
+
+export const isServicePriceResponseEnabled = (): boolean => servicePriceResponseEnabled;
+
+export const serviceNeutralPrice = (planet: Planet, def: ServiceDefinition): number => {
+    const costFloor = planet.lastProductionCostFloors[def.resource.name];
+    if (costFloor !== undefined && costFloor > 0) {
+        return costFloor * serviceNeutralMarkup;
+    }
+    return planet.marketPrices[def.resource.name] ?? 0;
+};
+
+export const serviceDemandFactor = (planet: Planet, def: ServiceDefinition): number => {
+    if (!servicePriceResponseEnabled) {
+        return 1;
+    }
+    const neutralPrice = serviceNeutralPrice(planet, def);
+    const price = planet.marketPrices[def.resource.name];
+    if (neutralPrice <= 0 || price === undefined || price <= 0) {
+        return 1;
+    }
+    const { chokeMarkup, appetiteMultiple, rationFloor } = def.priceResponse;
+    const position = 1 - Math.log(price / neutralPrice) / Math.log(chokeMarkup);
+    return Math.max(rationFloor, Math.min(appetiteMultiple, position));
 };
 
 const engelMultiplier = (
@@ -144,6 +188,7 @@ const groceryDefinition: ServiceDefinition = {
     refillTicks: 2 * TICKS_PER_MONTH,
     fillRatePerPersonPerTick: groceryRate,
     consumptionRatePerPersonPerTick: groceryRate,
+    priceResponse: { chokeMarkup: 8, appetiteMultiple: 1.2, rationFloor: 0.6 },
 } as const;
 
 const healthcareRate = (age: number, occ: Occupation, wealth: GaussianMoments, refIncome: number): number =>
@@ -157,6 +202,7 @@ const healthcareDefinition: ServiceDefinition = {
     refillTicks: 3 * TICKS_PER_MONTH,
     fillRatePerPersonPerTick: healthcareRate,
     consumptionRatePerPersonPerTick: healthcareRate,
+    priceResponse: { chokeMarkup: 8, appetiteMultiple: 1.2, rationFloor: 0.6 },
 } as const;
 
 const logisticsRate = (age: number, occ: Occupation, wealth: GaussianMoments, refIncome: number): number =>
@@ -170,6 +216,7 @@ const logisticsDefinition: ServiceDefinition = {
     refillTicks: TICKS_PER_MONTH,
     fillRatePerPersonPerTick: logisticsRate,
     consumptionRatePerPersonPerTick: logisticsRate,
+    priceResponse: { chokeMarkup: 5, appetiteMultiple: 2.5, rationFloor: 0.2 },
 } as const;
 
 const educationRate = (age: number, occ: Occupation, wealth: GaussianMoments, refIncome: number): number =>
@@ -183,6 +230,7 @@ const educationDefinition: ServiceDefinition = {
     refillTicks: TICKS_PER_YEAR,
     fillRatePerPersonPerTick: educationRate,
     consumptionRatePerPersonPerTick: educationRate,
+    priceResponse: { chokeMarkup: 5, appetiteMultiple: 1.5, rationFloor: 0.2 },
 } as const;
 
 const retailRate = (age: number, occ: Occupation, wealth: GaussianMoments, refIncome: number): number =>
@@ -196,6 +244,7 @@ const retailDefinition: ServiceDefinition = {
     refillTicks: TICKS_PER_MONTH,
     fillRatePerPersonPerTick: retailRate,
     consumptionRatePerPersonPerTick: retailRate,
+    priceResponse: { chokeMarkup: 3, appetiteMultiple: 5, rationFloor: 0.05 },
 } as const;
 
 const housingAgeMultiplier = (age: number, _occ: Occupation): number => {
@@ -223,6 +272,7 @@ const constructionDefinition: ServiceDefinition = {
     fillRatePerPersonPerTick: (age, occ, wealth, refIncome) =>
         housingDecayRate(age, occ) * housingEngelMultiplier(wealth, refIncome),
     consumptionRatePerPersonPerTick: (age, occ, _wealth, _refIncome) => housingDecayRate(age, occ),
+    priceResponse: { chokeMarkup: 4, appetiteMultiple: 2, rationFloor: 0.1 },
 } as const;
 
 export const SERVICE_DEFINITIONS: Record<ServiceName, ServiceDefinition> = {

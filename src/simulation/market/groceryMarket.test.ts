@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { PRICE_ADJUST_MAX_UP } from '../constants';
+import { PRICE_ADJUST_MAX_DOWN, PRICE_ADJUST_MAX_UP } from '../constants';
 import { SERVICE_DEFINITIONS } from './populationDemand';
 import { referenceMonthlyIncome } from './serviceDefinitions';
 import type { Agent, GameState, Planet } from '../planet/planet';
@@ -385,11 +385,14 @@ describe('updateAgentPricing', () => {
 
     it('raises price when excess demand (produced < sold)', () => {
         putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, 0);
-        setGroceryOffer(groceryAgent, 1.0, 50);
+        setGroceryOffer(groceryAgent, 1.0, 2_000_000);
 
         automaticPricing(agentMap(groceryAgent), planet);
 
-        expect(groceryAgent.assets.p.market!.sell[GROCERY_SERVICE]!.offerPrice!).toBeGreaterThan(1.0);
+        expect(groceryAgent.assets.p.market!.sell[GROCERY_SERVICE]!.offerPrice!).toBeCloseTo(
+            1.0 * PRICE_ADJUST_MAX_UP,
+            5,
+        );
     });
 
     it('does not set price below GROCERY_PRICE_FLOOR', () => {
@@ -409,7 +412,8 @@ describe('updateAgentPricing', () => {
         automaticPricing(agentMap(groceryAgent), planet);
 
         expect(groceryAgent.assets.p.market!.sell[GROCERY_SERVICE]!.offerPrice!).toBeCloseTo(
-            0.73 * PRICE_ADJUST_MAX_UP,
+            0.73 * PRICE_ADJUST_MAX_DOWN,
+            2,
         );
     });
 

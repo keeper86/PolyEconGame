@@ -1,6 +1,6 @@
 import { pushTickerEvent, type GameState, type Planet } from '../planet/planet';
 
-const MILESTONE_STEPS_PER_MAGNITUDE = 10;
+const MILESTONE_STEPS_PER_MAGNITUDE = 1;
 
 export function populationMilestoneThreshold(total: number): number {
     if (total <= 0) {

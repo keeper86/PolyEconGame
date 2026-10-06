@@ -4,6 +4,7 @@ import {
     FIRE_RATE_LIMIT_PER_MONTH,
     WAGE_DURATION_DECAY,
     MIN_EMPLOYABLE_AGE,
+    MIN_HIRES_PER_TICK,
     NOTICE_PERIOD_MONTHS,
     SEARCH_HORIZON_TICKS,
     TICKS_PER_MONTH,
@@ -17,6 +18,7 @@ import {
     makeAgent,
     makeAgentPlanetAssets,
     makeAllocatedWorkers,
+    makeHRFacility,
     makePlanet,
     makePlanetWithPopulation,
     makeProductionFacility,
@@ -27,6 +29,7 @@ import {
 import {
     assertBackfillProgress,
     hireWorkforce,
+    maxHiresPerTick,
     perTickLimit,
     setFireRateLimitPerMonth,
     setHireFlowMultiplier,
@@ -250,6 +253,56 @@ describe('labour turnover rate limits', () => {
         expect(fired).toBeGreaterThan(0);
         expect(fired).toBeLessThanOrEqual(Math.ceil(perTickLimit(activeBefore, FIRE_RATE_LIMIT_PER_MONTH)));
         expect(fired).toBeLessThan(300);
+    });
+});
+
+describe('HR hiring trickle', () => {
+    it('never blocks hiring when the HR buffer is empty', () => {
+        const { planet } = makePlanetWithPopulation({ none: 100_000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers.none = 500;
+        agent.assets.p.wagePerEdu.none = 1e9;
+        agent.assets.p.humanResourcesDepartment = makeHRFacility(undefined, { scale: 5, hrBuffer: 0 });
+
+        hireWorkforce(agentMap(agent), planet);
+
+        const wf = agent.assets.p.workforceDemography!;
+        expect(totalOnboardingForEdu(wf, 'none')).toBe(MIN_HIRES_PER_TICK);
+    });
+
+    it('floors a sub-trickle HR buffer up to the trickle', () => {
+        const { planet } = makePlanetWithPopulation({ none: 100_000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers.none = 500;
+        agent.assets.p.wagePerEdu.none = 1e9;
+        agent.assets.p.humanResourcesDepartment = makeHRFacility(undefined, {
+            scale: 5,
+            hrBuffer: MIN_HIRES_PER_TICK - 2,
+        });
+
+        hireWorkforce(agentMap(agent), planet);
+
+        const wf = agent.assets.p.workforceDemography!;
+        expect(totalOnboardingForEdu(wf, 'none')).toBe(MIN_HIRES_PER_TICK);
+    });
+
+    it('hires above the trickle once the HR buffer covers more', () => {
+        const { planet } = makePlanetWithPopulation({ none: 100_000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers.none = 500;
+        agent.assets.p.wagePerEdu.none = 1e9;
+        agent.assets.p.humanResourcesDepartment = makeHRFacility(undefined, { scale: 5, hrBuffer: 5000 });
+        setHireFlowMultiplier(1);
+
+        hireWorkforce(agentMap(agent), planet);
+
+        const wf = agent.assets.p.workforceDemography!;
+        expect(totalOnboardingForEdu(wf, 'none')).toBeGreaterThan(MIN_HIRES_PER_TICK);
+    });
+
+    it('maxHiresPerTick never falls below the trickle', () => {
+        setHireFlowMultiplier(1);
+        expect(maxHiresPerTick(makeAgentPlanetAssets('p'))).toBeGreaterThanOrEqual(MIN_HIRES_PER_TICK);
     });
 });
 

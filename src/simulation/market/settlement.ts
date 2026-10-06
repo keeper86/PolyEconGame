@@ -4,7 +4,12 @@ import { putIntoStorageFacility, releaseFromEscrow, transferFromEscrow } from '.
 import type { Planet } from '../planet/planet';
 import { getCurrencyResourceName } from './currencyResources';
 import type { AgentBidOrder, AskOrder, BidOrder, TradeRecord } from './marketTypes';
-import { getServiceDefinitionByResourceName, referenceMonthlyIncome, serviceKeyOf } from './serviceDefinitions';
+import {
+    getServiceDefinitionByResourceName,
+    referenceMonthlyIncome,
+    serviceDemandFactor,
+    serviceKeyOf,
+} from './serviceDefinitions';
 
 export function settleHouseholds(
     planet: Planet,
@@ -32,12 +37,9 @@ export function settleHouseholds(
         assert(category.total > 0, `Invalid population category: ${category.total}`);
         const perPersonCost = bidCosts[i] / category.total;
 
-        const rate = def.fillRatePerPersonPerTick(
-            record.age,
-            record.occ,
-            record.wealthMoments,
-            referenceMonthlyIncome(planet),
-        );
+        const rate =
+            def.fillRatePerPersonPerTick(record.age, record.occ, record.wealthMoments, referenceMonthlyIncome(planet)) *
+            serviceDemandFactor(planet, def);
         assert(rate > 0, `Invalid consumption rate: ${rate}`);
 
         const bufferTicks = filled / (rate * category.total);

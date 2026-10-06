@@ -124,6 +124,10 @@ type FacilityStat = {
     profit: number;
     revenue: number;
     priceOverCost: number;
+    offerPriceOverCost: number;
+    springDeviation: number;
+    sellFactor: number;
+    netFactor: number;
     signalActual: number;
     signalCandidate: number;
     contractionIntegral: number;
@@ -145,6 +149,10 @@ function emptyFacilityStat(): FacilityStat {
         profit: 0,
         revenue: 0,
         priceOverCost: 0,
+        offerPriceOverCost: 0,
+        springDeviation: 0,
+        sellFactor: 0,
+        netFactor: 0,
         signalActual: 0,
         signalCandidate: 0,
         contractionIntegral: 0,
@@ -873,6 +881,16 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                         : 0;
                     const outputPrice = primaryOutput ? priceOf(planet, primaryOutput.resource.name) : 0;
                     const priceOverCost = costFloor > 0 ? outputPrice / costFloor : 0;
+                    const offerPrice = primaryOutput
+                        ? (assets.market?.sell?.[primaryOutput.resource.name]?.offerPrice ?? 0)
+                        : 0;
+                    const offerPriceOverCost = costFloor > 0 ? offerPrice / costFloor : 0;
+                    const diagnostics = primaryOutput
+                        ? assets.market?.sell?.[primaryOutput.resource.name]?.diagnostics
+                        : undefined;
+                    const springDeviation = diagnostics?.costSpringDeviation ?? 0;
+                    const sellFactor = diagnostics?.baseFactor ?? 0;
+                    const netFactor = diagnostics?.netFactor ?? 0;
                     const essential = isMaintenanceFacility(facility.name) || isExistentialFacility(facility.name);
 
                     let stat = facilityStats.get(key);
@@ -886,6 +904,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                     stat.profit += facilityProfit;
                     stat.revenue += facilityRevenue;
                     stat.priceOverCost += priceOverCost;
+                    stat.offerPriceOverCost += offerPriceOverCost;
+                    stat.springDeviation += springDeviation;
+                    stat.sellFactor += sellFactor;
+                    stat.netFactor += netFactor;
                     stat.signalActual += signalActual;
                     stat.signalCandidate += signalCandidate;
                     stat.contractionIntegral += contractionIntegral;
@@ -1307,6 +1329,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         facilityTypeMetrics[`facilityProfit_${key}`] = s.profit / s.count;
         facilityTypeMetrics[`facilityMargin_${key}`] = s.revenue > 0 ? s.profit / s.revenue : 0;
         facilityTypeMetrics[`facilityPriceOverCost_${key}`] = s.priceOverCost / s.count;
+        facilityTypeMetrics[`facilityOfferPriceOverCost_${key}`] = s.offerPriceOverCost / s.count;
+        facilityTypeMetrics[`facilityCostSpringDeviation_${key}`] = s.springDeviation / s.count;
+        facilityTypeMetrics[`facilitySellThroughFactor_${key}`] = s.sellFactor / s.count;
+        facilityTypeMetrics[`facilityNetPriceFactor_${key}`] = s.netFactor / s.count;
         facilityTypeMetrics[`facilitySignal_${key}`] = s.signalActual / s.count;
         facilityTypeMetrics[`facilityCandidateSignal_${key}`] = s.signalCandidate / s.count;
         facilityTypeMetrics[`facilityScale_${key}`] = s.scale;
@@ -1910,6 +1936,10 @@ export const METRIC_KEYS: string[] = [
         `facilityProfit_${key}`,
         `facilityMargin_${key}`,
         `facilityPriceOverCost_${key}`,
+        `facilityOfferPriceOverCost_${key}`,
+        `facilityCostSpringDeviation_${key}`,
+        `facilitySellThroughFactor_${key}`,
+        `facilityNetPriceFactor_${key}`,
         `facilitySignal_${key}`,
         `facilityCandidateSignal_${key}`,
         `facilityScale_${key}`,

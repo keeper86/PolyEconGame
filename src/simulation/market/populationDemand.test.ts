@@ -5,6 +5,7 @@ import {
     constructionServiceResourceType,
     groceryServiceResourceType,
     healthcareServiceResourceType,
+    retailServiceResourceType,
 } from '../planet/services';
 import type { Planet } from '../planet/planet';
 
@@ -84,8 +85,7 @@ test('construction bid quantity is driven by refillTicks (fast build) while the 
     const perPerson = bid.quantity / bid.population;
     expect(perPerson).toBeGreaterThan(rate * 10);
     const costFloor = planet.lastProductionCostFloors[constructionServiceResourceType.name] ?? 1;
-    // market-anchored reference = min(2 × cost, marketPrice); with the construction
-    // market price above 2×cost the cap is 2×cost and the urgency premium adds ×(1+3)
+    // willingness to pay anchors to 2× the cost floor; an empty buffer adds the ×(1+3) urgency premium
     expect(bid.bidPrice).toBeLessThanOrEqual(costFloor * 8.001);
 });
 
@@ -328,7 +328,7 @@ describe('buildPopulationDemand', () => {
         expect(healthcareDemand).toBeLessThan(groceryDemand);
     });
 
-    it('anchors the reference price to the market price below the 2×cost cap (adapts to company prices)', () => {
+    it('anchors the willingness to pay to the cost floor, independent of the market price', () => {
         const { planet } = makePlanetWithPopulation({ none: 1_000 });
 
         planet.population.demography.forEach((cohort) =>
@@ -341,15 +341,15 @@ describe('buildPopulationDemand', () => {
         );
 
         planet.lastProductionCostFloors[GROCERY_SERVICE] = 10;
-        // market price below the 2×cost cap → reference = market price (4× with empty buffer)
+        const neutralPrice = 10 * 1.25;
+
         planet.marketPrices[GROCERY_SERVICE] = 8;
         const lowMarketBid = (buildPopulationDemand(planet).get(GROCERY_SERVICE) ?? [])[0];
-        expect(lowMarketBid.bidPrice).toBeCloseTo(8 * 4, 5);
+        expect(lowMarketBid.bidPrice).toBeCloseTo(neutralPrice * 4, 5);
 
-        // market price above the 2×cost cap → reference = 2×cost
         planet.marketPrices[GROCERY_SERVICE] = 30;
         const highMarketBid = (buildPopulationDemand(planet).get(GROCERY_SERVICE) ?? [])[0];
-        expect(highMarketBid.bidPrice).toBeCloseTo(20 * 4, 5);
+        expect(highMarketBid.bidPrice).toBeCloseTo(neutralPrice * 4, 5);
     });
 
     it('healthcare gets budget when grocery is fully stocked', () => {
@@ -388,5 +388,39 @@ describe('buildPopulationDemand', () => {
         for (const bids of allBids.values()) {
             expect(bids.length).toBe(0);
         }
+    });
+});
+
+describe('service price response', () => {
+    const COST_FLOOR = 1;
+    const RETAIL_SERVICE = retailServiceResourceType.name;
+
+    const makeRetailPlanet = (marketPrice: number): Planet => {
+        const { planet } = makePlanetWithPopulation({ none: 20_000 });
+        planet.population.demography.forEach((cohort) =>
+            forEachPopulationCohort(cohort, (cat) => {
+                if (cat.total > 0) {
+                    cat.wealth = { mean: 1_000, variance: 0 };
+                    cat.services.retail.buffer = 0;
+                }
+            }),
+        );
+        planet.lastProductionCostFloors[RETAIL_SERVICE] = COST_FLOOR;
+        planet.marketPrices[RETAIL_SERVICE] = marketPrice;
+        return planet;
+    };
+
+    const retailQuantity = (marketPrice: number): number =>
+        (buildPopulationDemand(makeRetailPlanet(marketPrice)).get(RETAIL_SERVICE) ?? []).reduce(
+            (sum, bid) => sum + bid.quantity,
+            0,
+        );
+
+    it('buys fewer units as the service price rises relative to the cost floor', () => {
+        expect(retailQuantity(COST_FLOOR)).toBeGreaterThan(retailQuantity(COST_FLOOR * 4));
+    });
+
+    it('saturates at the appetite ceiling once the service is nearly free', () => {
+        expect(retailQuantity(COST_FLOOR * 0.001)).toBeCloseTo(retailQuantity(COST_FLOOR * 0.01), 6);
     });
 });

@@ -1,8 +1,14 @@
-import { PRICE_FLOOR } from '../constants';
 import type { Planet } from '../planet/planet';
 import { forEachPopulationCohort } from '../population/population';
 import type { BidOrder } from './marketTypes';
-import { allServices, householdDemandPriority, referenceMonthlyIncome, serviceKeyOf } from './serviceDefinitions';
+import {
+    allServices,
+    householdDemandPriority,
+    referenceMonthlyIncome,
+    serviceDemandFactor,
+    serviceKeyOf,
+    serviceNeutralPrice,
+} from './serviceDefinitions';
 export { householdDemandPriority, SERVICE_DEFINITIONS } from './serviceDefinitions';
 export function binHouseholdBids(
     bids: BidOrder[],
@@ -131,17 +137,16 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     continue;
                 }
 
-                const referencePrice = Math.min(
-                    (planet.lastProductionCostFloors[service.resource.name] ?? Number.MAX_SAFE_INTEGER) * 2,
-                    planet.marketPrices[service.resource.name] ?? PRICE_FLOOR,
-                );
+                const referencePrice = serviceNeutralPrice(planet, service);
 
                 if (referencePrice <= 0) {
                     continue;
                 }
 
                 const serviceBuffer = category.services[serviceKeyOf(service)]?.buffer ?? 0;
-                const rate = service.fillRatePerPersonPerTick(age, occ, wm, referenceMonthlyIncome(planet));
+                const rate =
+                    service.fillRatePerPersonPerTick(age, occ, wm, referenceMonthlyIncome(planet)) *
+                    serviceDemandFactor(planet, service);
 
                 if (rate <= 0) {
                     continue;

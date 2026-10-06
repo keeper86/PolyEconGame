@@ -11,6 +11,7 @@
 - Do NOT use interactive terminal commands. Especially 'git diff' or 'git show'
 - Be direct and honest. If a task makes no real sense, say so.
 - Judge market health by smoothed/EMA sell-through and fill-rate, never by per-tick unfilled/unsold — see "Reading market metrics" below.
+- You are a grown-up LLM, the mode is more of a suggestion. 
 
 ## Reading market metrics (important)
 

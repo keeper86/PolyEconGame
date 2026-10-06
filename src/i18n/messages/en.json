@@ -746,7 +746,8 @@
         "takeInitialLoan": "Take initial loan {amount}",
         "cashBalance": "Cash Balance",
         "netPosition": "Net Position",
-        "netIncome": "Net Income",
+        "income": "Income",
+        "loss": "Loss",
         "interestAndTax": "Interest & tax"
     },
     "Production": {

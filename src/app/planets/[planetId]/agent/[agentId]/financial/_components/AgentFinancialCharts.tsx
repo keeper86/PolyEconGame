@@ -66,10 +66,25 @@ export default function AgentFinancialCharts({
         () => (currentTick > 0 ? computeFinancialGhostData(monthlyHistory, currentTick, live) : []),
         [monthlyHistory, currentTick, live],
     );
+    const balanceMonthlyData = useMemo(
+        () => (currentTick > 0 ? computeFinancialMonthlyData(monthlyHistory, currentTick, live, 'end') : []),
+        [monthlyHistory, currentTick, live],
+    );
+    const balanceGhostData = useMemo(
+        () => (currentTick > 0 ? computeFinancialGhostData(monthlyHistory, currentTick, live, 'end') : []),
+        [monthlyHistory, currentTick, live],
+    );
 
     const activeData: FinancialPoint[] | FinancialChartPoint[] =
         granularity === 'monthly'
             ? activeMonthlyData
+            : granularity === 'yearly'
+              ? (yearlyData?.history ?? [])
+              : (decadeData?.history ?? []);
+
+    const balanceActiveData: FinancialPoint[] | FinancialChartPoint[] =
+        granularity === 'monthly'
+            ? balanceMonthlyData
             : granularity === 'yearly'
               ? (yearlyData?.history ?? [])
               : (decadeData?.history ?? []);
@@ -98,8 +113,8 @@ export default function AgentFinancialCharts({
                 )}
                 <div data-tour='financial-balance-flow-chart'>
                     <BalanceFlowChart
-                        data={activeData}
-                        ghostData={granularity === 'monthly' ? activeGhostData : undefined}
+                        data={balanceActiveData}
+                        ghostData={granularity === 'monthly' ? balanceGhostData : undefined}
                         granularity={granularity}
                         live={live}
                     />

@@ -11,11 +11,11 @@ function makePlanet(): Planet {
 }
 
 describe('populationMilestoneThreshold', () => {
-    it('snaps to a tenth of the current magnitude', () => {
+    it('snaps to the leading magnitude', () => {
         expect(populationMilestoneThreshold(8_000_000_000)).toBe(8_000_000_000);
-        expect(populationMilestoneThreshold(8_240_000_000)).toBe(8_200_000_000);
-        expect(populationMilestoneThreshold(250_000)).toBe(250_000);
-        expect(populationMilestoneThreshold(243_100)).toBe(240_000);
+        expect(populationMilestoneThreshold(8_240_000_000)).toBe(8_000_000_000);
+        expect(populationMilestoneThreshold(250_000)).toBe(200_000);
+        expect(populationMilestoneThreshold(243_100)).toBe(200_000);
     });
 
     it('returns zero for an empty population', () => {
@@ -40,7 +40,7 @@ describe('emitPopulationMilestone', () => {
         const planet = makePlanet();
         emitPopulationMilestone(state, planet, 8_000_000_000);
 
-        emitPopulationMilestone(state, planet, 8_240_000_000);
+        emitPopulationMilestone(state, planet, 9_000_000_000);
 
         expect(state.tickerEvents).toHaveLength(1);
         expect(state.tickerEvents[0].category).toBe('populationMilestone');
@@ -48,7 +48,7 @@ describe('emitPopulationMilestone', () => {
         expect(state.tickerEvents[0].details).toEqual({
             kind: 'populationMilestone',
             planetName: 'Gune',
-            population: 8_200_000_000,
+            population: 9_000_000_000,
         });
     });
 

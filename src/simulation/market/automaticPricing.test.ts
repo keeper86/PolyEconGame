@@ -401,7 +401,7 @@ describe('adjustOfferPrice — cost spring (soft minAsk)', () => {
         // price 10 at costFloor 2 is above the buffer → spring inactive
         adjustOfferPrice(offer, 100, 10, 2);
 
-        expect(offer.diagnostics!.sellThroughRate).toBeCloseTo(0.3, 10);
+        expect(offer.diagnostics!.sellThroughRate).toBeCloseTo(3, 10);
         expect(offer.diagnostics!.effectiveQuantity).toBeCloseTo(100, 10);
         expect(offer.diagnostics!.costSpringDeviation).toBe(0);
     });

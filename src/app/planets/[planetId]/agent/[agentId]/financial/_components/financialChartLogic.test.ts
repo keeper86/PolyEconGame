@@ -1,17 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
     alignedYDomains,
+    bucketDecadeEnd,
     bucketDecadeMid,
+    bucketYearEnd,
     bucketYearMid,
     computeExpensesRevenueBuckets,
     computeFinancialGhostData,
     computeFinancialMonthlyData,
     formatDecadeLabel,
     formatYearLabel,
+    naturalDomain,
     type FinancialLive,
     type FinancialPoint,
 } from './financialChartLogic';
-import { MONTHS_PER_YEAR, PREVIOUS_DECEMBER_IDX } from '@/lib/historyChartAxis';
+import { MONTHS_PER_YEAR, PREVIOUS_DECEMBER_END_IDX, PREVIOUS_DECEMBER_IDX } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
 const isLivePoint = (point: { monthIdx: number }): boolean =>
@@ -119,6 +122,59 @@ describe('computeFinancialGhostData live threshold', () => {
     });
 });
 
+const zeroLive = (tick: number): FinancialLive => ({
+    tick,
+    avgNetBalance: 0,
+    avgAssetValue: 0,
+    avgMonthlyNetIncome: 0,
+    avgWages: 0,
+    sumPurchases: 0,
+    sumClaimPayments: 0,
+    sumInterestPaid: 0,
+    sumWealthTaxPaid: 0,
+});
+
+describe('computeFinancialMonthlyData end position', () => {
+    const data = [...financialYear(0, 100), ...financialYear(1, 200)];
+    const live: FinancialLive = {
+        ...zeroLive(gameTickFor(1, 3, 6)),
+        avgNetBalance: 1111,
+        avgAssetValue: 2222,
+    };
+
+    it('places each bucket at the end of its month and the anchor at month 0', () => {
+        const result = computeFinancialMonthlyData(data, live.tick, live, 'end');
+        expect(result.some((p) => p.monthIdx === PREVIOUS_DECEMBER_END_IDX)).toBe(true);
+        const bucketMonthIdxs = result
+            .filter((p) => p.monthIdx % 1 === 0 && p.monthIdx !== PREVIOUS_DECEMBER_END_IDX)
+            .map((p) => p.monthIdx)
+            .sort((a, b) => a - b);
+        expect(bucketMonthIdxs).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    });
+
+    it('keeps the live point at the fractional month position', () => {
+        const result = computeFinancialMonthlyData(data, live.tick, live, 'end');
+        const livePoint = result.find((p) => p.monthIdx % 1 !== 0);
+        expect(livePoint?.monthIdx).toBeCloseTo(3 + 5 / TICKS_PER_MONTH, 5);
+    });
+});
+
+describe('computeFinancialGhostData end position', () => {
+    const data = [...financialYear(0, 100), ...financialYear(1, 200)];
+
+    it('positions the previous-year ghost on month ends', () => {
+        const live = zeroLive(gameTickFor(1, 3, 6));
+        const ghost = computeFinancialGhostData(data, live.tick, live, 'end');
+        expect(ghost.map((p) => p.monthIdx)).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    });
+
+    it('drops the oldest ghost month once the live tick passes its end', () => {
+        const live = zeroLive(gameTickFor(1, 3, 30));
+        const ghost = computeFinancialGhostData(data, live.tick, live, 'end');
+        expect(ghost.map((p) => p.monthIdx)).toEqual([5, 6, 7, 8, 9, 10, 11, 12]);
+    });
+});
+
 function expensesPoint(
     gameYear: number,
     sumPurchases: number,
@@ -144,7 +200,6 @@ describe('computeExpensesRevenueBuckets', () => {
         const rows = computeExpensesRevenueBuckets(
             [expensesPoint(0, 1200, 240), expensesPoint(1, 1200, 240)],
             'yearly',
-            'linear',
         );
         expect(rows.map((r) => r.purchases)).toEqual([100, 100]);
         expect(rows.map((r) => r.claimPayments)).toEqual([20, 20]);
@@ -152,18 +207,18 @@ describe('computeExpensesRevenueBuckets', () => {
     });
 
     it('reports decade purchases and claims as monthly equivalents', () => {
-        const rows = computeExpensesRevenueBuckets([expensesPoint(0, 1200, 240)], 'decade', 'linear');
+        const rows = computeExpensesRevenueBuckets([expensesPoint(0, 1200, 240)], 'decade');
         expect(rows.map((r) => r.purchases)).toEqual([10]);
         expect(rows.map((r) => r.claimPayments)).toEqual([2]);
     });
 
     it('reports yearly interest plus wealth tax as a combined monthly misc line', () => {
-        const rows = computeExpensesRevenueBuckets([expensesPoint(0, 0, 0, 240, 120)], 'yearly', 'linear');
+        const rows = computeExpensesRevenueBuckets([expensesPoint(0, 0, 0, 240, 120)], 'yearly');
         expect(rows.map((r) => r.misc)).toEqual([30]);
     });
 
     it('reports decade interest plus wealth tax as a combined monthly misc line', () => {
-        const rows = computeExpensesRevenueBuckets([expensesPoint(0, 0, 0, 240, 120)], 'decade', 'linear');
+        const rows = computeExpensesRevenueBuckets([expensesPoint(0, 0, 0, 240, 120)], 'decade');
         expect(rows.map((r) => r.misc)).toEqual([3]);
     });
 
@@ -179,7 +234,7 @@ describe('computeExpensesRevenueBuckets', () => {
             sumInterestPaid: 240,
             sumWealthTaxPaid: 120,
         };
-        const rows = computeExpensesRevenueBuckets([expensesPoint(1, 1200, 240)], 'yearly', 'linear', live);
+        const rows = computeExpensesRevenueBuckets([expensesPoint(1, 1200, 240)], 'yearly', live);
         const liveRow = rows[rows.length - 1];
         const elapsedMonths = 6 + 1 / TICKS_PER_MONTH;
         expect(liveRow.revenue).toBeCloseTo((6 * 600 + 700) / elapsedMonths, 6);
@@ -201,7 +256,7 @@ describe('computeExpensesRevenueBuckets', () => {
             sumInterestPaid: 240,
             sumWealthTaxPaid: 120,
         };
-        const rows = computeExpensesRevenueBuckets([expensesPoint(0, 1200, 240)], 'decade', 'linear', live);
+        const rows = computeExpensesRevenueBuckets([expensesPoint(0, 1200, 240)], 'decade', live);
         const liveRow = rows[rows.length - 1];
         const elapsedMonths = 5 * MONTHS_PER_YEAR + 1 / TICKS_PER_MONTH;
         expect(liveRow.purchases).toBeCloseTo((5 * MONTHS_PER_YEAR * 10 + 1300) / elapsedMonths, 6);
@@ -213,9 +268,21 @@ describe('computeExpensesRevenueBuckets', () => {
         const rows = computeExpensesRevenueBuckets(
             [expensesPoint(1, 1200, 240), expensesPoint(0, 1200, 240)],
             'yearly',
-            'linear',
         );
         expect(rows.map((r) => r.year)).toEqual([2200.5, 2201.5]);
+    });
+
+    it('splits net profit into a positive income curve or a loss magnitude', () => {
+        const profitable = computeExpensesRevenueBuckets([expensesPoint(0, 1200, 240)], 'yearly')[0];
+        expect(profitable.income).toBeCloseTo(180, 6);
+        expect(profitable.loss).toBeNull();
+
+        const losing = computeExpensesRevenueBuckets(
+            [{ ...expensesPoint(0, 1200, 240), avgMonthlyNetIncome: 100 }],
+            'yearly',
+        )[0];
+        expect(losing.loss).toBeCloseTo(320, 6);
+        expect(losing.income).toBeNull();
     });
 });
 
@@ -224,6 +291,22 @@ function zeroFraction([lo, hi]: [number, number]): number {
 }
 
 const TOLERANCE = 1e-6;
+
+describe('naturalDomain', () => {
+    it('includes zero and pads both ends', () => {
+        const [lo, hi] = naturalDomain([100, 200]);
+        expect(lo).toBeLessThan(0);
+        expect(hi).toBeGreaterThan(200);
+    });
+
+    it('returns a narrow band for a single repeated value', () => {
+        expect(naturalDomain([0])).toEqual([-0.001, 0.001]);
+    });
+
+    it('returns a zero band for empty input', () => {
+        expect(naturalDomain([])).toEqual([0, 0]);
+    });
+});
 
 describe('alignedYDomains', () => {
     it('returns domains where zero sits at the same vertical fraction on both axes', () => {
@@ -342,6 +425,25 @@ describe('bucket interval midpoints', () => {
 
     it('centres later decade buckets inside the decade they cover', () => {
         expect(bucketDecadeMid(3601)).toBe(2215);
+    });
+});
+
+describe('bucket interval endpoints', () => {
+    it('places the first yearly bucket (1) at the end of its year', () => {
+        expect(bucketYearEnd(1)).toBe(2201);
+    });
+
+    it('places later yearly buckets at the end of the year they cover', () => {
+        expect(bucketYearEnd(361)).toBe(2202);
+        expect(bucketYearEnd(721)).toBe(2203);
+    });
+
+    it('places the first decade bucket (1) at the end of its decade', () => {
+        expect(bucketDecadeEnd(1)).toBe(2210);
+    });
+
+    it('places later decade buckets at the end of the decade they cover', () => {
+        expect(bucketDecadeEnd(3601)).toBe(2220);
     });
 });
 

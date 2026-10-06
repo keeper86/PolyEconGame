@@ -19,8 +19,15 @@ export function FinancialTooltip({ active, payload, label, labelFormatter, plane
         return null;
     }
 
-    const colEntry = visible.find((e) => e.dataKey === 'costOfLiving');
-    const diffEntry = visible.find((e) => e.dataKey === 'costOfLivingRichDiff');
+    const cashValue = visible.find((e) => e.dataKey === 'cashBalance')?.value;
+    const assetValue = visible.find((e) => e.dataKey === 'assetValue')?.value;
+    const entries =
+        typeof cashValue === 'number' && typeof assetValue === 'number'
+            ? visible.map((e) => (e.dataKey === 'assetValue' ? { ...e, value: cashValue + (e.value as number) } : e))
+            : visible;
+
+    const colEntry = entries.find((e) => e.dataKey === 'costOfLiving');
+    const diffEntry = entries.find((e) => e.dataKey === 'costOfLivingRichDiff');
     const combinedEntry =
         colEntry && diffEntry
             ? {
@@ -31,7 +38,7 @@ export function FinancialTooltip({ active, payload, label, labelFormatter, plane
               }
             : null;
 
-    const otherEntries = visible.filter((e) => e.dataKey !== 'costOfLiving' && e.dataKey !== 'costOfLivingRichDiff');
+    const otherEntries = entries.filter((e) => e.dataKey !== 'costOfLiving' && e.dataKey !== 'costOfLivingRichDiff');
 
     return (
         <div

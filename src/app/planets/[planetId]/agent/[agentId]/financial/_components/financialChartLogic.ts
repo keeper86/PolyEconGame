@@ -2,21 +2,24 @@ import { tickToDate } from '@/components/client/TickDisplay';
 import type { Granularity } from '@/components/client/GranularityButtonGroup';
 import { liveYearX } from '@/lib/chartTime';
 import {
+    PREVIOUS_DECEMBER_END_IDX,
     PREVIOUS_DECEMBER_IDX,
     blendLive,
     bucketAverageToDate,
     bucketProgress,
     decadeCentre,
     extrapolateLive,
-    ghostMonthVisible,
     monthCentre,
+    monthEnd,
     yearCentre,
 } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
+import { computeNetIncome } from '@/simulation/financial/netIncome';
 
 export type { Granularity };
 export { formatDecadeLabel, formatYearLabel } from '@/lib/historyChartAxis';
 export { decadeCentre as bucketDecadeMid, yearCentre as bucketYearMid } from '@/lib/historyChartAxis';
+export { decadeEnd as bucketDecadeEnd, yearEnd as bucketYearEnd } from '@/lib/historyChartAxis';
 export { MONTHLY_GRID_VALUES, MONTHLY_TICKS as MONTHLY_X_TICKS } from '@/lib/historyChartAxis';
 
 export type FinancialPoint = {
@@ -31,23 +34,23 @@ export type FinancialPoint = {
     sumWealthTaxPaid: number;
 };
 
-export function alignedYDomains(valsA: number[], valsB: number[]): [[number, number], [number, number]] {
-    const computeNatural = (vals: number[]): [number, number] => {
-        const finite = vals.filter(Number.isFinite);
-        if (finite.length === 0) {
-            return [0, 0];
-        }
-        const lo = Math.min(0, ...finite);
-        const hi = Math.max(0, ...finite);
-        if (lo === hi) {
-            return [lo - 0.001, hi + 0.001];
-        }
-        const pad = (hi - lo) * 0.08;
-        return [lo - pad, hi + pad];
-    };
+export function naturalDomain(vals: number[]): [number, number] {
+    const finite = vals.filter(Number.isFinite);
+    if (finite.length === 0) {
+        return [0, 0];
+    }
+    const lo = Math.min(0, ...finite);
+    const hi = Math.max(0, ...finite);
+    if (lo === hi) {
+        return [lo - 0.001, hi + 0.001];
+    }
+    const pad = (hi - lo) * 0.08;
+    return [lo - pad, hi + pad];
+}
 
-    const [loA, hiA] = computeNatural(valsA);
-    const [loB, hiB] = computeNatural(valsB);
+export function alignedYDomains(valsA: number[], valsB: number[]): [[number, number], [number, number]] {
+    const [loA, hiA] = naturalDomain(valsA);
+    const [loB, hiB] = naturalDomain(valsB);
     const spanA = hiA - loA;
     const spanB = hiB - loB;
 
@@ -83,6 +86,8 @@ export type FinancialLive = {
     sumWealthTaxPaid: number;
 };
 
+export type MonthlyPosition = 'centre' | 'end';
+
 function liveFinancialPoint(live: FinancialLive): FinancialChartPoint {
     const { monthIndex, day } = tickToDate(live.tick);
     return {
@@ -103,6 +108,7 @@ export function computeFinancialMonthlyData(
     allPts: FinancialRawPoint[],
     currentTick: number,
     live?: FinancialLive,
+    position: MonthlyPosition = 'centre',
 ): FinancialChartPoint[] {
     if (allPts.length === 0 || currentTick === 0) {
         return [];
@@ -110,12 +116,14 @@ export function computeFinancialMonthlyData(
 
     const pts = [...allPts].sort((a, b) => a.bucket - b.bucket);
     const latestYear = tickToDate(currentTick).year;
+    const monthX = position === 'end' ? monthEnd : monthCentre;
+    const anchorIdx = position === 'end' ? PREVIOUS_DECEMBER_END_IDX : PREVIOUS_DECEMBER_IDX;
 
     const result: FinancialChartPoint[] = pts
         .filter((p) => tickToDate(p.bucket).year === latestYear)
         .map((p) => ({
             ...p,
-            monthIdx: monthCentre(p.bucket),
+            monthIdx: monthX(p.bucket),
         }));
 
     const prevDecPoint = pts.find((p) => {
@@ -124,11 +132,11 @@ export function computeFinancialMonthlyData(
     });
 
     if (prevDecPoint) {
-        result.unshift({ ...prevDecPoint, monthIdx: PREVIOUS_DECEMBER_IDX });
+        result.unshift({ ...prevDecPoint, monthIdx: anchorIdx });
     } else {
         const lastBeforeCurrentYear = [...pts].reverse().find((p) => tickToDate(p.bucket).year < latestYear);
         if (lastBeforeCurrentYear) {
-            result.unshift({ ...lastBeforeCurrentYear, monthIdx: PREVIOUS_DECEMBER_IDX });
+            result.unshift({ ...lastBeforeCurrentYear, monthIdx: anchorIdx });
         }
     }
 
@@ -155,6 +163,7 @@ export function computeFinancialGhostData(
     allPts: FinancialRawPoint[],
     currentTick: number,
     live?: FinancialLive,
+    position: MonthlyPosition = 'centre',
 ): FinancialChartPoint[] {
     if (allPts.length === 0 || currentTick === 0) {
         return [];
@@ -165,12 +174,17 @@ export function computeFinancialGhostData(
     const { year: latestYear, monthIndex: currentMonthIndex, day: currentDay } = tickToDate(anchorTick);
 
     const currentMonthIdx = currentMonthIndex + Math.max(currentDay - 1, 0.001) / TICKS_PER_MONTH;
+    const monthX = position === 'end' ? monthEnd : monthCentre;
 
     return pts
-        .filter((p) => tickToDate(p.bucket).year === latestYear - 1 && ghostMonthVisible(p.bucket, currentMonthIdx))
+        .filter(
+            (p) =>
+                tickToDate(p.bucket).year === latestYear - 1 &&
+                monthX(p.bucket) - 1 / TICKS_PER_MONTH > currentMonthIdx,
+        )
         .map((p) => ({
             ...p,
-            monthIdx: monthCentre(p.bucket),
+            monthIdx: monthX(p.bucket),
         }));
 }
 
@@ -183,17 +197,24 @@ export type ExpensesRevenueBucketRow = {
     purchases: number | null;
     claimPayments: number | null;
     misc: number | null;
+    income: number | null;
+    loss: number | null;
     ghostRevenue: null;
     ghostWages: null;
     ghostPurchases: null;
     ghostClaimPayments: null;
     ghostMisc: null;
+    ghostIncome: null;
+    ghostLoss: null;
 };
+
+export function splitNetIncome(netIncome: number): { income: number | null; loss: number | null } {
+    return { income: netIncome > 0 ? netIncome : null, loss: netIncome < 0 ? -netIncome : null };
+}
 
 export function computeExpensesRevenueBuckets(
     data: FinancialPoint[],
     granularity: 'yearly' | 'decade',
-    scale: 'linear' | 'log',
     live?: FinancialLive,
 ): ExpensesRevenueBucketRow[] {
     const monthsPerBucket = granularity === 'decade' ? 120 : 12;
@@ -201,23 +222,34 @@ export function computeExpensesRevenueBuckets(
         .sort((a, b) => a.bucket - b.bucket)
         .map((p) => {
             const xVal = granularity === 'decade' ? decadeCentre(p.bucket) : yearCentre(p.bucket);
+            const { income, loss } = splitNetIncome(
+                computeNetIncome({
+                    revenue: p.avgMonthlyNetIncome,
+                    wages: p.avgWages,
+                    purchases: p.sumPurchases / monthsPerBucket,
+                    claimPayments: p.sumClaimPayments / monthsPerBucket,
+                    interestPaid: p.sumInterestPaid / monthsPerBucket,
+                    wealthTaxPaid: p.sumWealthTaxPaid / monthsPerBucket,
+                }),
+            );
             return {
                 xVal,
                 year: xVal,
                 monthIndex: tickToDate(p.bucket).monthIndex,
-                revenue: scale === 'log' && p.avgMonthlyNetIncome <= 0 ? null : p.avgMonthlyNetIncome,
-                wages: scale === 'log' && p.avgWages <= 0 ? null : p.avgWages,
-                purchases: scale === 'log' && p.sumPurchases <= 0 ? null : p.sumPurchases / monthsPerBucket,
-                claimPayments: scale === 'log' && p.sumClaimPayments <= 0 ? null : p.sumClaimPayments / monthsPerBucket,
-                misc:
-                    scale === 'log' && p.sumInterestPaid + p.sumWealthTaxPaid <= 0
-                        ? null
-                        : (p.sumInterestPaid + p.sumWealthTaxPaid) / monthsPerBucket,
+                revenue: p.avgMonthlyNetIncome,
+                wages: p.avgWages,
+                purchases: p.sumPurchases / monthsPerBucket,
+                claimPayments: p.sumClaimPayments / monthsPerBucket,
+                misc: (p.sumInterestPaid + p.sumWealthTaxPaid) / monthsPerBucket,
+                income,
+                loss,
                 ghostRevenue: null,
                 ghostWages: null,
                 ghostPurchases: null,
                 ghostClaimPayments: null,
                 ghostMisc: null,
+                ghostIncome: null,
+                ghostLoss: null,
             };
         });
 
@@ -226,45 +258,47 @@ export function computeExpensesRevenueBuckets(
     }
 
     const previous = rows[rows.length - 1];
+    const revenue = bucketAverageToDate(
+        previous?.revenue ?? undefined,
+        live.avgMonthlyNetIncome,
+        live.tick,
+        granularity,
+    );
+    const wages = bucketAverageToDate(previous?.wages ?? undefined, live.avgWages, live.tick, granularity);
+    const purchases = bucketAverageToDate(previous?.purchases ?? undefined, live.sumPurchases, live.tick, granularity);
+    const claimPayments = bucketAverageToDate(
+        previous?.claimPayments ?? undefined,
+        live.sumClaimPayments,
+        live.tick,
+        granularity,
+    );
+    const misc = bucketAverageToDate(
+        previous?.misc ?? undefined,
+        live.sumInterestPaid + live.sumWealthTaxPaid,
+        live.tick,
+        granularity,
+    );
+    const { income, loss } = splitNetIncome(
+        (revenue ?? 0) - (wages ?? 0) - (purchases ?? 0) - (claimPayments ?? 0) - (misc ?? 0),
+    );
     rows.push({
         xVal: liveYearX(live.tick),
         year: tickToDate(live.tick).year,
         monthIndex: 0,
-        revenue:
-            scale === 'log' && live.avgMonthlyNetIncome <= 0
-                ? null
-                : bucketAverageToDate(previous?.revenue ?? undefined, live.avgMonthlyNetIncome, live.tick, granularity),
-        wages:
-            scale === 'log' && live.avgWages <= 0
-                ? null
-                : bucketAverageToDate(previous?.wages ?? undefined, live.avgWages, live.tick, granularity),
-        purchases:
-            scale === 'log' && live.sumPurchases <= 0
-                ? null
-                : bucketAverageToDate(previous?.purchases ?? undefined, live.sumPurchases, live.tick, granularity),
-        claimPayments:
-            scale === 'log' && live.sumClaimPayments <= 0
-                ? null
-                : bucketAverageToDate(
-                      previous?.claimPayments ?? undefined,
-                      live.sumClaimPayments,
-                      live.tick,
-                      granularity,
-                  ),
-        misc:
-            scale === 'log' && live.sumInterestPaid + live.sumWealthTaxPaid <= 0
-                ? null
-                : bucketAverageToDate(
-                      previous?.misc ?? undefined,
-                      live.sumInterestPaid + live.sumWealthTaxPaid,
-                      live.tick,
-                      granularity,
-                  ),
+        revenue,
+        wages,
+        purchases,
+        claimPayments,
+        misc,
+        income,
+        loss,
         ghostRevenue: null,
         ghostWages: null,
         ghostPurchases: null,
         ghostClaimPayments: null,
         ghostMisc: null,
+        ghostIncome: null,
+        ghostLoss: null,
     });
     return rows;
 }
