@@ -135,6 +135,19 @@ describe('historyChartAxis', () => {
         expect(withHistory.gridValues).toEqual(plain.gridValues);
     });
 
+    it('shifts the end-value year window one year later so the live year stays inside', () => {
+        const axis = yearWindowAxis(START_YEAR + 1, START_YEAR + 12.4);
+        expect(axis.domain[0]).toBe(START_YEAR + 1);
+        expect(axis.domain[1]).toBeGreaterThanOrEqual(START_YEAR + 12.4);
+        expect(axis.ticks[0]).toBe(START_YEAR + 1.5);
+    });
+
+    it('drops the first decade of the end-value decade window', () => {
+        const axis = decadeWindowAxis(START_YEAR + DECADE_YEARS, START_YEAR + 53);
+        expect(axis.domain[0]).toBe(START_YEAR + DECADE_YEARS);
+        expect(axis.domain[1]).toBe(START_YEAR + 60);
+    });
+
     it('keeps the ghost month visible until one day before the live tick reaches its centre', () => {
         const april = tickFor(START_YEAR + 1, 3, 15);
         expect(ghostMonthVisible(april, livePosition(START_YEAR + 1, 3, 14))).toBe(true);

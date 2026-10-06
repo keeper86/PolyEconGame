@@ -5,6 +5,7 @@ import { bufferTraderTick } from './agents/bufferTraderTick';
 import { forexMarketMakerPricing } from './agents/forexMarketMakerPricing';
 import { forexMMRepaymentTick } from './agents/forexMarketMakerTick';
 import { governmentSupportTick, governmentTick } from './agents/governmentAgent';
+import { demandShockTick } from './agents/demandShock';
 import { shipbuilderTick } from './agents/shipbuilderTick';
 import { isFirstTickInMonth, isMonthBoundary, isYearBoundary } from './constants';
 import { maturesLoans, preProductionFinancialTick } from './financial/financialTick';
@@ -148,6 +149,7 @@ export function advanceTick(gameState: GameState) {
                 t = profile.markAndAccum('intergenTransfers', '  intergenerationalTransfers', t);
             }
             governmentSupportTick(gameState, planet);
+            demandShockTick(gameState, planet);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('govSupport', '  governmentSupportTick', t);
             }

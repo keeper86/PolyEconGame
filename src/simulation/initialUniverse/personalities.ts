@@ -1,5 +1,6 @@
 import {
     ASK_VOLUME_FLOOR_FRACTION,
+    AUTOMATED_COST_FLOOR_BUFFER,
     BID_ANCHOR_MULTIPLE,
     BID_VOLUME_FLOOR_FRACTION,
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
@@ -101,11 +102,12 @@ const gauss = (mean: number, std: number) =>
     Math.sqrt(-2 * Math.log(nextRandom())) * Math.cos(2 * Math.PI * nextRandom()) * std + mean;
 
 export function generateAgentPersonality(costSpringStrength = 0.5): AgentPersonality {
-    const rndParameter = 0.05 * gauss(0.5, 0.2);
-    const priceAdjustmentAggressivenessUp = Math.max(1.005, 1.025 + rndParameter);
-    const priceAdjustmentAggressivenessDown = Math.min(0.995, 0.975 - rndParameter);
-    const sellPriceAgressiveness = Math.max(1.0, 1.5);
-    const buyPriceAgressiveness = BID_ANCHOR_MULTIPLE - 1;
+    const rndParameter = 0.025 * gauss(0, 0.5);
+    const priceAdjustmentAggressivenessUp = Math.max(1.01, 1.05 + rndParameter);
+    const priceAdjustmentAggressivenessDown = Math.min(0.99, 0.95 - rndParameter);
+
+    const sellPriceAgressiveness = Math.max(1.05, AUTOMATED_COST_FLOOR_BUFFER + rndParameter);
+    const buyPriceAgressiveness = BID_ANCHOR_MULTIPLE - 1 - rndParameter;
 
     return {
         buyAutoConfig: {

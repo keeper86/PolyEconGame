@@ -41,7 +41,6 @@ import { getLatestTick } from '../../simulation/workerClient/manager';
 import {
     getAgentAssetValueSync,
     getAgentSync,
-    getAgentsByIdSync,
     getAllAgentsSync,
     getAllPlanetsSync,
     getLoanConditionsSync,
@@ -948,6 +947,7 @@ const tickerEventSchema: z.ZodType<TickerEvent> = z.object({
     planetId: z.string(),
     tick: z.number(),
     agentLogo: z.string(),
+    automated: z.boolean(),
     category: tickerEventCategorySchema,
     agentId: z.string().optional(),
     agentName: z.string().optional(),
@@ -969,7 +969,6 @@ export const getTickerEvents = () =>
             selectTickerEvents(
                 getTickerEventsSync().tickerEvents,
                 input.filter ?? defaultTickerEventFilter(),
-                getAgentsByIdSync(),
                 input.lastSeenId,
             ),
         );

@@ -234,6 +234,7 @@ export type AgentMarketOfferState = {
     offerPrice?: number;
     offerRetainment?: number;
     lastSold?: number;
+    lastSellThroughBase?: number;
     smoothedSold?: number;
     lastRevenue?: number;
     lastPlacedQty?: number;
@@ -459,9 +460,17 @@ export interface GameState {
     nextEventId: number;
 }
 
-export function pushTickerEvent(gameState: GameState, event: Omit<TickerEvent, 'id' | 'agentLogo'>): void {
-    const agentLogo = event.agentId ? (gameState.agents.get(event.agentId)?.logo ?? '') : '';
-    gameState.tickerEvents.push({ ...event, agentLogo, id: gameState.nextEventId++ });
+export function pushTickerEvent(
+    gameState: GameState,
+    event: Omit<TickerEvent, 'id' | 'agentLogo' | 'automated'>,
+): void {
+    const agent = event.agentId ? gameState.agents.get(event.agentId) : undefined;
+    gameState.tickerEvents.push({
+        ...event,
+        agentLogo: agent?.logo ?? '',
+        automated: agent?.automated ?? false,
+        id: gameState.nextEventId++,
+    });
 }
 
 const MAX_BANKRUPTCY_RECORDS = 2000;

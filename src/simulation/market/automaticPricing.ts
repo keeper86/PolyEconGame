@@ -520,11 +520,19 @@ export function adjustOfferPrice(
               ? cfg.sellProductionSmoothing
               : Math.max(1, cfg.freeRetainmentSmoothingMaxExtra);
 
+    const isService = offer.resource.form === 'services';
+    const productionAnchored = productionRate > 0;
+    const storedBase =
+        offer.lastSellThroughBase !== undefined && offer.lastSellThroughBase > EPSILON
+            ? offer.lastSellThroughBase
+            : undefined;
+    const serviceBase = storedBase ?? (productionAnchored ? productionRate : undefined);
+
     if (effectiveQuantity < EPSILON) {
         if (sold > 0 && price > 0) {
             // Stockout: everything that could be offered was sold. This is a discrete
             // signal rather than a rate measurement, so do not smooth it.
-            const rawSellThrough = 1;
+            const rawSellThrough = isService && serviceBase !== undefined ? sold / serviceBase : 1;
             const normalizedSellThrough = rawSellThrough * sellSmoothing;
             offer.smoothedSellThrough = normalizedSellThrough;
             const factor = sellThroughFactor(
@@ -560,12 +568,20 @@ export function adjustOfferPrice(
 
     offer.offerRetainment = Math.max(retainment, inventoryQty - effectiveQuantity);
 
-    const rawSellThrough = Math.min(1, Math.max(0, sold / effectiveQuantity));
-    const normalizedSellThrough = rawSellThrough * sellSmoothing;
+    const priorBase = isService ? (serviceBase ?? effectiveQuantity) : (storedBase ?? effectiveQuantity);
+    const sellThrough = isService ? sold / priorBase : (sold / priorBase) * sellSmoothing;
+    if (isService) {
+        if (productionAnchored) {
+            offer.lastSellThroughBase = productionRate;
+        }
+    } else {
+        offer.lastSellThroughBase = effectiveQuantity;
+    }
+
     const smoothedSellThrough =
         offer.smoothedSellThrough === undefined
-            ? normalizedSellThrough
-            : SELL_THROUGH_EMA_ALPHA * normalizedSellThrough + (1 - SELL_THROUGH_EMA_ALPHA) * offer.smoothedSellThrough;
+            ? sellThrough
+            : SELL_THROUGH_EMA_ALPHA * sellThrough + (1 - SELL_THROUGH_EMA_ALPHA) * offer.smoothedSellThrough;
     offer.smoothedSellThrough = smoothedSellThrough;
     const factor = sellThroughFactor(
         smoothedSellThrough,
@@ -587,7 +603,7 @@ export function adjustOfferPrice(
     }
 
     offer.diagnostics = {
-        sellThroughRate: rawSellThrough,
+        sellThroughRate: sellThrough,
         smoothedSellThrough,
         targetSellThrough,
         baseFactor: factor,

@@ -46,6 +46,7 @@ export type TickerEvent = {
     planetId: string;
     tick: number;
     agentLogo: string;
+    automated: boolean;
     category: TickerEventCategory;
     agentId?: string;
     agentName?: string;

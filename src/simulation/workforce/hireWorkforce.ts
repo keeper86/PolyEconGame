@@ -3,6 +3,7 @@ import {
     HIRE_HR_SERVICE_PER_WORKER,
     HIRE_RAMP_MONTHS,
     MIN_EMPLOYABLE_AGE,
+    MIN_HIRES_PER_TICK,
     NOTICE_PERIOD_MONTHS,
     TICKS_PER_MONTH,
 } from '../constants';
@@ -61,7 +62,7 @@ export const maxHiresPerTick = (assets: AgentPlanetAssets): number => {
     }
     const hrScale = assets.humanResourcesDepartment?.scale ?? 0;
     const servedWorkforce = (hrScale * PRODUCED_HR_QUANTITY) / ESTIMATED_HR_OVERHEAD;
-    return Math.max(1, (hireFlowMultiplier * servedWorkforce) / (HIRE_RAMP_MONTHS * TICKS_PER_MONTH));
+    return Math.max(MIN_HIRES_PER_TICK, (hireFlowMultiplier * servedWorkforce) / (HIRE_RAMP_MONTHS * TICKS_PER_MONTH));
 };
 
 export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profiler?: TickProfiler): void {
@@ -147,7 +148,7 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
                 const maxHires = maxHiresPerTick(assets);
                 const hrDepartment = assets.humanResourcesDepartment;
                 const maxByHrPoints = hrDepartment
-                    ? Math.floor(hrDepartment.hrBuffer / HIRE_HR_SERVICE_PER_WORKER)
+                    ? Math.max(MIN_HIRES_PER_TICK, Math.floor(hrDepartment.hrBuffer / HIRE_HR_SERVICE_PER_WORKER))
                     : Number.POSITIVE_INFINITY;
                 const toHire = Math.floor(Math.min(shortfall, totalWilling, maxHires, maxByHrPoints));
                 assertBackfillProgress(edu, edu, shortfall, totalWilling, toHire);

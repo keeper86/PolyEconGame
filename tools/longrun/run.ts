@@ -28,7 +28,9 @@ import {
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
 import { setBankruptcyDebtWriteOffFraction } from '../../src/simulation/financial/bankruptcy';
 import { setPinWagesToMinimum } from '../../src/simulation/workforce/automaticWorkerAllocation';
+import { setDemandShock } from '../../src/simulation/agents/demandShock';
 import { setCostFloorBuffer, setCostSpringStrength } from '../../src/simulation/market/automaticPricing';
+import { setServiceNeutralMarkup, setServicePriceResponseEnabled } from '../../src/simulation/market/serviceDefinitions';
 import { deserializeSnapshot, serializeGameState } from '../../src/simulation/snapshotCompression';
 import { getRngState, setRngState } from '../../src/simulation/utils/stochasticRound';
 import type { GameState } from '../../src/simulation/planet/planet';
@@ -638,6 +640,16 @@ async function main(): Promise<void> {
         setServiceFlowDecayTarget(Number(serviceDecayArg));
         console.log(`service flow decay target overridden to ${serviceDecayArg}`);
     }
+    const servicePriceResponseArg = arg('servicePriceResponse');
+    if (servicePriceResponseArg !== undefined) {
+        setServicePriceResponseEnabled(servicePriceResponseArg !== 'off' && servicePriceResponseArg !== '0');
+        console.log(`service price response set to ${servicePriceResponseArg}`);
+    }
+    const serviceNeutralMarkupArg = arg('serviceNeutralMarkup');
+    if (serviceNeutralMarkupArg !== undefined) {
+        setServiceNeutralMarkup(Number(serviceNeutralMarkupArg));
+        console.log(`service neutral markup set to ${serviceNeutralMarkupArg}`);
+    }
     if (scenario.world.bankruptcyWriteOffFraction !== undefined) {
         setBankruptcyDebtWriteOffFraction(scenario.world.bankruptcyWriteOffFraction);
     }
@@ -656,6 +668,19 @@ async function main(): Promise<void> {
     if (process.argv.includes('--supportEmployed')) {
         setSupportEmployed(true);
         console.log('government support extended to employed cohorts');
+    }
+    const demandShockPerCapitaArg = arg('demandShockPerCapita');
+    if (demandShockPerCapitaArg !== undefined) {
+        const startYear = Number(arg('demandShockStartYear') ?? 0);
+        const shockYears = Number(arg('demandShockYears') ?? 1);
+        setDemandShock(
+            startYear * TICKS_PER_YEAR,
+            shockYears * TICKS_PER_YEAR,
+            Number(demandShockPerCapitaArg),
+        );
+        console.log(
+            `demand shock: ${demandShockPerCapitaArg}/person/tick for ${shockYears}y starting y${startYear}`,
+        );
     }
     const supportWealthCapDaysArg = arg('supportWealthCapDays');
     if (supportWealthCapDaysArg !== undefined) {

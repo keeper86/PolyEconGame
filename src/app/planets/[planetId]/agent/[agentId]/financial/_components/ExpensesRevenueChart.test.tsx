@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react';
 import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import { describe, expect, it, vi } from 'vitest';
 import React from 'react';
-import type { FinancialPoint } from './financialChartLogic';
+import type { FinancialLive, FinancialPoint } from './financialChartLogic';
 import { ExpensesRevenueChart } from './ExpensesRevenueChart';
 
 vi.mock('recharts', async (importOriginal) => {
@@ -41,9 +41,47 @@ const HISTORY: FinancialPoint[] = [
     },
 ];
 
-const SERIES_LABELS_EN = ['Revenue', 'Wages', 'Purchases', 'Claims', 'Interest & tax'];
-const SERIES_LABELS_DE = ['Erlös', 'Löhne', 'Einkäufe', 'Nutzungsrechte', 'Zinsen & Steuern'];
-const SERIES_COLOURS = ['#ef4444', '#f59e0b', '#8b5cf6', '#ec4899', '#10b981'];
+const SERIES_LABELS_EN = ['Revenue', 'Wages', 'Purchases', 'Claims', 'Interest & tax', 'Income', 'Loss'];
+const SERIES_LABELS_DE = ['Erlös', 'Löhne', 'Einkäufe', 'Nutzungsrechte', 'Zinsen & Steuern', 'Gewinn', 'Verlust'];
+const SERIES_COLOURS = ['#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f43f5e'];
+
+const WIDE_RANGE_ROWS: [number, number, number][] = [
+    [3601, 0, 9470],
+    [3961, 0, 7694],
+    [4321, 1121, 8495],
+    [4681, 3353, 11579],
+    [5041, 3070, 15181],
+    [5401, 3000, 18906],
+    [5761, 2958, 22887],
+    [6121, 2828, 27069],
+    [6481, 2638, 31393],
+    [6841, 2580, 35928],
+    [7201, 2506, 37166],
+];
+
+const WIDE_RANGE_HISTORY: FinancialPoint[] = WIDE_RANGE_ROWS.map(([bucket, avgWages, sumInterestPaid]) => ({
+    bucket,
+    avgNetBalance: 5000,
+    avgAssetValue: 20000,
+    avgMonthlyNetIncome: 0,
+    avgWages,
+    sumPurchases: 0,
+    sumClaimPayments: 0,
+    sumInterestPaid,
+    sumWealthTaxPaid: 0,
+}));
+
+const WIDE_RANGE_LIVE: FinancialLive = {
+    tick: 7620,
+    avgNetBalance: 5000,
+    avgAssetValue: 20000,
+    avgMonthlyNetIncome: 0,
+    avgWages: 2500,
+    sumPurchases: 0,
+    sumClaimPayments: 0,
+    sumInterestPaid: 38000,
+    sumWealthTaxPaid: 0,
+};
 
 const drawnSeries = (container: HTMLElement): (string | null)[] =>
     [...container.querySelectorAll('path.recharts-area-curve')]
@@ -83,5 +121,30 @@ describe('ExpensesRevenueChart', () => {
         expect(rising).not.toBeNull();
         expect(flat).not.toBeNull();
         expect(rising).not.toBe(flat);
+    });
+
+    it('draws the income curve for profitable months and the loss curve for loss-making months', () => {
+        const profitable = HISTORY.map((point) => ({ ...point, avgMonthlyNetIncome: 2000 }));
+
+        const { container: losing } = renderWithIntl(<ExpensesRevenueChart data={HISTORY} granularity='yearly' />);
+        expect(drawnSeries(losing)).toContain('#f43f5e');
+        expect(drawnSeries(losing)).not.toContain('#10b981');
+
+        const { container: gaining } = renderWithIntl(<ExpensesRevenueChart data={profitable} granularity='yearly' />);
+        expect(drawnSeries(gaining)).toContain('#10b981');
+        expect(drawnSeries(gaining)).not.toContain('#f43f5e');
+    });
+
+    it('emits no NaN coordinates for stacked areas on the wide-range axis', () => {
+        const { container } = renderWithIntl(
+            <ExpensesRevenueChart data={WIDE_RANGE_HISTORY} granularity='yearly' live={WIDE_RANGE_LIVE} />,
+        );
+
+        const paths = [...container.querySelectorAll('path.recharts-area-curve, path.recharts-area-area')].map(
+            (path) => path.getAttribute('d') ?? '',
+        );
+
+        expect(paths.length).toBeGreaterThan(0);
+        expect(paths.filter((d) => d.includes('NaN'))).toEqual([]);
     });
 });

@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { TICKER_EVENT_CATEGORIES, TICKER_EVENT_FILTER_DEFAULTS, type TickerEvent } from '../../lib/tickerEvents';
-import type { Agent } from '../planet/planet';
 import { HR_DEPARTMENT_NAME } from '../planet/specialFacilities';
 
 export const tickerEventFilterSchema = z.object({
@@ -28,11 +27,7 @@ function isHrCompletion(event: TickerEvent): boolean {
     );
 }
 
-export function filterTickerEvents(
-    events: TickerEvent[],
-    filter: TickerEventFilter,
-    agentsById: ReadonlyMap<string, Agent>,
-): TickerEvent[] {
+export function filterTickerEvents(events: TickerEvent[], filter: TickerEventFilter): TickerEvent[] {
     const enabled = new Set(filter.categories);
     return events.filter((event) => {
         if (!enabled.has(event.category)) {
@@ -44,7 +39,7 @@ export function filterTickerEvents(
         if (!filter.showHrCompletion && isHrCompletion(event)) {
             return false;
         }
-        if (filter.hideAutomated && event.agentId !== undefined && agentsById.get(event.agentId)?.automated === true) {
+        if (filter.hideAutomated && event.automated) {
             return false;
         }
         return true;
@@ -54,10 +49,9 @@ export function filterTickerEvents(
 export function selectTickerEvents(
     events: TickerEvent[],
     filter: TickerEventFilter,
-    agentsById: ReadonlyMap<string, Agent>,
     lastSeenId: number | undefined,
 ): { tickerEvents: TickerEvent[]; lastEventId: number | undefined } {
     const afterWatermark = lastSeenId !== undefined ? events.filter((event) => event.id > lastSeenId) : events;
     const lastEventId = afterWatermark.length > 0 ? Math.max(...afterWatermark.map((event) => event.id)) : lastSeenId;
-    return { tickerEvents: filterTickerEvents(afterWatermark, filter, agentsById), lastEventId };
+    return { tickerEvents: filterTickerEvents(afterWatermark, filter), lastEventId };
 }

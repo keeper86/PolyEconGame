@@ -112,12 +112,20 @@ export function yearStart(bucket: number): number {
     return tickToDate(bucket).year;
 }
 
+export function yearEnd(bucket: number): number {
+    return yearStart(bucket) + 1;
+}
+
 export function decadeCentre(bucket: number): number {
     return decadeStart(bucket) + DECADE_YEARS / 2;
 }
 
 export function decadeStart(bucket: number): number {
     return Math.floor(tickToDate(bucket).year / DECADE_YEARS) * DECADE_YEARS;
+}
+
+export function decadeEnd(bucket: number): number {
+    return decadeStart(bucket) + DECADE_YEARS;
 }
 
 export function monthAxis(locale: Locale): HistoryAxis {

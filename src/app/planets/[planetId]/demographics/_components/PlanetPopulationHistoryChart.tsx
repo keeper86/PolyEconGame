@@ -8,16 +8,17 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { liveYearX } from '@/lib/chartTime';
 import {
     DECADE_WINDOW,
+    DECADE_YEARS,
     HISTORY_BUCKET_LIMIT,
     YEAR_WINDOW,
-    decadeCentre,
+    decadeEnd,
     decadeStart,
     decadeWindowAxis,
     formatDecadeLabel,
     formatMonthLabel,
     formatYearLabel,
     monthAxis,
-    yearCentre,
+    yearEnd,
     yearStart,
     yearWindowAxis,
 } from '@/lib/historyChartAxis';
@@ -50,10 +51,9 @@ type PopulationRawPoint = {
 
 type ChartPoint = {
     tick: number;
-    year: number;
-    monthIdx?: number;
+    xPos: number;
+    labelYear: number;
     value: number;
-    ghostValue?: number | null;
 };
 
 type LiveData = {
@@ -299,17 +299,28 @@ function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[
             .slice(-YEAR_WINDOW)
             .map((p) => ({
                 tick: p.bucket,
-                year: yearCentre(p.bucket),
+                xPos: yearEnd(p.bucket),
+                labelYear: yearStart(p.bucket),
                 value: p.avgPopulation,
             }));
         if (live && live.tick > 0) {
-            rows.push({ tick: live.tick, year: liveYearX(live.tick), value: live.population });
+            rows.push({
+                tick: live.tick,
+                xPos: liveYearX(live.tick),
+                labelYear: liveYearX(live.tick),
+                value: live.population,
+            });
         }
         return rows;
     }, [yearlyPoints, live]);
 
     const yDomain = useMemo(() => yDomainFor(data), [data]);
-    const xAxis = yearWindowAxis(data.length > 0 ? yearStart(data[0].tick) : undefined, data[data.length - 1]?.year);
+    const xAxis = yearWindowAxis(
+        data.length > 0 ? yearStart(data[0].tick) + 1 : undefined,
+        data.length > 0 ? data[data.length - 1].xPos + 1 : undefined,
+    );
+    const labelFor = (xPos: number): string =>
+        formatYearLabel(locale, data.find((d) => d.xPos === xPos)?.labelYear ?? xPos);
 
     return (
         <div style={{ width: '100%', height: 240 }}>
@@ -329,7 +340,7 @@ function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[
                         strokeOpacity={0.95}
                     />
                     <XAxis
-                        dataKey='year'
+                        dataKey='xPos'
                         type='number'
                         tick={{ fontSize: 10, fill: '#94a3b8' }}
                         axisLine={{ stroke: '#334155' }}
@@ -355,7 +366,7 @@ function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[
                             }
                             const p = payload.find((e) => e.dataKey === 'value');
                             return populationTooltipContent(
-                                formatYearLabel(locale, label as number),
+                                labelFor(label as number),
                                 p?.value as number | undefined,
                                 locale,
                                 tr('populationLabel'),
@@ -388,20 +399,28 @@ function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint
             .slice(-DECADE_WINDOW)
             .map((p) => ({
                 tick: p.bucket,
-                year: decadeCentre(p.bucket),
+                xPos: decadeEnd(p.bucket),
+                labelYear: decadeStart(p.bucket),
                 value: p.avgPopulation,
             }));
         if (live && live.tick > 0) {
-            rows.push({ tick: live.tick, year: liveYearX(live.tick), value: live.population });
+            rows.push({
+                tick: live.tick,
+                xPos: liveYearX(live.tick),
+                labelYear: liveYearX(live.tick),
+                value: live.population,
+            });
         }
         return rows;
     }, [decadePoints, live]);
 
     const yDomain = useMemo(() => yDomainFor(data), [data]);
     const xAxis = decadeWindowAxis(
-        data.length > 0 ? decadeStart(data[0].tick) : undefined,
-        data[data.length - 1]?.year,
+        data.length > 0 ? decadeStart(data[0].tick) + DECADE_YEARS : undefined,
+        data.length > 0 ? data[data.length - 1].xPos : undefined,
     );
+    const labelFor = (xPos: number): string =>
+        formatDecadeLabel(locale, data.find((d) => d.xPos === xPos)?.labelYear ?? xPos);
 
     return (
         <div style={{ width: '100%', height: 240 }}>
@@ -421,7 +440,7 @@ function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint
                         strokeOpacity={0.95}
                     />
                     <XAxis
-                        dataKey='year'
+                        dataKey='xPos'
                         type='number'
                         tick={{ fontSize: 10, fill: '#94a3b8' }}
                         axisLine={{ stroke: '#334155' }}
@@ -447,7 +466,7 @@ function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint
                             }
                             const p = payload.find((e) => e.dataKey === 'value');
                             return populationTooltipContent(
-                                formatDecadeLabel(locale, label as number),
+                                labelFor(label as number),
                                 p?.value as number | undefined,
                                 locale,
                                 tr('populationLabel'),

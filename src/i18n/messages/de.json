@@ -700,7 +700,7 @@
         "positions": "Positionen",
         "firmDeposits": "Guthaben",
         "outstandingLoans": "Ausstehende Kredite",
-        "netPositionLabel": "Nettoposition (Guthaben − Kredite)",
+        "netPositionLabel": "Saldo (Guthaben − Kredite)",
         "facilitiesValue": "Wert der Anlagen",
         "shipsValue": "Wert der Schiffe",
         "storageValue": "Wert des Lagers",
@@ -744,9 +744,10 @@
         "sendingRequest": "Anfrage wird gesendet…",
         "awaitingNextDay": "Warten auf den nächsten Tag…",
         "takeInitialLoan": "Startkredit aufnehmen {amount}",
-        "cashBalance": "Bankguthaben",
-        "netPosition": "Nettoposition",
-        "netIncome": "Nettogewinn",
+        "cashBalance": "Saldo",
+        "netPosition": "Konzernwert",
+        "income": "Gewinn",
+        "loss": "Verlust",
         "interestAndTax": "Zinsen & Steuern"
     },
     "Production": {
