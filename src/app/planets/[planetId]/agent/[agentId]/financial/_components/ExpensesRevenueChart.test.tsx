@@ -43,7 +43,8 @@ const HISTORY: FinancialPoint[] = [
 
 const SERIES_LABELS_EN = ['Revenue', 'Wages', 'Purchases', 'Claims', 'Interest & tax', 'Income', 'Loss'];
 const SERIES_LABELS_DE = ['Erlös', 'Löhne', 'Einkäufe', 'Nutzungsrechte', 'Zinsen & Steuern', 'Gewinn', 'Verlust'];
-const SERIES_COLOURS = ['#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f43f5e'];
+const SERIES_COLOURS = ['#f43f5e', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+const EXPENSE_STROKES = ['#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'];
 
 const WIDE_RANGE_ROWS: [number, number, number][] = [
     [3601, 0, 9470],
@@ -82,6 +83,20 @@ const WIDE_RANGE_LIVE: FinancialLive = {
     sumInterestPaid: 38000,
     sumWealthTaxPaid: 0,
 };
+
+const ZERO_START_REVENUE = [0, 0, 0, 1, 10, 200];
+
+const ZERO_START_HISTORY: FinancialPoint[] = ZERO_START_REVENUE.map((revenue, index) => ({
+    bucket: 721 + index * 360,
+    avgNetBalance: 0,
+    avgAssetValue: 0,
+    avgMonthlyNetIncome: revenue,
+    avgWages: 0,
+    sumPurchases: 0,
+    sumClaimPayments: 0,
+    sumInterestPaid: 0,
+    sumWealthTaxPaid: 0,
+}));
 
 const drawnSeries = (container: HTMLElement): (string | null)[] =>
     [...container.querySelectorAll('path.recharts-area-curve')]
@@ -146,5 +161,36 @@ describe('ExpensesRevenueChart', () => {
 
         expect(paths.length).toBeGreaterThan(0);
         expect(paths.filter((d) => d.includes('NaN'))).toEqual([]);
+    });
+
+    it('stacks the expense series smallest-first in log mode', () => {
+        const { container } = renderWithIntl(
+            <ExpensesRevenueChart data={WIDE_RANGE_HISTORY} granularity='yearly' live={WIDE_RANGE_LIVE} />,
+        );
+
+        expect(drawnSeries(container).filter((stroke) => EXPENSE_STROKES.includes(stroke ?? ''))).toEqual([
+            '#f59e0b',
+            '#8b5cf6',
+            '#3b82f6',
+            '#ec4899',
+        ]);
+    });
+
+    it('starts a zero-then-rising series on the bottom axis in log mode instead of mid-air', () => {
+        const { container } = renderWithIntl(<ExpensesRevenueChart data={ZERO_START_HISTORY} granularity='yearly' />);
+
+        const yStart = (stroke: string): number => {
+            const path = [...container.querySelectorAll('path.recharts-area-curve')].find(
+                (candidate) => candidate.getAttribute('stroke') === stroke,
+            );
+            const match = /^M(-?[\d.]+),(-?[\d.]+)/.exec(path?.getAttribute('d') ?? '');
+            return match ? Number(match[2]) : Number.NaN;
+        };
+        const axisLine = container.querySelector('.recharts-xAxis .recharts-cartesian-axis-line');
+        const bottom = Number(axisLine?.getAttribute('y'));
+
+        expect(Number.isFinite(bottom)).toBe(true);
+        expect(yStart('#06b6d4')).toBeLessThanOrEqual(bottom);
+        expect(yStart('#10b981')).toBeLessThanOrEqual(bottom);
     });
 });

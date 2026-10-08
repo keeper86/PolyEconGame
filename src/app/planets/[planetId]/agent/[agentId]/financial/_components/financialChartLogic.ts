@@ -212,6 +212,107 @@ export function splitNetIncome(netIncome: number): { income: number | null; loss
     return { income: netIncome > 0 ? netIncome : null, loss: netIncome < 0 ? -netIncome : null };
 }
 
+export const EXPENSE_SERIES_KEYS = ['wages', 'purchases', 'claimPayments', 'misc'] as const;
+export type ExpenseSeriesKey = (typeof EXPENSE_SERIES_KEYS)[number];
+
+export function expenseMagnitudeOrder(
+    rows: ReadonlyArray<Record<ExpenseSeriesKey, number | null>>,
+): ExpenseSeriesKey[] {
+    const average = (key: ExpenseSeriesKey): number => {
+        let total = 0;
+        let count = 0;
+        for (const row of rows) {
+            const value = row[key];
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                total += Math.abs(value);
+                count += 1;
+            }
+        }
+        return count === 0 ? 0 : total / count;
+    };
+    return [...EXPENSE_SERIES_KEYS].sort((a, b) => average(a) - average(b));
+}
+
+export type ResolutionRow = {
+    wages: number | null;
+    purchases: number | null;
+    claimPayments: number | null;
+    misc: number | null;
+    revenue: number | null;
+    ghostWages: number | null;
+    ghostPurchases: number | null;
+    ghostClaimPayments: number | null;
+    ghostMisc: number | null;
+    ghostRevenue: number | null;
+};
+
+function stackedTotal(values: readonly (number | null)[]): number | null {
+    let total = 0;
+    let any = false;
+    for (const value of values) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            total += value;
+            any = true;
+        }
+    }
+    return any ? total : null;
+}
+
+export function expenseResolutionMagnitudes(rows: ReadonlyArray<ResolutionRow>): number[] {
+    const magnitudes: number[] = [];
+    const collect = (value: number | null) => {
+        if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+            magnitudes.push(value);
+        }
+    };
+    for (const row of rows) {
+        const segments = [row.wages, row.purchases, row.claimPayments, row.misc];
+        const ghostSegments = [row.ghostWages, row.ghostPurchases, row.ghostClaimPayments, row.ghostMisc];
+        for (const segment of segments) {
+            collect(segment);
+        }
+        for (const segment of ghostSegments) {
+            collect(segment);
+        }
+        collect(stackedTotal(segments));
+        collect(stackedTotal(ghostSegments));
+        collect(row.revenue);
+        collect(row.ghostRevenue);
+    }
+    return magnitudes;
+}
+
+export type LogFloorRow = ResolutionRow & {
+    income: number | null;
+    loss: number | null;
+    ghostIncome: number | null;
+    ghostLoss: number | null;
+};
+
+export function applyLogFloor(rows: readonly LogFloorRow[], segmentFloor: number, lineFloor: number): LogFloorRow[] {
+    const keepOr = (value: number | null, floor: number): number | null =>
+        value === null ? null : value > 0 ? value : floor;
+    const whenPresent = (value: number | null, present: number | null, floor: number): number | null =>
+        present === null ? null : value !== null && value > 0 ? value : floor;
+    return rows.map((row) => ({
+        ...row,
+        wages: keepOr(row.wages, segmentFloor),
+        purchases: keepOr(row.purchases, segmentFloor),
+        claimPayments: keepOr(row.claimPayments, segmentFloor),
+        misc: keepOr(row.misc, segmentFloor),
+        ghostWages: keepOr(row.ghostWages, segmentFloor),
+        ghostPurchases: keepOr(row.ghostPurchases, segmentFloor),
+        ghostClaimPayments: keepOr(row.ghostClaimPayments, segmentFloor),
+        ghostMisc: keepOr(row.ghostMisc, segmentFloor),
+        revenue: keepOr(row.revenue, lineFloor),
+        ghostRevenue: keepOr(row.ghostRevenue, lineFloor),
+        income: whenPresent(row.income, row.revenue, lineFloor),
+        loss: whenPresent(row.loss, row.revenue, lineFloor),
+        ghostIncome: whenPresent(row.ghostIncome, row.ghostRevenue, lineFloor),
+        ghostLoss: whenPresent(row.ghostLoss, row.ghostRevenue, lineFloor),
+    }));
+}
+
 export function computeExpensesRevenueBuckets(
     data: FinancialPoint[],
     granularity: 'yearly' | 'decade',

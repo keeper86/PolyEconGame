@@ -685,7 +685,7 @@
     },
     "Financial": {
         "balanceFlowTitle": "Bankguthaben & Nettoposition",
-        "expensesRevenueTitle": "Erlöse & Aufwendungen",
+        "expensesRevenueTitle": "Erlöse & Aufwendungen (gestapelt)",
         "details": "Details",
         "monthlyFlow": "Monatlicher Fluss",
         "current": "aktuell",

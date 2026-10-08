@@ -20,17 +20,39 @@ import { FinancialTooltip } from './FinancialTooltip';
 import {
     MONTHLY_GRID_VALUES,
     MONTHLY_X_TICKS,
+    EXPENSE_SERIES_KEYS,
     bucketDecadeMid,
     computeExpensesRevenueBuckets,
+    applyLogFloor,
+    expenseMagnitudeOrder,
+    expenseResolutionMagnitudes,
     formatDecadeLabel,
     formatYearLabel,
     splitNetIncome,
+    type ExpenseSeriesKey,
     type FinancialChartPoint,
     type FinancialLive,
     type FinancialPoint,
     type Granularity,
 } from './financialChartLogic';
 import { useLocale, useTranslations } from 'next-intl';
+
+const EXPENSE_LABEL: Record<ExpenseSeriesKey, 'wages' | 'purchases' | 'claims' | 'interestAndTax'> = {
+    wages: 'wages',
+    purchases: 'purchases',
+    claimPayments: 'claims',
+    misc: 'interestAndTax',
+};
+
+const EXPENSE_COLOUR: Record<ExpenseSeriesKey, string> = {
+    wages: '#3b82f6',
+    purchases: '#f59e0b',
+    claimPayments: '#8b5cf6',
+    misc: '#ec4899',
+};
+
+const EXPENSE_FILL_TOP_OPACITY = 0.75;
+const EXPENSE_FILL_BOTTOM_OPACITY = 0.22;
 
 const netIncomeOf = (p: FinancialPoint): number =>
     computeNetIncome({
@@ -70,54 +92,6 @@ export function ExpensesRevenueChart({
     };
 
     const liveX = live && live.tick > 0 ? liveYearX(live.tick) : null;
-
-    const { scale, domain, yTicks } = useMemo(() => {
-        const allVals = [...data, ...(ghostData ?? [])].flatMap((p) => [
-            p.avgMonthlyNetIncome,
-            p.avgWages,
-            p.sumPurchases,
-            p.sumClaimPayments,
-            p.sumInterestPaid + p.sumWealthTaxPaid,
-            Math.abs(netIncomeOf(p)),
-        ]);
-        const positive = allVals.filter((v) => v > 0);
-
-        if (live && live.tick > 0) {
-            allVals.push(
-                live.avgMonthlyNetIncome,
-                live.avgWages,
-                live.sumPurchases,
-                live.sumClaimPayments,
-                live.sumInterestPaid + live.sumWealthTaxPaid,
-                Math.abs(
-                    computeNetIncome({
-                        revenue: live.avgMonthlyNetIncome,
-                        wages: live.avgWages,
-                        purchases: live.sumPurchases,
-                        claimPayments: live.sumClaimPayments,
-                        interestPaid: live.sumInterestPaid,
-                        wealthTaxPaid: live.sumWealthTaxPaid,
-                    }),
-                ),
-            );
-        }
-
-        if (positive.length >= 2) {
-            const lo = Math.min(...positive);
-            const hi = Math.max(...positive);
-            if (hi / lo > 10) {
-                const loExp = Math.floor(Math.log10(lo));
-                const hiExp = Math.ceil(Math.log10(hi));
-                const ticks: number[] = [];
-                for (let e = loExp; e <= hiExp; e++) {
-                    ticks.push(Math.pow(10, e));
-                }
-                const logDomain: [number, number] = [Math.pow(10, loExp), Math.pow(10, hiExp)];
-                return { scale: 'symlog' as const, domain: logDomain, yTicks: ticks };
-            }
-        }
-        return { scale: 'linear' as const, domain: yDomain(allVals), yTicks: undefined };
-    }, [data, ghostData, live]);
 
     const chartData = useMemo(() => {
         if (granularity === 'monthly') {
@@ -163,6 +137,36 @@ export function ExpensesRevenueChart({
         }
         return computeExpensesRevenueBuckets(data as FinancialPoint[], granularity, live);
     }, [data, ghostData, granularity, live]);
+
+    const { scale, domain, yTicks } = useMemo(() => {
+        const positive = expenseResolutionMagnitudes(chartData);
+
+        if (positive.length >= 2) {
+            const lo = Math.min(...positive);
+            const hi = Math.max(...positive);
+            if (hi / lo > 10) {
+                const loExp = Math.floor(Math.log10(lo));
+                const hiExp = Math.ceil(Math.log10(hi));
+                const logTicks: number[] = [];
+                for (let e = loExp; e <= hiExp; e++) {
+                    logTicks.push(Math.pow(10, e));
+                }
+                const logDomain: [number, number] = [Math.pow(10, loExp), Math.pow(10, hiExp)];
+                return { scale: 'symlog' as const, domain: logDomain, yTicks: logTicks };
+            }
+        }
+        return { scale: 'linear' as const, domain: yDomain(positive), yTicks: undefined };
+    }, [chartData]);
+
+    const renderData = useMemo(
+        () => (scale === 'symlog' ? applyLogFloor(chartData, 0.00000001, 0.00000001) : chartData),
+        [scale, chartData],
+    );
+
+    const expenseKeys = useMemo(
+        () => (scale === 'symlog' ? expenseMagnitudeOrder(chartData) : [...EXPENSE_SERIES_KEYS]),
+        [scale, chartData],
+    );
 
     const xAxisProps = useMemo(() => {
         if (granularity === 'monthly') {
@@ -228,36 +232,26 @@ export function ExpensesRevenueChart({
             <p className='text-xs font-semibold text-muted-foreground mb-2'>{t('expensesRevenueTitle')}</p>
             <div style={{ width: '100%', height: 200 }}>
                 <ResponsiveContainer width='100%' height='100%'>
-                    <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
+                    <AreaChart data={renderData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
                         <defs>
                             <linearGradient id='gradRevenue' x1='0' x2='0' y1='0' y2='1'>
                                 <stop offset='5%' stopColor='#06b6d4' stopOpacity={0.45} />
                                 <stop offset='95%' stopColor='#06b6d4' stopOpacity={0.08} />
                             </linearGradient>
-                            <linearGradient id='gradWages' x1='0' x2='0' y1='0' y2='1'>
-                                <stop offset='5%' stopColor='#3b82f6' stopOpacity={0.5} />
-                                <stop offset='95%' stopColor='#3b82f6' stopOpacity={0.1} />
-                            </linearGradient>
-                            <linearGradient id='gradPurchases' x1='0' x2='0' y1='0' y2='1'>
-                                <stop offset='5%' stopColor='#f59e0b' stopOpacity={0.5} />
-                                <stop offset='95%' stopColor='#f59e0b' stopOpacity={0.1} />
-                            </linearGradient>
-                            <linearGradient id='gradClaims' x1='0' x2='0' y1='0' y2='1'>
-                                <stop offset='5%' stopColor='#8b5cf6' stopOpacity={0.5} />
-                                <stop offset='95%' stopColor='#8b5cf6' stopOpacity={0.1} />
-                            </linearGradient>
-                            <linearGradient id='gradMisc' x1='0' x2='0' y1='0' y2='1'>
-                                <stop offset='5%' stopColor='#ec4899' stopOpacity={0.5} />
-                                <stop offset='95%' stopColor='#ec4899' stopOpacity={0.1} />
-                            </linearGradient>
-                            <linearGradient id='gradIncome' x1='0' x2='0' y1='0' y2='1'>
-                                <stop offset='5%' stopColor='#10b981' stopOpacity={0.45} />
-                                <stop offset='95%' stopColor='#10b981' stopOpacity={0.08} />
-                            </linearGradient>
-                            <linearGradient id='gradLoss' x1='0' x2='0' y1='0' y2='1'>
-                                <stop offset='5%' stopColor='#f43f5e' stopOpacity={0.45} />
-                                <stop offset='95%' stopColor='#f43f5e' stopOpacity={0.08} />
-                            </linearGradient>
+                            {EXPENSE_SERIES_KEYS.map((key) => (
+                                <linearGradient key={key} id={`grad-${key}`} x1='0' x2='0' y1='0' y2='1'>
+                                    <stop
+                                        offset='5%'
+                                        stopColor={EXPENSE_COLOUR[key]}
+                                        stopOpacity={EXPENSE_FILL_TOP_OPACITY}
+                                    />
+                                    <stop
+                                        offset='95%'
+                                        stopColor={EXPENSE_COLOUR[key]}
+                                        stopOpacity={EXPENSE_FILL_BOTTOM_OPACITY}
+                                    />
+                                </linearGradient>
+                            ))}
                         </defs>
                         <CartesianGrid
                             vertical={xAxisProps.gridVertical}
@@ -292,154 +286,53 @@ export function ExpensesRevenueChart({
                         />
                         <Tooltip content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} />} />
                         <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />
-                        <Area
-                            type='monotone'
-                            stackId='expenses'
-                            dataKey='wages'
-                            name={t('wages')}
-                            stroke='#3b82f6'
-                            strokeWidth={1.5}
-                            fill='url(#gradWages)'
-                            dot={{ r: 2.5, fill: '#3b82f6' }}
-                            activeDot={{ r: 3 }}
-                            isAnimationActive={false}
-                            connectNulls={false}
-                        />
-                        <Area
-                            type='monotone'
-                            stackId='expenses'
-                            dataKey='purchases'
-                            name={t('purchases')}
-                            stroke='#f59e0b'
-                            strokeWidth={1.5}
-                            fill='url(#gradPurchases)'
-                            dot={{ r: 2.5, fill: '#f59e0b' }}
-                            activeDot={{ r: 3 }}
-                            isAnimationActive={false}
-                            connectNulls={false}
-                        />
-                        <Area
-                            type='monotone'
-                            stackId='expenses'
-                            dataKey='claimPayments'
-                            name={t('claims')}
-                            stroke='#8b5cf6'
-                            strokeWidth={1.5}
-                            fill='url(#gradClaims)'
-                            dot={{ r: 2.5, fill: '#8b5cf6' }}
-                            activeDot={{ r: 3 }}
-                            isAnimationActive={false}
-                            connectNulls={false}
-                        />
-                        <Area
-                            type='monotone'
-                            stackId='expenses'
-                            dataKey='misc'
-                            name={t('interestAndTax')}
-                            stroke='#ec4899'
-                            strokeWidth={1.5}
-                            fill='url(#gradMisc)'
-                            dot={{ r: 2.5, fill: '#ec4899' }}
-                            activeDot={{ r: 3 }}
-                            isAnimationActive={false}
-                            connectNulls={false}
-                        />
+
+                        {expenseKeys.map((key) => (
+                            <Area
+                                key={key}
+                                type='monotone'
+                                stackId='expenses'
+                                dataKey={key}
+                                name={t(EXPENSE_LABEL[key])}
+                                stroke={EXPENSE_COLOUR[key]}
+                                strokeWidth={1.5}
+                                fill={`url(#grad-${key})`}
+                                dot={false}
+                                activeDot={{ r: 3 }}
+                                isAnimationActive={false}
+                                connectNulls={false}
+                            />
+                        ))}
                         <Area
                             type='monotone'
                             dataKey='revenue'
                             name={t('revenue')}
                             stroke='#06b6d4'
                             strokeWidth={2}
-                            fill='url(#gradRevenue)'
+                            fill='none'
                             dot={{ r: 3, fill: '#06b6d4' }}
                             activeDot={{ r: 3, fill: '#06b6d4' }}
                             isAnimationActive={false}
                             connectNulls={false}
                         />
-                        <Area
-                            type='monotone'
-                            dataKey='income'
-                            name={t('income')}
-                            stroke='#10b981'
-                            strokeWidth={2}
-                            fill='url(#gradIncome)'
-                            dot={{ r: 2.5, fill: '#10b981' }}
-                            activeDot={{ r: 3, fill: '#10b981' }}
-                            isAnimationActive={false}
-                            connectNulls={false}
-                        />
-                        <Area
-                            type='monotone'
-                            dataKey='loss'
-                            name={t('loss')}
-                            stroke='#f43f5e'
-                            strokeWidth={2}
-                            fill='url(#gradLoss)'
-                            dot={{ r: 2.5, fill: '#f43f5e' }}
-                            activeDot={{ r: 3, fill: '#f43f5e' }}
-                            isAnimationActive={false}
-                            connectNulls={false}
-                        />
-                        <Area
-                            type='monotone'
-                            stackId='expensesGhost'
-                            dataKey='ghostWages'
-                            stroke='#3b82f6'
-                            strokeWidth={1}
-                            strokeOpacity={0.5}
-                            strokeDasharray='4 2'
-                            fill='none'
-                            dot={{ r: 2, fill: '#3b82f6', fillOpacity: 0.4, stroke: 'none' }}
-                            activeDot={false}
-                            legendType='none'
-                            isAnimationActive={false}
-                            connectNulls={false}
-                        />
-                        <Area
-                            type='monotone'
-                            stackId='expensesGhost'
-                            dataKey='ghostPurchases'
-                            stroke='#f59e0b'
-                            strokeWidth={1}
-                            strokeOpacity={0.5}
-                            strokeDasharray='4 2'
-                            fill='none'
-                            dot={{ r: 2, fill: '#f59e0b', fillOpacity: 0.4, stroke: 'none' }}
-                            activeDot={false}
-                            legendType='none'
-                            isAnimationActive={false}
-                            connectNulls={false}
-                        />
-                        <Area
-                            type='monotone'
-                            stackId='expensesGhost'
-                            dataKey='ghostClaimPayments'
-                            stroke='#8b5cf6'
-                            strokeWidth={1}
-                            strokeOpacity={0.5}
-                            strokeDasharray='4 2'
-                            fill='none'
-                            dot={{ r: 2, fill: '#8b5cf6', fillOpacity: 0.4, stroke: 'none' }}
-                            activeDot={false}
-                            legendType='none'
-                            isAnimationActive={false}
-                            connectNulls={false}
-                        />
-                        <Area
-                            type='monotone'
-                            stackId='expensesGhost'
-                            dataKey='ghostMisc'
-                            stroke='#ec4899'
-                            strokeWidth={1}
-                            strokeOpacity={0.5}
-                            strokeDasharray='4 2'
-                            fill='none'
-                            dot={{ r: 2, fill: '#ec4899', fillOpacity: 0.4, stroke: 'none' }}
-                            activeDot={false}
-                            legendType='none'
-                            isAnimationActive={false}
-                            connectNulls={false}
-                        />
+                        {expenseKeys.map((key) => (
+                            <Area
+                                key={`ghost-${key}`}
+                                type='monotone'
+                                stackId='expensesGhost'
+                                dataKey={`ghost${key[0].toUpperCase()}${key.slice(1)}`}
+                                stroke={EXPENSE_COLOUR[key]}
+                                strokeWidth={1}
+                                strokeOpacity={0.5}
+                                strokeDasharray='4 2'
+                                fill='none'
+                                dot={false}
+                                activeDot={false}
+                                legendType='none'
+                                isAnimationActive={false}
+                                connectNulls={false}
+                            />
+                        ))}
                         <Area
                             type='monotone'
                             dataKey='ghostRevenue'
@@ -462,7 +355,7 @@ export function ExpensesRevenueChart({
                             strokeOpacity={0.5}
                             strokeDasharray='4 2'
                             fill='none'
-                            dot={{ r: 2, fill: '#10b981', fillOpacity: 0.4, stroke: 'none' }}
+                            dot={false}
                             activeDot={false}
                             legendType='none'
                             isAnimationActive={false}
@@ -476,9 +369,33 @@ export function ExpensesRevenueChart({
                             strokeOpacity={0.5}
                             strokeDasharray='4 2'
                             fill='none'
-                            dot={{ r: 2, fill: '#f43f5e', fillOpacity: 0.4, stroke: 'none' }}
+                            dot={false}
                             activeDot={false}
                             legendType='none'
+                            isAnimationActive={false}
+                            connectNulls={false}
+                        />
+                        <Area
+                            type='monotone'
+                            dataKey='income'
+                            name={t('income')}
+                            stroke='#10b981'
+                            strokeWidth={5}
+                            fill='none'
+                            dot={false}
+                            activeDot={{ r: 3, fill: '#10b981' }}
+                            isAnimationActive={false}
+                            connectNulls={false}
+                        />
+                        <Area
+                            type='monotone'
+                            dataKey='loss'
+                            name={t('loss')}
+                            stroke='#f43f5e'
+                            strokeWidth={5}
+                            fill='none'
+                            dot={false}
+                            activeDot={{ r: 3, fill: '#f43f5e' }}
                             isAnimationActive={false}
                             connectNulls={false}
                         />
