@@ -2685,3 +2685,113 @@ the same throughput carries a larger wage bill and dearer output. Whether more e
 offsets that is the question, and it was exactly what the old ×2 (at seed 1.0) failed — it went extinct in
 3.8 y. At seed 0.5 the labour demand of ×2 equals that of the ×1 baseline at seed 1.0, so the *shortage*
 mechanism is gone; the price effect is what remains to be read.
+
+## 62. Your changes; the labour hypothesis is now settled; the weight change has its own clean A/B
+
+**Committed changes found** (`git status` clean, so HEAD carries them): `QUIT_FAIRNESS_SENSITIVITY`
+0.0025 → **0.0033**, `QUIT_OUTSIDE_WAGE_BIAS` 0.9 → **0.975** (the switching hurdle 10 % → **2.5 %** — the
+lever that makes the outside channel live), `LABOUR_MULTIPLIER` 1.05 → **1.25** as the real default,
+`DEFAULT_GROCERY_BUFFER_MONTHS` 6 → **2**. Unchanged: `MIN_WAGE` 1.0, `WAGE_SHARE` 0.6, `WAGE_CHURN_GAIN` 3,
+`WAGE_ADJUSTMENT_RATE` 0.05, `QUIT_OUTSIDE_SENSITIVITY` 0.005, `QUIT_TARGET_RATE` 0.009, `QUIT_RATE_CAP` 0.01,
+`LABOUR_PER_UNIT` 0.5/0.5/0.5/0.75, E/O factors 0.9/1.3, storage target 6 / capacity 7, seed factor 0.5.
+
+**The labour sweep, complete at 30 y (old weights, seed 0.5, storage 6):**
+
+| run | initial empShare | y30 pop | y30 empShare | max starvation | y30 food price | y30 wage |
+|---|---|---|---|---|---|---|
+| st6-s50 (×1.0) | 0.765 | 11.09 M | 0.269 | 0.16 | 2.12 | 1.000 |
+| lab125 (×1.25) | 0.948 | 11.17 M | 0.302 | 0.14 | 2.55 | 1.000 |
+| lab15 (×1.5) | 0.999 | 11.18 M | 0.373 | 0.15 | 3.03 | 1.000 |
+| **lab2 (×2.0)** | 1.000 | 9.50 M | **0.941** | 0.51 | 4.36 | **1.558** |
+
+1. **The old ×2 extinction is gone.** With the seed at 0.5 there is no full-employment spike, and ×2 survives
+   30 y with a transient starvation peak of 0.51 rather than dead in 3.8 y. **The user's hypothesis — the spike
+   was the killer — is confirmed.**
+2. **×2 crosses into a different regime: the wage lifts.** 1.000 → **1.558** by y30, while every lower arm stays
+   pinned at `MIN_WAGE` (1.000). The labour demand (scale × labour content) exceeds the labour force, the firms
+   bid, and the outside channel finally fires. Employment stays near full (0.941).
+3. **The price of it:** food 4.36 vs 2.12–3.03, and a 14 % population dip (9.8 → 8.4 M at y5) before recovering.
+4. **×1.25 and ×1.5 buy only a little employment** (0.302 / 0.373 vs 0.269) **at a higher food price and no wage
+   gain** — the threshold sits between ×1.5 and ×2.
+
+**Enough data to settle what?** The labour hypothesis: **yes, settled at 30 y** (health/regime level). The
+*level* questions (coverage, write-off/GDP, the long-run employment share) are **not** settled on this config —
+§60's caveat applies, and 150 y+ is needed. And nothing above speaks to the changed weights: every arm ran on
+the old code.
+
+**New long runs launched** (200 y, seed 1001, current defaults — no flags, so `LABOUR_MULTIPLIER=1.25`,
+bias 0.975, fairness 0.0033, grocery buffer 2 are exercised):
+
+| run | labour | weights | note |
+|---|---|---|---|
+| `lab15` (done, 30 y) | 1.575 | old (bias 0.9) | — |
+| `now-lab15-200y` (running) | 1.575 | new (bias 0.975) | **identical except the weights — a clean A/B** |
+| `lab125` (done, 30 y) | 1.3125 | old | — |
+| `now-def-200y` (running) | 1.25 | new | the new default |
+
+Verified from the logs: `LABOUR_MULTIPLIER=1.25` on the default run, and the initial empShare is 0.9125 (default
+labour) and 0.9992 (×1.5) — matching `lab125`'s 0.948 and `lab15`'s 0.9992, i.e. the weight change does not move
+the starting employment, as it should not.
+
+**The question the new runs actually answer:** with the switching hurdle now 2.5 % instead of 10 %, does the wage
+lift at the **default** labour (1.25) — i.e. without paying the ×2's food-price cost? If yes, the ignition has
+moved from "needs over-manning" to "needs a normal labour market", which is the regime worth having.
+
+## 63. `LABOUR_MULTIPLIER` default → 1.5; a near-threshold sweep at the new weights
+
+User changed `LABOUR_MULTIPLIER` default 1.25 → **1.5** (uncommitted, branch `tune-labour`); nothing else moved
+(bias 0.975, fairness 0.0033, grocery buffer 2 unchanged). Launched `now-def15-200y` (200 y, no flags → labour
+1.5, verified in the log).
+
+**Four runs live:** `now-def15-200y` (labour 1.5), `now-def-200y` (1.25), `now-lab15-200y` (1.575) — all at the
+**new** weights — plus `st6-s50` (labour 1.0, *old* weights, y111/200) as the long-run old-code reference.
+
+So from here the labour 1.25 / 1.5 / 1.575 triple pins the ignition threshold under the new bias, against the
+finished old-weight arms `lab125`/`lab15`/`lab2` (30 y each) for the weight-change A/B.
+
+**Why 1.5 is the interesting place to sit:** at the *old* weights ×1.5 was safe on health (starvation peak 0.15,
+a transient; population 9.8 → 11.2 M at y30) but did **not** ignite — the wage stayed pinned at 1.000 and the
+food price was 43 % above the ×1.0 arm (3.03 vs 2.12). With the hurdle at 2.5 % that may change, which is exactly
+what these runs measure. Caveat unchanged: 30 y judges health, not level (§60).
+
+## 64. st6-s50 is *not* warmed up; and the bias change does not ignite the wage
+
+**Warmed-up test on `st6-s50` (to y127) — the growth rates do not match, so the run stays:**
+
+| y | population | Σ maxScale | Σ scale | scaleFrac |
+|---|---|---|---|---|
+| 10 | 9.87 M | 17 380 | 10 500 | 0.592 |
+| 50 | 12.45 M | 15 450 | 7 430 | 0.407 |
+| 90 | 15.72 M | 13 700 | 8 500 | 0.540 |
+| 110 | 17.67 M | 13 550 | 8 200 | 0.480 |
+
+Rates y59 → y127: **population +0.58 %/y, Σ maxScale −0.11 %/y, Σ scale +0.36 %/y.** Neither the ceiling nor the
+scale tracks the population — the **ceiling actually shrinks while the population grows**. So by the stated
+criterion it is not warmed up, and it keeps running. The finding is larger than the test: **the production
+capacity is not population-scaled**, which is the root of both the falling employment share and the slack labour
+market below.
+
+**The new-weight runs: the bias change has not ignited the wage.**
+
+| run | labour | y reached | y30 empShare | wage | starvation | food price |
+|---|---|---|---|---|---|---|
+| `now-def` (new) | 1.25 | 40 | 0.295 | **1.000** | 0.0000 | 2.48 |
+| `now-def15` (new) | 1.5 | 15 | — | **1.000** | 0.0000 | 3.00 |
+| `now-lab15` (new) | 1.575 | 39 | 0.371 | **1.000** | 0.0000 | 3.03 |
+| `lab125` (old) | 1.3125 | 30 | 0.302 | 1.000 | 0.0000 | 2.55 |
+| `lab15` (old) | 1.575 | 30 | 0.373 | 1.000 | 0.0000 | 3.03 |
+
+The wage is pinned at `MIN_WAGE` in every new-weight arm, exactly as at the old weights — the switching hurdle
+made no difference. **The reason is §53's tightness result:** by y30 these markets are 63–71 % jobless, the
+job-finding probability is ≈ 0, so the outside option is unreachable and the quit channel is *dead whatever the
+bias is*. **The wage-ignition question is downstream of the capacity/jobs problem** — no weight setting can fire
+in a slack market.
+
+**Bonus: the 2-month household grocery buffer is safe.** Every new arm (buffer 2) shows starvation **0.0000**
+throughout, versus the small early blips (0.076–0.16) in the buffer-6 arms — the thinner buffer did not cost
+resilience over 40 y, and it does move the demand earlier as intended.
+
+**Arm added:** `now-lab2-200y` (labour 2.1 = ×2, **new** weights) — the only configuration that ever ignited
+(`lab2`: wage 1.558 at the old weights), so it gives a clean A/B for the weight change at the one labour level
+where the channel actually fires. `now-def` (1.25) was killed to free the slot; the user's new default is 1.5.
+Running now: `now-def15`, `now-lab15`, `now-lab2`, `st6-s50`.
