@@ -1,6 +1,7 @@
 import { createRecyclerAgent } from '../../src/simulation/agents/recycler';
 import {
     createPopulation,
+    DEFAULT_GROCERY_BUFFER_MONTHS,
     humanResourcesScaleForWorkers,
     makeAgent,
     makeDefaultEnvironment,
@@ -16,7 +17,7 @@ import {
     generateAgentPersonality,
 } from '../../src/simulation/initialUniverse/personalities';
 import { getNamesFor } from '../../src/simulation/initialUniverse/preConfiguredCompanies';
-import { splitScale } from '../../src/simulation/initialUniverse/proceduralWorld';
+import { DEFAULT_SEED_SCALE_FACTOR, splitScale } from '../../src/simulation/initialUniverse/proceduralWorld';
 import { makePool } from '../../src/simulation/initialUniverse/resourceClaimFactory';
 import { nextRandom } from '../../src/simulation/utils/stochasticRound';
 import { FACILITY_SCALE_PER_BILLION } from '../../src/simulation/initialUniverse/targets';
@@ -119,7 +120,7 @@ function computeTargets(
     seedScaleFactor?: number,
 ): Record<string, FacilityTarget> {
     const popB = population / 1_000_000_000;
-    const seedFactor = seedScaleFactor ?? 0.5;
+    const seedFactor = seedScaleFactor ?? DEFAULT_SEED_SCALE_FACTOR;
     const solverScales = solverSeedSlack !== undefined ? computeSolverScales(population) : undefined;
     const targets: Record<string, FacilityTarget> = {};
     const buildChainKeys = new Set([
@@ -221,7 +222,7 @@ export function buildBenchmarkWorld(
 ): { gameState: GameState; planet: Planet; agents: Agent[] } {
     const population = config.population ?? 10_000_000;
     const agentsPerProduct = config.agentsPerProduct ?? 3;
-    const groceryBuffer = config.groceryBuffer ?? 6;
+    const groceryBuffer = config.groceryBuffer ?? DEFAULT_GROCERY_BUFFER_MONTHS;
 
     const TARGETS = computeTargets(
         population,

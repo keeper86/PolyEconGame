@@ -2527,10 +2527,161 @@ Smoothed as cumulative write-offs over cumulative GDP (trapezoidal on `gdpAnnual
   mechanism.**
 - **The expansion is intensive only:** the facility count is flat at 42 in both runs — existing plants scale up,
   no new plants appear. If the extensive margin should also open, the candidate-facility signal is where to look.
-- **One yellow flag, now resolved:** the old run's final step is a **discrete slam to the wage floor** — 2.076
-  → 1.046 in one month (y199.92), leaving the coverage at 1.46 — while employment, population and the scale
-  fraction are all *unchanged and expanding*. So it is not an end-of-run artefact: it is the bang-bang cycle's
-  downswing, a two-state wage (≈2.1 or ≈1.0), with the capacity expanding straight through it. (Old run
-  complete at y200; new at y188; reverted at y115.)
+## 58. empShare is the employment *rate* — §55–57 used the wrong denominator, and the labour-scale test ends in extinction
 
+**Correction.** `empShare = employed / (employed + employable)`, where `employable` is the jobless-but-employable
+count (metrics.ts: `employable += cat.total`, and `dependencyRatio` uses `employable + employed` as the labour
+force). **§55–57's "empShare" was `employed / totalPopulation`, a different quantity.** The correct series for
+the new-recipe run:
 
+| y | employed | employable (jobless) | employed/(emp+able) | employed/pop |
+|---|---|---|---|---|
+| 0.2 | 4.62 M | **127** | **1.0000** | 0.4717 |
+| 4.2 | 5.24 M | 0.23 M | 0.958 | 0.531 |
+| 40 | 3.60 M | 3.23 M | 0.527 | 0.301 |
+| 120 | 4.32 M | 6.44 M | 0.402 | 0.227 |
+| 185 | 5.17 M | **10.52 M** | **0.330** | 0.186 |
+
+- **Max empShare = 1.0000** — the run *starts* at full employment, because the seeded capacity meets a still
+  small labour force. The rate then falls to **0.330**: the jobless share of the labour force goes from ~0 % to
+  **~67 %**. The *employed headcount* is nearly flat (4.6 M → 5.2 M) while the labour force grows 9.8 M → 15.7 M.
+- So my §57 claim "the employment share stopped falling and turned up" is **wrong** — the correct series falls
+  the whole way (0.379 at y160 → 0.330 at y185), the last-samples wobble notwithstanding. The employment-to-
+  population ratio I had used also falls, so §55–57's *direction* survives, but their numbers must be read as
+  employment/population, and that one claim does not.
+
+**The labour-scale test: ×2 the labour content ⇒ extinction in under 4 years.** `LABOUR_MULTIPLIER` is now
+env-overridable (it was the only knob not) and logged by `run.ts`.
+
+| run | outcome | food price | starvation | final pop |
+|---|---|---|---|---|
+| LABOUR ×2, seed 1.0 (`lab2x-s10`) | **extinct at y3.83** | 2.48 → **419** | 0.997 | **0** |
+| LABOUR ×2.5, seed 1.0 (`lab25x-s10`) | **extinct at y3.75** | 3.86 → 222 | 0.993 | **0** |
+| LABOUR ×2, seed 0.5 (`lab2x-s05`, running) | declining, not extinct | 2.5 → ~9 | 0–0.51 | 8.3 M (from 9.8 M) |
+
+- **Mechanism, and it is the answer to "how much can we scale workers up?":** at the max-empShare point the
+  economy is at **full employment**, so extra labour demand *cannot be filled*. The facilities go
+  labour-starved, output collapses, the food price explodes (×170 in the ×2 case), and the population dies.
+  The employed headcount never rises above its starting level in any of the three runs.
+- **So the headroom at that point is essentially zero** — not "scale up to slightly overshoot": the labour
+  demand is already binding at y0, and the lever *reduces* employment rather than raising it. Shedding the seed
+  simultaneously softens it (no extinction at y6) but does not reverse it.
+## 59. The buffer target is a *policy* knob, not a seed — setting it to 1 month triggers a famine
+
+**The two levers, located.** `STORAGE_TARGET_MONTHS = 6` / `STORAGE_CAPACITY_MONTHS = 7`
+(`src/simulation/planet/automaticProductionScale/constants.ts`), both runtime flags
+(`--storageTargetMonths`, `--storageCapacityMonths` → `setStorageTargetMonths`, run.ts:581). The facility seed
+is `--seedScaleFactor` (world.ts `computeTargets`, default 0.5).
+
+**The mechanism, and it is structural.** `signalComputation.ts`:
+```ts
+const targetMonths = getStorageTargetMonths() ?? STORAGE_TARGET_MONTHS;
+const monthlyProduction = TICKS_PER_MONTH * facility.maxScale * output.quantity;
+const target = Math.min(targetMonths * monthlyProduction, reachable);
+const error = (target - predicted) / zoom;   // the expansion signal
+```
+**The buffer target *is* the expansion setpoint.** Cutting it 6 → 1 makes every facility read itself as
+overstocked, so it contracts instead of expanding: the investment appetite is permanently suppressed, not just
+the initial fill trimmed.
+
+**Result — a famine, within two years:**
+
+| run | y1 empShare | pop 9.8 M → | starvation | food price | coverage |
+|---|---|---|---|---|---|
+| baseline seed1.0/target6 | 1.000 | 10.1 M (y10) | **0.0000** | 3.4 | > 1 throughout |
+| seed0.5 / target1 (`st1-s50`) | 0.504 | **3.4 M** (y10) | **0.25–0.63** | 7.6–13.8 | 0.4–0.9 |
+| seed0.3 / target1 (`st1-s30`) | 0.284 | **3.6 M** (y5) | **0.67–0.72** | 9.7–12.3 | 0.38–0.44 |
+
+**Confound resolved by isolation — the famine is the *buffer target*, not the seed:**
+
+| run | y0.1 empShare | scaleFrac (min) | starvation | pop 9.8 M → | food price |
+|---|---|---|---|---|---|
+| seed1.0 / target1 (`st1-s100`, buffer alone) | 1.000 | **0.29** | **0.15–0.22 persistent** | **9.03 M** (y15) | 1.6 → 8.3 |
+| seed0.5 / target6 (`st6-s50`, seed alone) | 0.765 | 0.49 | 0 → 0.076 (y2 blip) → **0.0000** | **10.18 M** (y15) | 1.7 → 2.1 |
+
+- **The 1-month target alone (seed unchanged at 1.0) is enough to cause it**: the scale fraction collapses
+  0.86 → 0.29 (the suppressed expansion signal), the food price goes 1.6 → 8.3, starvation settles at ~0.2 and
+  the population declines. Confirms the `signalComputation` mechanism exactly.
+- **The seed change alone is harmless and does what was intended**: the initial empShare drops 1.000 → 0.765
+  (no full-employment over-build start), and after a 2-year blip the run is *cleaner* than the baseline —
+  starvation 0.0000, food price ~2.1, population *growing* 9.8 → 10.18 M. So **reduce the initial scale, but
+  leave the buffer target alone.** The buffer a facility *holds* is a consequence of the target, so "less food
+  sitting in buffers" cannot be obtained by cutting the target; the shell sizing (`--storageCapacityMonths`, 7)
+  or a genuine initial-stock seed (which does not exist) would be the place to look.
+
+Launched to bracket the seed at the safe target: `st6-s30` (0.3) and `st6-s35` (0.35).
+
+## 60. `groceryBuffer` located; the 30-year verdict on the buffer and seed levers
+
+**The lever the user meant:** `tools/longrun/world.ts:62` (`groceryBuffer?: number`), default `?? 6` at
+line 224, applied at line 348 → `createPopulation(population, groceryBuffer)` →
+`category.services.grocery.buffer = buffer * SERVICE_DEFINITIONS.grocery.bufferTargetTicks`
+(`src/simulation/initialUniverse/helpers.ts:272`, `createPopulation(total, buffer = 6)`). So it is the
+**household's initial grocery stock**, in months of cover: setting 1 makes households start with one month and
+buy earlier — an earlier demand pulse, as described. **There is no `run.ts` flag for it yet** (one line to add,
+matching the other knobs). Per the instruction — the current runs are fine — it was not run.
+
+**30-year verdict** (30 y is indeed enough for the *health* question):
+
+| run | y30 pop | starvation (max) | coverage | food price | verdict |
+|---|---|---|---|---|---|
+| seed0.5 / target6 (`st6-s50`) | **11.12 M** (from 9.80) | 0.009 mean / **0.16** | 2.16–2.19 | ~2.13 | **green** |
+| seed0.35 / target6 (`st6-s35`) | 8.39 M (from 9.80) | **0.42** peak, 0 after y5 | — | ~2.5 | survivable hit |
+| seed0.3 / target6 (`st6-s30`) | 7.29 M (from 9.80) | **0.47** peak, 0 after y10 | — | ~2.2 | survivable hit |
+| target1 / seed1.0 (`st1-s100`) | **0** at y25–28 | **0.996** | < 1 | 7–16 | **extinction** |
+
+- **The intended config is green at y31**: no starvation, population growing, coverage > 2, food price stable.
+- **The seed floor at the current recipes is ~0.4–0.5, not ~0.27.** Both 0.3 and 0.35 cost a 24–30 % population
+  loss with a starvation spike before recovering — so the §46 gate estimate (0.27), measured on the *old*
+  recipes, no longer holds; the current recipes need a higher seed to open without a famine.
+- **The storage target 1 is confirmed fatal**: starvation → 0.996 and the population reaches zero by y28.
+
+**Caveat on the 30-year horizon.** It judges *health* (starvation, population, coverage) but **not level**:
+every arm's GDP *falls* over the first 30 y (5.1 → 1.8e9) because the seeded over-build inflates early output,
+and the long baselines only reach their ~9e9 steady GDP after ~150 y. Use 30 y for survival questions, 150 y+
+for anything about output.
+
+**The seed *does* drive the early empShare — confirmed quantitatively.** At y0.1, with the labour force fixed:
+seed 1.0 → empShare **1.0000**, seed 0.5 → **0.7262**, seed 0.3 → **0.4276**. The seeded facility scale maps
+almost linearly onto the initial employment rate, so §58's "half right" can now be stated precisely: **the seed
+sets the starting empShare** (it sets whether the economy begins at full employment), while the later decline is
+the labour force outgrowing the capacity.
+
+**Equilibrium reading confirmed.** New-recipe run, y150–200 (n = 601): wage mean 1.207 (1.00–2.71), food price
+2.489 (2.26–3.29), GDP 9.30e9 (6.5–15.8), grocery fill 0.979, empShare 0.383 (0.33–0.47), employed/pop 0.213
+(0.19–0.26) — a stable limit cycle around a fixed structure, i.e. the attractor for these recipes and demanded
+services.
+
+## 61. `st6-s50` is now the default everywhere; labour sweep restarted at the lower seed
+
+**Defaults changed** so the green configuration (seed 0.5, storage target 6 months) is what both the longrun and
+the dev/prod world generate:
+
+| place | before | now |
+|---|---|---|
+| `src/simulation/initialUniverse/proceduralWorld.ts` (dev/prod world) | `scalePerB * popB` (full scale) | `scalePerB * popB * DEFAULT_SEED_SCALE_FACTOR` (**0.5**) |
+| `src/simulation/initialUniverse/proceduralWorld.ts` population | `createPopulation(8e9, 4)` | `createPopulation(8e9)` → default buffer |
+| `src/simulation/initialUniverse/helpers.ts` | `createPopulation(total, buffer = 6)` | `export const DEFAULT_GROCERY_BUFFER_MONTHS = 6` + that as the default |
+| `tools/longrun/world.ts` | `seedScaleFactor ?? 0.5`, `groceryBuffer ?? 6` | both `??` the shared exported constants |
+
+`DEFAULT_SEED_SCALE_FACTOR = 0.5` is exported from `proceduralWorld.ts` and is the single source of truth for
+the longrun default too (it already imported `splitScale` from there). Storage target 6 was already the constant
+default (`STORAGE_TARGET_MONTHS`, `automaticProductionScale/constants.ts`), so no change was needed there.
+**Verification:** tsc clean; `initialUniverse` + `planet` + `workforce` suites 592 passed / 1 skipped
+(no test built the procedural world or asserted its scales — `seedBalance.test.ts` carries its own copy of the
+per-billion table, so the factor leaves it untouched).
+
+**Runs:** killed every arm except the green one — `st6-s35`, `st6-s30`, `st1-s100` are stopped, `st6-s50` keeps
+running. Launched the labour sweep **at the defaults** (no `--seedScaleFactor`, no `--storageTargetMonths`, so
+the new defaults are exercised), 30 y, `LABOUR_MULTIPLIER` × 1.25 / 1.5 / 2.0 → `lab125` (1.3125), `lab15`
+(1.575), `lab2` (2.1).
+
+**First samples — the higher labour content does fill the seeded employment:** initial empShare 0.765 (st6-s50)
+→ **0.948 (×1.25) → 0.999 (×1.5) → 1.000 (×2.0)**, at an unchanged initial scale fraction. So the multiplier
+raises the starting employment from 77 % to full.
+
+**What to watch.** The multiplier is *over-manning*, not more output: the headcount per unit of scale rises, so
+the same throughput carries a larger wage bill and dearer output. Whether more employed households' spending
+offsets that is the question, and it was exactly what the old ×2 (at seed 1.0) failed — it went extinct in
+3.8 y. At seed 0.5 the labour demand of ×2 equals that of the ×1 baseline at seed 1.0, so the *shortage*
+mechanism is gone; the price effect is what remains to be read.

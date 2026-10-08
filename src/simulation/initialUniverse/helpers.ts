@@ -208,7 +208,9 @@ function addTo(
     pop.demography[age][occ][edu].total += count;
 }
 
-export function createPopulation(total: number, buffer: number = 6): Population {
+export const DEFAULT_GROCERY_BUFFER_MONTHS = 2;
+
+export function createPopulation(total: number, buffer: number = DEFAULT_GROCERY_BUFFER_MONTHS): Population {
     const perAge = Math.floor(total / (MAX_AGE + 1));
     const pop: Population = {
         demography: Array.from({ length: MAX_AGE + 1 }, () => createEmptyPopulationCohort()),

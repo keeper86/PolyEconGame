@@ -34,6 +34,7 @@ import { setServiceNeutralMarkup, setServicePriceResponseEnabled } from '../../s
 import {
     ESSENTIAL_GOODS,
     ESSENTIAL_LABOUR_FACTOR,
+    LABOUR_MULTIPLIER,
     LABOUR_PER_UNIT,
     OPTIONAL_LABOUR_FACTOR,
 } from '../../src/simulation/workforce/workerRequirements';
@@ -457,7 +458,7 @@ async function main(): Promise<void> {
         `SIM_DEBUG=${process.env.SIM_DEBUG ?? 'unset'} (${debug ? 'enabled via --debug' : 'disabled for benchmark'})`,
     );
     console.log(
-        `LABOUR_PER_RAW_UNIT=${LABOUR_PER_UNIT.raw} LABOUR_PER_REFINED_UNIT=${LABOUR_PER_UNIT.refined} LABOUR_PER_MANUFACTURED_UNIT=${LABOUR_PER_UNIT.manufactured} LABOUR_PER_SERVICE_UNIT=${LABOUR_PER_UNIT.services} ESSENTIAL_LABOUR_FACTOR=${ESSENTIAL_LABOUR_FACTOR} OPTIONAL_LABOUR_FACTOR=${OPTIONAL_LABOUR_FACTOR}`,
+        `LABOUR_PER_RAW_UNIT=${LABOUR_PER_UNIT.raw} LABOUR_PER_REFINED_UNIT=${LABOUR_PER_UNIT.refined} LABOUR_PER_MANUFACTURED_UNIT=${LABOUR_PER_UNIT.manufactured} LABOUR_PER_SERVICE_UNIT=${LABOUR_PER_UNIT.services} ESSENTIAL_LABOUR_FACTOR=${ESSENTIAL_LABOUR_FACTOR} OPTIONAL_LABOUR_FACTOR=${OPTIONAL_LABOUR_FACTOR} LABOUR_MULTIPLIER=${LABOUR_MULTIPLIER}`,
     );
     console.log(`ESSENTIAL_GOODS=${[...ESSENTIAL_GOODS].join(',')}`);
     console.log(

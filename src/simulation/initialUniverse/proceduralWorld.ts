@@ -99,13 +99,15 @@ interface FacilityTarget {
     agentCount: number;
 }
 
+export const DEFAULT_SEED_SCALE_FACTOR = 0.5;
+
 const flatTargetFactor = 0.5;
 
 function computeTargets(population: number): Record<string, FacilityTarget> {
     const popB = population / 1_000_000_000;
     const targets: Record<string, FacilityTarget> = {};
     for (const [key, scalePerB] of Object.entries(FACILITY_SCALE_PER_BILLION)) {
-        const totalScale = Math.max(1, Math.round(scalePerB * popB));
+        const totalScale = Math.max(1, Math.round(scalePerB * popB * DEFAULT_SEED_SCALE_FACTOR));
         targets[key] = {
             totalScale,
             agentCount: Math.min(
@@ -224,7 +226,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         id: PROC_PLANET_ID,
         name: 'Earth',
         position: { x: 10, y: 0, z: 0 },
-        population: createPopulation(8_000_000_000, 4),
+        population: createPopulation(8_000_000_000),
         governmentId: GOV,
         bank: {
             loans: 0,

@@ -133,7 +133,7 @@ export const SEARCH_HORIZON_TICKS = TICKS_PER_MONTH / 2;
 
 export const QUIT_OUTSIDE_SENSITIVITY = 0.005;
 export const QUIT_FAIRNESS_SENSITIVITY = 0.0025;
-export const QUIT_OUTSIDE_WAGE_BIAS = 0.9;
+export const QUIT_OUTSIDE_WAGE_BIAS = 0.975;
 export const QUIT_TARGET_RATE = 0.009;
 
 export const ACCEPT_BASE = 0.05;
