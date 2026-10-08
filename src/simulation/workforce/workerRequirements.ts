@@ -84,7 +84,7 @@ export const workerProfiles = {
     maintenance: { none: 10, primary: 30, secondary: 50, tertiary: 10 },
 } satisfies Record<string, WorkerProfile>;
 
-export const LABOUR_MULTIPLIER = envNumber('LABOUR_MULTIPLIER', 1.9);
+export const LABOUR_MULTIPLIER = envNumber('LABOUR_MULTIPLIER', 1.75);
 
 export const workers = (profile: WorkerProfile, headcountPerScale: number): Record<EducationLevelType, number> => {
     const counts = distributeProportionally(
