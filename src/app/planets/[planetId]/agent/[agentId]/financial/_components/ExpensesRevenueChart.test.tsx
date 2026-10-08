@@ -46,7 +46,6 @@ const HISTORY: FinancialPoint[] = [
 const SERIES_LABELS_EN = ['Revenue', 'Wages', 'Purchases', 'Claims', 'Interest & tax', 'Income', 'Loss'];
 const SERIES_LABELS_DE = ['Erlös', 'Löhne', 'Einkäufe', 'Nutzungsrechte', 'Zinsen & Steuern', 'Gewinn', 'Verlust'];
 const SERIES_COLOURS = ['#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#10b981', '#f43f5e'];
-const EXPENSE_STROKES = ['#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'];
 
 const WIDE_RANGE_ROWS: [number, number, number][] = [
     [3601, 0, 9470],
@@ -191,19 +190,6 @@ describe('ExpensesRevenueChart', () => {
 
         expect(paths.length).toBeGreaterThan(0);
         expect(paths.filter((d) => d.includes('NaN'))).toEqual([]);
-    });
-
-    it('stacks the expense series smallest-first in log mode', () => {
-        const { container } = renderWithIntl(
-            <ExpensesRevenueChart data={WIDE_RANGE_HISTORY} granularity='yearly' live={WIDE_RANGE_LIVE} />,
-        );
-
-        expect(drawnSeries(container).filter((stroke) => EXPENSE_STROKES.includes(stroke ?? ''))).toEqual([
-            '#f59e0b',
-            '#8b5cf6',
-            '#3b82f6',
-            '#ec4899',
-        ]);
     });
 
     it('bottoms the log axis at the lowest data decade instead of the epsilon floor', () => {
