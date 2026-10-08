@@ -159,8 +159,8 @@ export function ExpensesRevenueChart({
     }, [chartData]);
 
     const renderData = useMemo(
-        () => (scale === 'symlog' ? applyLogFloor(chartData, 0.00000001, 0.00000001) : chartData),
-        [scale, chartData],
+        () => (scale === 'symlog' ? applyLogFloor(chartData, 0.00000001, domain[0]) : chartData),
+        [scale, chartData, domain],
     );
 
     const expenseKeys = useMemo(

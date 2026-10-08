@@ -2,7 +2,9 @@ import { screen } from '@testing-library/react';
 import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import { describe, expect, it, vi } from 'vitest';
 import React from 'react';
-import type { FinancialLive, FinancialPoint } from './financialChartLogic';
+import { PREVIOUS_DECEMBER_END_IDX } from '@/lib/historyChartAxis';
+import { TICKS_PER_MONTH } from '@/simulation/constants';
+import type { FinancialChartPoint, FinancialLive, FinancialPoint } from './financialChartLogic';
 import { ExpensesRevenueChart } from './ExpensesRevenueChart';
 
 vi.mock('recharts', async (importOriginal) => {
@@ -43,7 +45,7 @@ const HISTORY: FinancialPoint[] = [
 
 const SERIES_LABELS_EN = ['Revenue', 'Wages', 'Purchases', 'Claims', 'Interest & tax', 'Income', 'Loss'];
 const SERIES_LABELS_DE = ['Erlös', 'Löhne', 'Einkäufe', 'Nutzungsrechte', 'Zinsen & Steuern', 'Gewinn', 'Verlust'];
-const SERIES_COLOURS = ['#f43f5e', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+const SERIES_COLOURS = ['#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f43f5e'];
 const EXPENSE_STROKES = ['#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'];
 
 const WIDE_RANGE_ROWS: [number, number, number][] = [
@@ -180,9 +182,9 @@ describe('ExpensesRevenueChart', () => {
         const { container } = renderWithIntl(<ExpensesRevenueChart data={ZERO_START_HISTORY} granularity='yearly' />);
 
         const yStart = (stroke: string): number => {
-            const path = [...container.querySelectorAll('path.recharts-area-curve')].find(
-                (candidate) => candidate.getAttribute('stroke') === stroke,
-            );
+            const path = [...container.querySelectorAll('path.recharts-area-curve')]
+                .filter((candidate) => candidate.getAttribute('d') !== null)
+                .find((candidate) => candidate.getAttribute('stroke') === stroke);
             const match = /^M(-?[\d.]+),(-?[\d.]+)/.exec(path?.getAttribute('d') ?? '');
             return match ? Number(match[2]) : Number.NaN;
         };
@@ -192,5 +194,46 @@ describe('ExpensesRevenueChart', () => {
         expect(Number.isFinite(bottom)).toBe(true);
         expect(yStart('#06b6d4')).toBeLessThanOrEqual(bottom);
         expect(yStart('#10b981')).toBeLessThanOrEqual(bottom);
+    });
+});
+
+describe('ExpensesRevenueChart monthly', () => {
+    const monthly: FinancialChartPoint[] = [
+        {
+            bucket: 1,
+            monthIdx: PREVIOUS_DECEMBER_END_IDX,
+            avgNetBalance: 5000,
+            avgAssetValue: 20000,
+            avgMonthlyNetIncome: 900,
+            avgWages: 400,
+            sumPurchases: 300,
+            sumClaimPayments: 100,
+            sumInterestPaid: 40,
+            sumWealthTaxPaid: 10,
+        },
+        ...Array.from({ length: 12 }, (_, index) => ({
+            bucket: index * TICKS_PER_MONTH + 1,
+            monthIdx: index + 1,
+            avgNetBalance: 5000,
+            avgAssetValue: 20000,
+            avgMonthlyNetIncome: 1000 + index,
+            avgWages: 400,
+            sumPurchases: 300,
+            sumClaimPayments: 100,
+            sumInterestPaid: 40,
+            sumWealthTaxPaid: 10,
+        })),
+    ];
+
+    it('renders the end-positioned monthly series without NaN coordinates', () => {
+        const { container } = renderWithIntl(<ExpensesRevenueChart data={monthly} granularity='monthly' />);
+
+        const paths = [...container.querySelectorAll('path.recharts-area-curve, path.recharts-area-area')].map(
+            (path) => path.getAttribute('d') ?? '',
+        );
+
+        expect(paths.length).toBeGreaterThan(0);
+        expect(paths.filter((d) => d.includes('NaN'))).toEqual([]);
+        expect(container.querySelectorAll('.recharts-xAxis .recharts-cartesian-axis-tick').length).toBe(12);
     });
 });

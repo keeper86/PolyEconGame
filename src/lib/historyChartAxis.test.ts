@@ -16,7 +16,9 @@ import {
     decadeStart,
     decadeWindowAxis,
     extrapolateLive,
+    ghostMonthEndVisible,
     ghostMonthVisible,
+    isLiveMonthEndPoint,
     isLiveMonthPoint,
     monthAxis,
     monthCentre,
@@ -49,6 +51,23 @@ describe('historyChartAxis', () => {
         expect(monthEnd(tickFor(START_YEAR + 1, 2, 15))).toBe(3);
         expect(monthEnd(tickFor(START_YEAR + 1, 11, 30))).toBe(12);
         expect(PREVIOUS_DECEMBER_END_IDX).toBe(0);
+    });
+
+    it('hides a ghost month after its midpoint for centre points and after its end for end points', () => {
+        const february = tickFor(START_YEAR, 1, 1);
+        expect(ghostMonthVisible(february, livePosition(START_YEAR, 0, 1))).toBe(true);
+        expect(ghostMonthVisible(february, livePosition(START_YEAR, 1, 25))).toBe(false);
+        expect(ghostMonthEndVisible(february, livePosition(START_YEAR, 1, 1))).toBe(true);
+        expect(ghostMonthEndVisible(february, livePosition(START_YEAR, 1, 30))).toBe(false);
+    });
+
+    it('flags only the fractional live sample for both position conventions', () => {
+        expect(isLiveMonthPoint(1.5)).toBe(false);
+        expect(isLiveMonthPoint(PREVIOUS_DECEMBER_IDX)).toBe(false);
+        expect(isLiveMonthPoint(3 + 5 / TICKS_PER_MONTH)).toBe(true);
+        expect(isLiveMonthEndPoint(1)).toBe(false);
+        expect(isLiveMonthEndPoint(PREVIOUS_DECEMBER_END_IDX)).toBe(false);
+        expect(isLiveMonthEndPoint(3 + 5 / TICKS_PER_MONTH)).toBe(true);
     });
 
     it('puts month ticks under the averages and gridlines on the month starts', () => {

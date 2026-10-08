@@ -59,7 +59,7 @@ describe('computeFinancialMonthlyData live point', () => {
     };
 
     it('appends the live point at the fractional month index, mixing levels and filling up accumulators', () => {
-        const result = computeFinancialMonthlyData(data, live.tick, live);
+        const result = computeFinancialMonthlyData(data, live.tick, live, 'centre');
         const livePoint = result.find(isLivePoint);
         const progress = 6 / TICKS_PER_MONTH;
         expect(livePoint).toBeDefined();
@@ -74,7 +74,7 @@ describe('computeFinancialMonthlyData live point', () => {
 
     it('adds the live extrapolation from the first tick of a month', () => {
         const firstDay = { ...live, tick: gameTickFor(1, 3, 1) };
-        const result = computeFinancialMonthlyData(data, firstDay.tick, firstDay);
+        const result = computeFinancialMonthlyData(data, firstDay.tick, firstDay, 'centre');
         const livePoint = result.find(isLivePoint);
         const progress = 1 / TICKS_PER_MONTH;
         expect(livePoint?.avgNetBalance).toBeCloseTo(200 + (1111 - 200) * progress, 6);
@@ -83,7 +83,7 @@ describe('computeFinancialMonthlyData live point', () => {
     });
 
     it('omits the live point when no live data is provided', () => {
-        const result = computeFinancialMonthlyData(data, live.tick);
+        const result = computeFinancialMonthlyData(data, live.tick, undefined, 'centre');
         expect(result.some(isLivePoint)).toBe(false);
         expect(result.some((p) => p.avgNetBalance === 1111)).toBe(false);
     });
@@ -104,7 +104,7 @@ describe('computeFinancialGhostData live threshold', () => {
             sumInterestPaid: 0,
             sumWealthTaxPaid: 0,
         };
-        const ghost = computeFinancialGhostData(data, live.tick, live);
+        const ghost = computeFinancialGhostData(data, live.tick, live, 'centre');
         const monthIdxs = ghost.map((p) => p.monthIdx);
         expect(monthIdxs.includes(2.5)).toBe(false);
         expect(monthIdxs.includes(3.5)).toBe(true);
@@ -123,7 +123,7 @@ describe('computeFinancialGhostData live threshold', () => {
             sumInterestPaid: 0,
             sumWealthTaxPaid: 0,
         };
-        const ghost = computeFinancialGhostData(data, live.tick, live);
+        const ghost = computeFinancialGhostData(data, live.tick, live, 'centre');
         expect(ghost.map((p) => p.monthIdx)).toEqual([4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5]);
     });
 });

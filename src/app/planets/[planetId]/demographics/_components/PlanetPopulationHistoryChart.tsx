@@ -5,20 +5,14 @@ import { tickToDate } from '@/components/client/TickDisplay';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
-import { liveYearX } from '@/lib/chartTime';
 import {
-    DECADE_WINDOW,
-    DECADE_YEARS,
     HISTORY_BUCKET_LIMIT,
-    YEAR_WINDOW,
-    decadeEnd,
     decadeStart,
     decadeWindowAxis,
     formatDecadeLabel,
     formatMonthLabel,
     formatYearLabel,
     monthAxis,
-    yearEnd,
     yearStart,
     yearWindowAxis,
 } from '@/lib/historyChartAxis';
@@ -28,7 +22,12 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import PlanetBufferChart from './PlanetBufferChart';
-import { computeMonthlyPopulation, computeMonthlyPopulationGhost } from './populationChartLogic';
+import {
+    computeDecadePopulation,
+    computeMonthlyPopulation,
+    computeMonthlyPopulationGhost,
+    computeYearlyPopulation,
+} from './populationChartLogic';
 import { useLocale, useTranslations } from 'next-intl';
 
 type BufferRawPoint = {
@@ -47,13 +46,6 @@ type BufferRawPoint = {
 type PopulationRawPoint = {
     bucket: number;
     avgPopulation: number;
-};
-
-type ChartPoint = {
-    tick: number;
-    xPos: number;
-    labelYear: number;
-    value: number;
 };
 
 type LiveData = {
@@ -293,31 +285,12 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
 function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[]; live?: LiveData }) {
     const locale = useLocale();
     const tr = useTranslations('Demographics');
-    const data = useMemo((): ChartPoint[] => {
-        const rows = [...yearlyPoints]
-            .sort((a, b) => a.bucket - b.bucket)
-            .slice(-YEAR_WINDOW)
-            .map((p) => ({
-                tick: p.bucket,
-                xPos: yearEnd(p.bucket),
-                labelYear: yearStart(p.bucket),
-                value: p.avgPopulation,
-            }));
-        if (live && live.tick > 0) {
-            rows.push({
-                tick: live.tick,
-                xPos: liveYearX(live.tick),
-                labelYear: liveYearX(live.tick),
-                value: live.population,
-            });
-        }
-        return rows;
-    }, [yearlyPoints, live]);
+    const data = useMemo(() => computeYearlyPopulation(yearlyPoints, live), [yearlyPoints, live]);
 
     const yDomain = useMemo(() => yDomainFor(data), [data]);
     const xAxis = yearWindowAxis(
-        data.length > 0 ? yearStart(data[0].tick) + 1 : undefined,
-        data.length > 0 ? data[data.length - 1].xPos + 1 : undefined,
+        data.length > 0 ? yearStart(data[0].tick) : undefined,
+        data.length > 0 ? data[data.length - 1].xPos : undefined,
     );
     const labelFor = (xPos: number): string =>
         formatYearLabel(locale, data.find((d) => d.xPos === xPos)?.labelYear ?? xPos);
@@ -393,30 +366,11 @@ function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[
 function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint[]; live?: LiveData }) {
     const locale = useLocale();
     const tr = useTranslations('Demographics');
-    const data = useMemo((): ChartPoint[] => {
-        const rows = [...decadePoints]
-            .sort((a, b) => a.bucket - b.bucket)
-            .slice(-DECADE_WINDOW)
-            .map((p) => ({
-                tick: p.bucket,
-                xPos: decadeEnd(p.bucket),
-                labelYear: decadeStart(p.bucket),
-                value: p.avgPopulation,
-            }));
-        if (live && live.tick > 0) {
-            rows.push({
-                tick: live.tick,
-                xPos: liveYearX(live.tick),
-                labelYear: liveYearX(live.tick),
-                value: live.population,
-            });
-        }
-        return rows;
-    }, [decadePoints, live]);
+    const data = useMemo(() => computeDecadePopulation(decadePoints, live), [decadePoints, live]);
 
     const yDomain = useMemo(() => yDomainFor(data), [data]);
     const xAxis = decadeWindowAxis(
-        data.length > 0 ? decadeStart(data[0].tick) + DECADE_YEARS : undefined,
+        data.length > 0 ? decadeStart(data[0].tick) : undefined,
         data.length > 0 ? data[data.length - 1].xPos : undefined,
     );
     const labelFor = (xPos: number): string =>

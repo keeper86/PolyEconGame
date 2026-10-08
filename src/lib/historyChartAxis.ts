@@ -47,8 +47,16 @@ export function ghostMonthVisible(bucket: number, livePosition: number): boolean
     return monthCentre(bucket) - 1 / TICKS_PER_MONTH > livePosition;
 }
 
+export function ghostMonthEndVisible(bucket: number, livePosition: number): boolean {
+    return monthEnd(bucket) - 1 / TICKS_PER_MONTH > livePosition;
+}
+
 export function isLiveMonthPoint(monthIdx?: number): boolean {
     return monthIdx !== undefined && monthIdx > PREVIOUS_DECEMBER_IDX && monthIdx % 1 !== 0.5;
+}
+
+export function isLiveMonthEndPoint(monthIdx?: number): boolean {
+    return monthIdx !== undefined && monthIdx > PREVIOUS_DECEMBER_END_IDX && monthIdx % 1 !== 0;
 }
 
 export function bucketProgress(tick: number, granularity: 'monthly' | 'yearly' | 'decade'): number {

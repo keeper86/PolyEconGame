@@ -107,8 +107,8 @@ function liveFinancialPoint(live: FinancialLive): FinancialChartPoint {
 export function computeFinancialMonthlyData(
     allPts: FinancialRawPoint[],
     currentTick: number,
-    live?: FinancialLive,
-    position: MonthlyPosition = 'centre',
+    live: FinancialLive | undefined,
+    position: MonthlyPosition,
 ): FinancialChartPoint[] {
     if (allPts.length === 0 || currentTick === 0) {
         return [];
@@ -162,8 +162,8 @@ export function computeFinancialMonthlyData(
 export function computeFinancialGhostData(
     allPts: FinancialRawPoint[],
     currentTick: number,
-    live?: FinancialLive,
-    position: MonthlyPosition = 'centre',
+    live: FinancialLive | undefined,
+    position: MonthlyPosition,
 ): FinancialChartPoint[] {
     if (allPts.length === 0 || currentTick === 0) {
         return [];
