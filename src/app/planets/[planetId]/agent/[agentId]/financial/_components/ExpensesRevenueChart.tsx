@@ -106,8 +106,8 @@ export function ExpensesRevenueChart({
             const lo = Math.min(...positive);
             const hi = Math.max(...positive);
             if (hi / lo > 10) {
-                const loExp = Math.floor(Math.log10(lo)) - 1;
-                const hiExp = Math.ceil(Math.log10(hi)) - 1;
+                const loExp = Math.floor(Math.log10(lo));
+                const hiExp = Math.ceil(Math.log10(hi));
                 const ticks: number[] = [];
                 for (let e = loExp; e <= hiExp; e++) {
                     ticks.push(Math.pow(10, e));

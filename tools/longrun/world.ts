@@ -65,6 +65,7 @@ export interface BenchmarkWorldConfig {
     maintenanceBufferTicks?: number;
     constructionScaleFactor?: number;
     buildChainScaleFactor?: number;
+    seedScaleFactor?: number;
     loanRatePerYear?: number;
     bankruptcyWriteOffFraction?: number;
     costSpringStrength?: number;
@@ -115,8 +116,10 @@ function computeTargets(
     maintenanceScaleFactor?: number,
     constructionScaleFactor?: number,
     buildChainScaleFactor?: number,
+    seedScaleFactor?: number,
 ): Record<string, FacilityTarget> {
     const popB = population / 1_000_000_000;
+    const seedFactor = seedScaleFactor ?? 0.5;
     const solverScales = solverSeedSlack !== undefined ? computeSolverScales(population) : undefined;
     const targets: Record<string, FacilityTarget> = {};
     const buildChainKeys = new Set([
@@ -134,8 +137,8 @@ function computeTargets(
     for (const key of Object.keys(FACILITY_SCALE_PER_BILLION)) {
         const useSolver = solverScales !== undefined && !SOLVER_SEED_BASELINE_FLOOR_KEYS.has(key);
         const baseScale = useSolver
-            ? Math.max(1, Math.round((solverScales[key] ?? 0) * (solverSeedSlack ?? 1)))
-            : Math.max(1, Math.round(FACILITY_SCALE_PER_BILLION[key] * popB));
+            ? Math.max(1, Math.round((solverScales[key] ?? 0) * (solverSeedSlack ?? 1) * seedFactor))
+            : Math.max(1, Math.round(FACILITY_SCALE_PER_BILLION[key] * popB * seedFactor));
         const totalScale =
             key === 'maintenanceFacility'
                 ? Math.max(1, Math.round(baseScale * (maintenanceScaleFactor ?? 1) * (buildChainScaleFactor ?? 1)))
@@ -227,6 +230,7 @@ export function buildBenchmarkWorld(
         config.maintenanceScaleFactor,
         config.constructionScaleFactor,
         config.buildChainScaleFactor,
+        config.seedScaleFactor,
     );
     const agents: Agent[] = [];
 

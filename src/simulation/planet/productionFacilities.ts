@@ -613,7 +613,7 @@ const constructionFacility = (planetId: string, id: string): ProductionFacility 
             { resource: steelResourceType, quantity: 80 },
             { resource: machineryResourceType, quantity: 15 },
         ],
-        produces: [{ resource: constructionServiceResourceType, quantity: 300 }],
+        produces: [{ resource: constructionServiceResourceType, quantity: 200 }],
     });
 
 const groceryChain = (planetId: string, id: string): ProductionFacility =>
@@ -624,8 +624,8 @@ const groceryChain = (planetId: string, id: string): ProductionFacility =>
         name: 'Grocery Chain' as const,
         powerConsumptionPerTick: 0.4,
         needs: [
-            { resource: processedFoodResourceType, quantity: 30 },
-            { resource: beverageResourceType, quantity: 20 },
+            { resource: processedFoodResourceType, quantity: 10 },
+            { resource: beverageResourceType, quantity: 10 },
         ],
         produces: [{ resource: groceryServiceResourceType, quantity: 300 }],
     });
