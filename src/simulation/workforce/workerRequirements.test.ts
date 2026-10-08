@@ -2,14 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import { educationLevelKeys } from '../population/education';
 import { coalDepositResourceType } from '../planet/landBoundResources';
-import { coalResourceType } from '../planet/resources';
-import { administrativeServiceResourceType } from '../planet/services';
+import { coalResourceType, produceResourceType } from '../planet/resources';
+import { administrativeServiceResourceType, solidStorageServiceResourceType } from '../planet/services';
 import {
+    ESSENTIAL_LABOUR_FACTOR,
     headcountPerScaleFor,
     LABOUR_MULTIPLIER,
-    LABOUR_PER_SERVICE_UNIT,
-    LABOUR_PER_TON_PER_TICK,
+    LABOUR_PER_UNIT,
     MINIMUM_WORKERS_PER_SCALE,
+    OPTIONAL_LABOUR_FACTOR,
     workerProfiles,
     workers,
 } from './workerRequirements';
@@ -47,22 +48,28 @@ describe('workers', () => {
 });
 
 describe('headcountPerScaleFor', () => {
-    it('derives the headcount from the throughput mass of the facility', () => {
+    it('derives the headcount from the labour content of the throughput', () => {
         const facility = {
             needs: [{ resource: coalResourceType, quantity: 1 }],
             produces: [{ resource: coalResourceType, quantity: 500 }],
         };
 
-        expect(headcountPerScaleFor(facility)).toBeCloseTo(501 * LABOUR_PER_TON_PER_TICK * LABOUR_MULTIPLIER, 10);
+        expect(headcountPerScaleFor(facility)).toBeCloseTo(
+            (1 + 500) * LABOUR_PER_UNIT.raw * OPTIONAL_LABOUR_FACTOR * LABOUR_MULTIPLIER,
+            10,
+        );
     });
 
-    it('ignores source deposits, which carry no storable mass', () => {
+    it('ignores source deposits, which carry no labour', () => {
         const facility = {
             needs: [{ resource: coalDepositResourceType, quantity: 0.5 }],
             produces: [{ resource: coalResourceType, quantity: 100 }],
         };
 
-        expect(headcountPerScaleFor(facility)).toBeCloseTo(100 * LABOUR_PER_TON_PER_TICK * LABOUR_MULTIPLIER, 10);
+        expect(headcountPerScaleFor(facility)).toBeCloseTo(
+            100 * LABOUR_PER_UNIT.raw * OPTIONAL_LABOUR_FACTOR * LABOUR_MULTIPLIER,
+            10,
+        );
     });
 
     it('charges service throughput its own labour rate', () => {
@@ -71,7 +78,35 @@ describe('headcountPerScaleFor', () => {
             produces: [{ resource: administrativeServiceResourceType, quantity: 300 }],
         };
 
-        expect(headcountPerScaleFor(facility)).toBeCloseTo(300 * LABOUR_PER_SERVICE_UNIT * LABOUR_MULTIPLIER, 10);
+        expect(headcountPerScaleFor(facility)).toBeCloseTo(
+            300 * LABOUR_PER_UNIT.services * OPTIONAL_LABOUR_FACTOR * LABOUR_MULTIPLIER,
+            10,
+        );
+    });
+
+    it('charges essential goods the essential labour factor, not the optional one', () => {
+        const essential = {
+            needs: [],
+            produces: [{ resource: produceResourceType, quantity: 200 }],
+        };
+        const optional = {
+            needs: [],
+            produces: [{ resource: coalResourceType, quantity: 200 }],
+        };
+
+        expect(headcountPerScaleFor(essential) / headcountPerScaleFor(optional)).toBeCloseTo(
+            ESSENTIAL_LABOUR_FACTOR / OPTIONAL_LABOUR_FACTOR,
+            10,
+        );
+    });
+
+    it('charges nothing for internal resources', () => {
+        const facility = {
+            needs: [],
+            produces: [{ resource: solidStorageServiceResourceType, quantity: 500 }],
+        };
+
+        expect(headcountPerScaleFor(facility)).toBe(MINIMUM_WORKERS_PER_SCALE);
     });
 
     it('floors every facility at a minimum crew', () => {

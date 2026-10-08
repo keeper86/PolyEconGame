@@ -42,9 +42,13 @@ import {
     jobFindingProbability,
     outsideIncome,
     quitPropensity,
+    QUIT_RATE_CAP,
     reservationWage,
 } from './laborMarket';
 import { workforceDemographicTick } from './workforceDemographicTick';
+import { QUIT_FAIRNESS_SENSITIVITY, QUIT_OUTSIDE_SENSITIVITY, QUIT_OUTSIDE_WAGE_BIAS } from '../constants';
+
+const BIASED_PARITY_WAGE = 100 / QUIT_OUTSIDE_WAGE_BIAS;
 
 beforeEach(() => {
     setHireFlowMultiplier(Number.POSITIVE_INFINITY);
@@ -93,14 +97,22 @@ describe('labor market helpers', () => {
         expect(quitPropensity(100, 1, 95, 100)).toBe(0);
         expect(quitPropensity(100, 1, 200, 100)).toBeGreaterThan(0);
         expect(quitPropensity(100, 1, 105, 1000)).toBeGreaterThan(0);
-        expect(quitPropensity(100, 1, 105, 100)).toBe(0);
-        expect(quitPropensity(100, 1, 100000, 100)).toBe(0.002);
+        expect(quitPropensity(100, 1, BIASED_PARITY_WAGE - 1, 100)).toBe(0);
+        expect(quitPropensity(100, 1, 100000, 100)).toBeCloseTo(Math.min(QUIT_OUTSIDE_SENSITIVITY, QUIT_RATE_CAP), 10);
     });
 
     it('quitPropensity biases the outside wage so a parity offer is not a better offer', () => {
         expect(quitPropensity(100, 1, 100, 100)).toBe(0);
-        expect(quitPropensity(100, 1, 105, 100)).toBe(0);
+        expect(quitPropensity(100, 1, BIASED_PARITY_WAGE - 1, 100)).toBe(0);
+        expect(quitPropensity(100, 1, BIASED_PARITY_WAGE + 1, 100)).toBeGreaterThan(0);
         expect(quitPropensity(100, 1, 130, 100)).toBeGreaterThan(0);
+    });
+
+    it('makes the ratio of the two weights, not their size, decide ignition', () => {
+        const deadOutsideMarket = quitPropensity(100, 0, 0, 1e9);
+        const fairnessOutweighsOutside = QUIT_FAIRNESS_SENSITIVITY > QUIT_OUTSIDE_SENSITIVITY;
+
+        expect(deadOutsideMarket > 0).toBe(fairnessOutweighsOutside);
     });
 
     it('reservationWage anchors to the going tier rate and does NOT depend on cost of living', () => {

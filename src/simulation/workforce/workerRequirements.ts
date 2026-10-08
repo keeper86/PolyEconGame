@@ -2,10 +2,69 @@ import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { distributeProportionally } from '../utils/distributeProportionally';
 import { stochasticRound } from '../utils/stochasticRound';
-import type { ResourceQuantity } from '../planet/claims';
+import type { Resource, ResourceQuantity } from '../planet/claims';
 
-export const LABOUR_PER_TON_PER_TICK = 0.5;
-export const LABOUR_PER_SERVICE_UNIT = 0.75;
+const envNumber = (name: string, fallback: number): number => {
+    const raw = process.env[name];
+    if (raw === undefined || raw === '') {
+        return fallback;
+    }
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+export type LabourLevel = 'raw' | 'refined' | 'manufactured' | 'services';
+
+export const LABOUR_PER_UNIT: Record<LabourLevel, number> = {
+    raw: envNumber('LABOUR_PER_RAW_UNIT', 0.5),
+    refined: envNumber('LABOUR_PER_REFINED_UNIT', 0.5),
+    manufactured: envNumber('LABOUR_PER_MANUFACTURED_UNIT', 0.5),
+    services: envNumber('LABOUR_PER_SERVICE_UNIT', 0.75),
+};
+
+export const ESSENTIAL_LABOUR_FACTOR = envNumber('ESSENTIAL_LABOUR_FACTOR', 0.9);
+export const OPTIONAL_LABOUR_FACTOR = envNumber('OPTIONAL_LABOUR_FACTOR', 1.3);
+
+export const ESSENTIAL_GOODS: ReadonlySet<string> = new Set([
+    'Water',
+    'Produce',
+    'Processed Food',
+    'Beverage',
+    'Grocery',
+    'Pesticide',
+    'Chemical',
+    'Crude Oil',
+    'Packaging Material',
+    'Paper',
+    'Plastic',
+    'Glass',
+    'Logs',
+    'Lumber',
+    'Limestone',
+    'Sand',
+]);
+
+export const isEssentialGood = (name: string): boolean => ESSENTIAL_GOODS.has(name);
+
+export const labourPerUnitFor = (
+    level: LabourLevel,
+    essential: boolean,
+    essentialFactor: number,
+    optionalFactor: number,
+): number => LABOUR_PER_UNIT[level] * (essential ? essentialFactor : optionalFactor);
+
+export const labourPerUnitOf = (resource: Resource): number => {
+    if (resource.level === 'source' || resource.level === 'internal' || resource.level === 'currency') {
+        return 0;
+    }
+    return labourPerUnitFor(
+        resource.level,
+        isEssentialGood(resource.name),
+        ESSENTIAL_LABOUR_FACTOR,
+        OPTIONAL_LABOUR_FACTOR,
+    );
+};
+
 export const MINIMUM_WORKERS_PER_SCALE = 20;
 
 export type WorkerProfile = Record<EducationLevelType, number>;
@@ -25,7 +84,7 @@ export const workerProfiles = {
     maintenance: { none: 10, primary: 30, secondary: 50, tertiary: 10 },
 } satisfies Record<string, WorkerProfile>;
 
-export const LABOUR_MULTIPLIER = 1.05;
+export const LABOUR_MULTIPLIER = envNumber('LABOUR_MULTIPLIER', 1.75);
 
 export const workers = (profile: WorkerProfile, headcountPerScale: number): Record<EducationLevelType, number> => {
     const counts = distributeProportionally(
@@ -40,15 +99,7 @@ export const workers = (profile: WorkerProfile, headcountPerScale: number): Reco
 };
 
 const flowLabour = (flows: ResourceQuantity[]): number =>
-    flows.reduce((sum, entry) => {
-        if (entry.resource.level === 'source') {
-            return sum;
-        }
-        const perUnit =
-            entry.resource.massPerQuantity * LABOUR_PER_TON_PER_TICK +
-            (entry.resource.level === 'services' ? LABOUR_PER_SERVICE_UNIT : 0);
-        return sum + entry.quantity * perUnit;
-    }, 0);
+    flows.reduce((sum, entry) => sum + entry.quantity * labourPerUnitOf(entry.resource), 0);
 
 export const headcountPerScaleFor = (facility: { needs: ResourceQuantity[]; produces: ResourceQuantity[] }): number =>
     Math.max(

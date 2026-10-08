@@ -62,7 +62,7 @@ export const reservationWage = (reachableTightness: number, reachableVacancyWage
     return WAGE_ACCEPT_FRACTION * reachableVacancyWage * durationDiscount;
 };
 
-const QUIT_RATE_CAP = 0.002;
+export const QUIT_RATE_CAP = 0.01;
 
 const clampUnit = (value: number): number => Math.max(-1, Math.min(1, value));
 

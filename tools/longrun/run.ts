@@ -31,6 +31,14 @@ import { setPinWagesToMinimum } from '../../src/simulation/workforce/automaticWo
 import { setDemandShock } from '../../src/simulation/agents/demandShock';
 import { setCostFloorBuffer, setCostSpringStrength } from '../../src/simulation/market/automaticPricing';
 import { setServiceNeutralMarkup, setServicePriceResponseEnabled } from '../../src/simulation/market/serviceDefinitions';
+import {
+    ESSENTIAL_GOODS,
+    ESSENTIAL_LABOUR_FACTOR,
+    LABOUR_MULTIPLIER,
+    LABOUR_PER_UNIT,
+    OPTIONAL_LABOUR_FACTOR,
+} from '../../src/simulation/workforce/workerRequirements';
+import { MIN_WAGE, QUIT_FAIRNESS_SENSITIVITY, WAGE_SHARE } from '../../src/simulation/constants';
 import { deserializeSnapshot, serializeGameState } from '../../src/simulation/snapshotCompression';
 import { getRngState, setRngState } from '../../src/simulation/utils/stochasticRound';
 import type { GameState } from '../../src/simulation/planet/planet';
@@ -449,6 +457,13 @@ async function main(): Promise<void> {
     console.log(
         `SIM_DEBUG=${process.env.SIM_DEBUG ?? 'unset'} (${debug ? 'enabled via --debug' : 'disabled for benchmark'})`,
     );
+    console.log(
+        `LABOUR_PER_RAW_UNIT=${LABOUR_PER_UNIT.raw} LABOUR_PER_REFINED_UNIT=${LABOUR_PER_UNIT.refined} LABOUR_PER_MANUFACTURED_UNIT=${LABOUR_PER_UNIT.manufactured} LABOUR_PER_SERVICE_UNIT=${LABOUR_PER_UNIT.services} ESSENTIAL_LABOUR_FACTOR=${ESSENTIAL_LABOUR_FACTOR} OPTIONAL_LABOUR_FACTOR=${OPTIONAL_LABOUR_FACTOR} LABOUR_MULTIPLIER=${LABOUR_MULTIPLIER}`,
+    );
+    console.log(`ESSENTIAL_GOODS=${[...ESSENTIAL_GOODS].join(',')}`);
+    console.log(
+        `MIN_WAGE=${MIN_WAGE} WAGE_SHARE=${WAGE_SHARE} QUIT_FAIRNESS_SENSITIVITY=${QUIT_FAIRNESS_SENSITIVITY}`,
+    );
 
     const scenarioName = arg('scenario') ?? 'baseline';
     const scenario = getScenario(scenarioName);
@@ -473,6 +488,10 @@ async function main(): Promise<void> {
     const buildChainScaleArg = arg('buildChainScaleFactor');
     if (buildChainScaleArg !== undefined) {
         scenario.world = { ...scenario.world, buildChainScaleFactor: Number(buildChainScaleArg) };
+    }
+    const seedScaleArg = arg('seedScaleFactor');
+    if (seedScaleArg !== undefined) {
+        scenario.world = { ...scenario.world, seedScaleFactor: Number(seedScaleArg) };
     }
     const bankruptcyArg = arg('bankruptcy');
     if (bankruptcyArg !== undefined) {
