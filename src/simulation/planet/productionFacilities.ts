@@ -582,7 +582,7 @@ const administrativeCenter = (planetId: string, id: string): ProductionFacility 
         powerConsumptionPerTick: 0.5,
         needs: [
             { resource: furnitureResourceType, quantity: 1 },
-            { resource: itDevicesResourceType, quantity: 0.1 },
+            { resource: paperResourceType, quantity: 1 },
         ],
         produces: [{ resource: administrativeServiceResourceType, quantity: 300 }],
     });

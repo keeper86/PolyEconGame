@@ -2828,3 +2828,334 @@ famine.
 **On "significantly":** one seed cannot support that word. The regime-level gaps (0 % vs 98 % ignited, 2–6× the
 per-head measures) are far outside plausible seed noise, but the famine/population costs are single-sample. A
 second seed is running — `now-lab2-s2002` (×2, new weights, seed 2002, 30 y) — which should settle the costs.
+
+## 66. CORRECTION: the ×2 is not better — it is a delayed famine. Both ×2 runs went extinct
+
+§65's verdict was wrong, and the seeds settled it the opposite way.
+
+**Both new-weight ×2 runs died:**
+
+| run | ended | last state |
+|---|---|---|
+| `now-lab2-200y` (seed 1001) | **extinct y51.7** | y51.5 starvation **0.9938**, pop 3.62 M, food **182**; y51.6 starvation 0.9960, pop 1.00 M; then 0 |
+| `now-lab2-s2002` (seed 2002) | **extinct ≈ y3.1** | starvation 0.27 → 0.91 → 0.985, food 116 → 135, pop 9.8 → 6.35 → 4.83 → 3.75 M → 0 |
+
+**The "prosperity" in §65 was a pre-collapse bubble.** In the seed-1001 run the y20–30 window I measured was
+healthy (coverage 4.535, gdp/head 959, starvation 0.0000) — and then the food price went 4.3 → **182** by y51
+(×42), starvation went to 0.99, and the population went from 10.6 M to zero inside ~a year. So the early
+2–6× "advantage" is borrowed, not earned, and §65's y20–30 window was simply too early to see it.
+
+**What survives:**
+- The wagon is the wage-price spiral with no anchor. The ×2 lifts the wage (3.30) and the food price with it
+  (182) — the *real* wage at the end was ~0.018. Over-manning does not create output; it raises the price of
+  everything the workers buy.
+- **Timing is seed-dependent (y4 vs y52), outcome is not.** 2 of 2 seeds extinct. The old-weight ×2 (`lab2`)
+  was still alive at y30, but that window is too short to rule out the same cliff — treat it as unproven, not
+  as a counterexample.
+
+**The stable configuration is the non-igniting one.** `now-def15-200y` (labour 1.5, new weights, the user's
+default) **completed the full 200 years**: wage exactly 1.000 throughout, starvation 0.0000 throughout, population
+9.80 → 11.23 M, coverage 4.05 → 1.91, empShare → 0.33. It is survivable and boring; the structural decay
+(capacity not tracking population, §64) still halves the coverage over 200 y, but nothing dies.
+
+**So the real trade-off is: stability with slow decay (1.5) versus a bubble that ends in famine (×2).** The ×2
+"ignition" is a runaway, not a prosperity regime — reporting it as "significantly better" on a y20–30 window was
+the third time this session that a short window produced a wrong verdict.
+
+**In flight:** `now-def15-s2002` (the 1.5 control at seed 2002, to attribute the seed-2002 extinction to the ×2
+rather than to the seed) and two more ×2 seeds (`now-lab2-s3003`, `now-lab2-s4004`) to measure how unstable it
+is.
+
+## 68. The reaction chain of the collapse — the trigger is the HR/administration service, not an input
+
+Dense window y50.3 → 51.4 on `now-lab2-200y` (seed 1001, ×2, new weights). `hrCoverageRatio = hrBufferSum /
+usedWorkers` (metrics.ts:1590) — the HR service the production facilities hold per worker.
+
+| y | admin supply | admin price | hrCoverage | fillPrimary | employed | employable | PF supply | PF volume | grocery supply | grocery scale | grocery margin |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 50.33 | 975 800 | 16.1 | **11.41** | 0.462 | 5.03 M | 0.26 M | 100 200 | 28 440 | 329 000 | 948 | 0.380 |
+| 50.67 | **0** | **66.2** | **0.337** | 0.477 | 5.05 M | 0.20 M | 100 200 | **0** | 340 000 | 967 | 0.425 |
+| 50.83 | 0 | 103 | **0** | 0.264 | 4.80 M | 0.43 M | 100 200 | 0 | — | 1161 | 0.063 |
+| 51.00 | 0 | 114 | 0 | 0.206 | 4.48 M | 0.88 M | 100 200 | 0 | — | 1367 | **−0.159** |
+| 51.33 | 0 | 111 | 0 | **0.143** | **3.15 M** | **1.21 M** | 100 200 | 225 | **9.2e-12** | 1539 | ~0 |
+
+**Ruling out the candidates:**
+- **Inputs missing? No.** `market_ProcessedFood_supply` stayed *flat at 100 200* throughout — but its **traded
+  volume went 28 440 → 0**. An intact supply with no trades is a **buyer's strike**, not a shortage.
+- **Storage? No.** Grocery supply went *to* zero (a shortage) — the opposite of a storage block.
+- **Maintenance? No — a consequence.** Maintenance *demand* collapsed after the fact (395 700 → 6 500) and its
+  fill *recovered* to 1.000. It died because its customers died.
+- **HR? Yes — this is the trigger.** `market_Administration_supply` 975 800 → **0** at y50.67 with its price
+  16 → 66 → 111, and `hrCoverageRatio` 10.94 → **0.337 → 0** in the *same sample*.
+
+**The chain, in order:**
+1. **The trigger**: the administration/HR support service supply goes to zero at y50.67.
+2. **The hiring freeze**: `fillPrimary` 0.477 → 0.264 → 0.206 → 0.143. Employment 5.05 M → 3.15 M while the
+   **jobless pool *rises* 0.20 M → 1.21 M** — idle workers and unfilled jobs at the same time. A *matching*
+   failure, not a labour shortage.
+3. **The HR department also stops feeding `hrProductivityMultiplier`** (production.ts:705), so output falls
+   directly as well as through the hiring freeze.
+4. **The grocery chain expands into an unstaffable state**: its scale *rises* 948 → 1539 with its storage signal
+   saturated at 1.0 (it wants to produce), but it cannot hire — margin collapses to −0.159, sell-through → 0,
+   supply → 0.
+5. **The price then rations a near-zero supply**: food 15 → 183, beverage 251 → 431, administration ×6.5.
+6. **Credit finances the interim** (loans ×10.2, no solvency constraint, §56) and the famine finishes it.
+
+**Root cause.** The ×2 doubled the labour demand into an already-tight market (4–7 % jobless). Labour is
+reallocated to the highest bidders, and the *support* services — administration/HR, low-paid and non-tradeable —
+lose their staff first. Their failure is **self-amplifying and unrecoverable**: no HR service → no hiring → the
+staff cannot be replaced → production falls → prices rise → wages rise → the support service still cannot afford
+staff → HR stays at zero. Nothing in the model can re-staff an HR department once it stops.
+
+**The awful elegance:** the one facility that lets the economy organise its labour is the first to die, and its
+death is what turns a wage-price spiral into a production collapse.
+
+## 69. What the HR actually does — §68 partly corrected, and the price signal is real but not transmitted
+
+**The mechanics, read from the code:**
+```ts
+// src/simulation/workforce/hrBuffer.ts
+computeProductivityMultiplier = (starvation) => 1 - 0.5 * starvation ** 6;   // → 0.5 at starvation 1
+hrBufferTick:  buffer = hrBuffer + producedHr - demand;   // demand = assets.usedWorkers, i.e. 1 HR per worker per tick
+// src/simulation/workforce/hireWorkforce.ts:151
+max(MIN_HIRES_PER_TICK, floor(hrDepartment.hrBuffer / HIRE_HR_SERVICE_PER_WORKER))   // MIN_HIRES_PER_TICK = 5
+```
+
+1. **The user's model is right**: zero HR means ×0.5 productivity — double the workers for the same output. But
+   the *shape* is `1 − 0.5·s⁶`: flat until s ≈ 0.7, then a plunge. A 6th power is a **cliff, not a graceful
+   knee** — the comment says the knee was introduced to avoid a 0.06 cliff at coverage 1, and it succeeds
+   *there*, but it moves the discontinuity close to starvation 1.
+2. **Correction to §68: the hiring does *not* freeze at zero HR.** `MIN_HIRES_PER_TICK = 5` forces a trickle
+   regardless. So the HR failure is a **productivity** penalty and an **investment** penalty, not a hiring gate.
+   The investment side is real: `automaticProductionScale.ts:427` blocks expansion while
+   `hrProductivityMultiplier < HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER`.
+3. **The HR demand is the *entire workforce*, one unit per worker per tick.** So an HR shortfall is not a local
+   problem — it couples every facility in the economy simultaneously, and `hrCoverageRatio = hrBuffer/usedWorkers`
+   → 0 simply means the buffer was drained to nothing against the whole workforce.
+
+**So why did the grocery supply go to *zero*?** Not the HR alone — ×0.5 cannot halve a number to zero. Two more
+things were happening in the same window:
+
+| y | grocery offer/cost | grocery realised margin | sell-through | PF supply | PF **traded** |
+|---|---|---|---|---|---|
+| 50.67 | 1.006 | +0.425 | 0.979 | 100 200 | 28 440 |
+| 51.00 | 0.831 | **−0.159** | 0.960 | 100 200 | 0 |
+| 51.33 | **4.746** | ~0 | **0** | 100 200 | 225 |
+
+The offer price ran to **4.75× its own cost** while its *realised* margin went negative: it asked a price the
+buyers refused, sold nothing (buyer's strike — supply intact, trades zero), and paid for inputs it could not sell.
+
+**Did the price rise, and was it too slow?** It rose — the administration price went 16 → 66 → 111 (×7) inside a
+year, which is fast in absolute terms. **What did not follow was the wage**: the administration's workers earned
++10 % (3.01 → 3.31) against that ×7. The wage is set per *agent* from its own affordability **ceiling**
+(`WAGE_SHARE × smoothedWageCeiling`) plus quit pressure — **not** from the price of the service that agent's
+facility sells. So the scarcity→price→wage→labour loop exists in principle but is far too weak to pull workers
+into the scarce service, which is why the administration supply never recovered.
+
+**Is this what drives the wage spiral? No.** The spiral runs on the *aggregate* loop: the price level → the
+profits/ceiling → the fair wage (0.6 × ceiling) → the wage → the costs → the price level. That is a
+*level*-wide feedback; service-specific scarcity never enters it. Two things *amplify* the collapse but do not
+drive the spiral: the HR's investment gate (the shortage freezes expansion) and the price overshoot into a
+buyer's strike.
+
+**Three concrete flaws worth a look:** (a) the HR multiplier's 6th power is a cliff — a linear or square form
+would degrade gracefully; (b) HR demand = the whole workforce per tick couples every facility to a single
+service, so one support failure is economy-wide by construction; (c) the offer price can overshoot to ~4.8× cost
+and stall the market entirely — the cost spring deserves the same scrutiny as the quit channel did.
+
+**Attribution settled — 4 of 4 ×2 seeds died; the seed is not the cause:**
+
+| run | labour | seed | outcome |
+|---|---|---|---|
+| `now-lab2-200y` | 2.1 | 1001 | **extinct y51.7** |
+| `now-lab2-s2002` | 2.1 | 2002 | **extinct y3.7** |
+| `now-lab2-s3003` | 2.1 | 3003 | **extinct y20.8** |
+| `now-lab2-s4004` | 2.1 | 4004 | **extinct y5.2** |
+| `now-def15-s2002` (control) | 1.5 | **2002** | **alive at y30, max starvation 0.0000, pop 9.8 → 11.3 M** |
+
+Only the *timing* is seed-dependent (y3.7 … y51.7); the outcome is not. The control at the very seed where the ×2
+died in 3.7 years is perfectly healthy, so the cause is the labour multiplier, not the seed.
+
+## 70. Do the households starve because they stop buying? No — they buy; there is nothing to sell
+
+| y | grocery demand | grocery supply | grocery volume | **unfilled** | price | fill | starvation | median wealth | **wealth in months** |
+|---|---|---|---|---|---|---|---|---|---|
+| 49.0 | 282 300 | 562 900 | 282 300 | 0 | 11.5 | 1.000 | 0 | 1.37 | 0.059 |
+| 50.0 | 281 900 | 324 000 | 281 900 | 0 | 14.7 | 1.000 | 0 | 7.30 | 0.192 |
+| 50.75 | **309 200** | 216 300 | 216 300 | **92 930** | 19.9 | 0.699 | — | 13.95 | 0.214 |
+| 51.00 | **586 900** | 142 100 | 142 100 | **444 700** | 22.8 | 0.242 | — | 33.81 | 0.403 |
+| 51.17 | **333 100** | **9.2e-12** | **0** | **333 100** | 124 | **0** | 0.70 | 44.76 | 0.147 |
+| 51.33 | **269 900** | 9.2e-12 | **0** | **269 900** | 166 | **0** | 0.96 | 51.8 | 0.146 |
+
+1. **They want to buy, and they do try.** Household grocery *demand* stays at 270–590 k — it even **spikes to
+   587 k** at y51.0 — while the *unfilled* demand climbs to 270–445 k. Demand present, supply zero: **a supply
+   failure, not a demand failure.**
+2. **They have the means.** The household wealth *in months of consumption* **rises** through the crisis
+   (0.059 → 0.146), so affordability is not the binding constraint either. They were willing and able to pay the
+   recorded price and there was simply nothing offered.
+3. **The sellers vanished, not the buyers.** `market_Grocery_supply` = 9.2e-12 — no offers at all. The producing
+   stopped upstream (§69: the labour/HR collapse leaves the facilities unstaffed), and once production stops the
+   supply is zero regardless of how high the demand and the price go.
+
+**Correction to §69.** I called the intermediate purchase collapse (ProcessedFood supply intact 100 200, traded
+volume → 0) a "buyer's strike". That label is wrong for the same reason: the credit/buffer lending kept flowing
+(`loansBufferCoverage` ×30), so there was no liquidity block — the input purchases stop because the *facilities
+have no staff to operate them*, not because a price was refused. The 4.75× cost offer is real but it is a
+*symptom* of an emptying market, not a refusal.
+
+**Consequence for any fix:** a demand-side intervention would have been useless — wealth transfers or lower
+prices would only have bid against a zero supply. Everything here is production and its coordination: the
+labour allocation, the support services, HR, the staffing. The famine is the last link of a supply chain, not a
+failure of purchasing power.
+
+## 71. Why 0 % and not 20–50 %? Because efficiency is a `min()`, and 20 % is the *average*
+
+```ts
+// production.ts:809
+const rawEfficiency = Math.min(workerResults.workerEfficiencyOverall, ...resourceEfficiencies);
+const overallEfficiency = rawEfficiency * computeFacilityConditionEfficiency(facility.maintenanceStatus);
+```
+
+**Efficiency is a `min()` over the worker efficiency and every required input — a Leontief technology with no
+substitution.** One missing input zeroes the facility. The recorded efficiency columns show both numbers, and
+both are right:
+
+| y | productionEfficiency (avg) | avgWorkerEff | avgResourceEff | avgConditionEff | Beverage supply | Grocery supply | Grocery fill |
+|---|---|---|---|---|---|---|---|
+| 50.00 | 0.668 | 0.833 | 0.833 | 1.000 | 90 000 | 324 000 | 1.000 |
+| 50.83 | 0.344 | 0.502 | 0.714 | 1.000 | 90 000 | 160 600 | 0.425 |
+| 51.00 | 0.281 | 0.416 | 0.714 | 1.000 | **0** | 142 100 | 0.242 |
+| 51.08 | 0.262 | 0.402 | 0.691 | 1.000 | 0 | **9.2e-12** | **0** |
+| 51.33 | **0.201** | 0.307 | 0.691 | 1.000 | 0 | 9.2e-12 | 0 |
+
+- The **economy-wide** `productionEfficiency` fell smoothly to **0.20** — exactly the 20–50 % the question
+  expected. WorkerEff 0.31, ResourceEff 0.69, ConditionEff 1.00. **So the aggregate behaved as predicted.**
+- The **grocery** went to 0 because *its* binding input (beverage) hit 0, and `min()` takes the worst. **A 20 %
+  average economy can still contain a 0 % food chain — and that is what starves everyone.** Same lesson as the
+  coverage metric hiding the supply collapse (§70): averages cannot see a lethal local failure.
+- **ConditionEff stayed 1.00**, so maintenance was *not* the final blocker (correcting the §68 candidate).
+
+**Cascade order — only *sustained* collapses (<5 % of the y30–45 median for >1 y), 6 of 42 markets:**
+
+| first sustained collapse | market | median y30–45 |
+|---|---|---|
+| **y50.33** | Glass | 114 000 |
+| y50.58 | ITDevices | 60 000 |
+| y50.67 | Administration | 460 000 |
+| y50.67 | Healthcare | 201 000 |
+| y50.67 | Retail | 606 000 |
+| y50.92 | Beverage | 91 200 |
+| y51.08 | Grocery (terminal) | 324 000 |
+
+All six collapse **within 0.6 years** — that is *not* a chain of independent failures but a **common cause with
+percolation**: the workforce/HR collapse (employment 5.05 → 3.15 M, HR coverage → 0 at y50.67) drops every
+facility to the ~20–30 % worker efficiency, and the facilities that additionally depend on a collapsing input
+(glass, beverage, grocery) are pushed to exactly 0 by the `min`. The services zero first because they are the
+most labour-intensive, so the HR shortfall (1 HR per worker per tick) hits them hardest.
+
+**Design consequence:** the `min()` composition makes every supply chain brittle — a single missing input kills
+the whole facility instead of degrading it. A geometric mean or a CES form with a small elasticity would let a
+missing input cut output to, say, 60 % instead of 0 %, and the same shock would then be a recession instead of a
+famine.
+
+## 72. CORRECTION: the HR is not the trigger, the administration is not the first mover — the *expansion* is
+
+**CES idea withdrawn.** A CES/geometric mean would create a *cost-gaming channel*: with a cheap and a dear input
+and no quality channel, a producer would substitute away from the dear one and pocket the difference, and would
+find a better cost/unit by squeezing it. "No machines ⇒ no cars" is correct physics. The Leontief `min()` stays.
+The discontinuities are deliberate and stay too — the question is only whether a *given* one is triggered by the
+right thing.
+
+**Answering the ordering questions against the fills (continuous), not the supply→0 (binary):**
+
+| y | hrCoverage | Healthcare fill | Administration fill | Retail fill | Grocery fill |
+|---|---|---|---|---|---|
+| 49.0 | 11.81 | 0.998 | 0.983 | 0.753 | 1.000 |
+| 50.00 | 11.12 | 0.677 | 0.824 | 0.209 | 1.000 |
+| 50.33 | 11.41 | 0.711 | 0.857 | 0.179 | 0.999 |
+| 50.50 | 10.94 | 0.000 | 0.502 | 0.120 | 0.997 |
+| **50.67** | **0.337** | 0.000 | **0.000** | 0.000 | 0.986 |
+| 51.00 | 0 | 0 | 0 | 0 | 0.242 |
+
+1. **The administration is *not* the first mover.** The **healthcare** service zeroes first (y50.4), the
+   administration follows (y50.7). Retail has been flickering between 0.03 and 0.77 for *decades* — it is the
+   chronically worst market (as the repo notes say) and cannot serve as a first-mover indicator at all.
+2. **No — the administration did not fall while the HR was healthy; it fell *with* the HR.** The HR coverage was
+   **11–14 (fully healthy) through y50.58** and collapsed to 0.337 in the *same sample* the administration
+   zeroed (y50.67). The HR coverage is *coincident*, not leading — **§68/69's "the HR is the trigger" is wrong**,
+   and so is "0 HR explains the zero output" (the starvation is smoothed, so the productivity multiplier was
+   still near 1 when the collapse began).
+
+**What actually moved first — the labour *demand*, not the labour supply:**
+
+| y | capacityPrimary (slots) | slotsFilledPrimary | fillPrimary | shortagePressure | vacancyWagePrimary | wagePrimary |
+|---|---|---|---|---|---|---|
+| 50.33 | 2.279 M | 1.053 M | 0.462 | 0.064 | 3.375 | 3.009 |
+| 50.67 | 2.243 M | 1.070 M | 0.477 | 0.051 | 3.691 | 3.173 |
+| **50.75** | **2.834 M** | 1.062 M | 0.375 | **0.128** | 3.999 | 3.178 |
+| 50.83 | **3.909 M** | 1.032 M | 0.264 | **0.267** | 4.066 | 3.246 |
+| 51.00 | **4.688 M** | 0.966 M | 0.206 | **0.354** | 4.125 | 3.317 |
+| 51.25 | **4.756 M** | 0.803 M | 0.169 | **0.415** | 4.253 | 3.335 |
+
+**The facility capacity (job slots) more than doubles within a few months** — 2.24 M → 4.76 M — while the
+*labour force cannot grow*, so the unfilled-slot pressure goes 0.05 → 0.42 and the vacancy wage 3.4 → 4.3. It
+is a **labour-demand explosion, not a labour-supply failure**: `slotsFilled` falls only ~25 % while the capacity
+doubles, so the fill rate halves purely because the firms created slots nobody could fill. The wage/cost spiral
+then accelerates, and the low-margin services (healthcare, administration, retail, then grocery) lose the
+competition for the scarce workers and zero out in a 0.6-year cascade.
+
+**The actionable defect: expansion is not labour-aware.** The firms expand on the *storage* signal (the drained
+inventories) and never ask whether the labour force can man the new capacity. A drained buffer therefore triggers
+a capacity boom into a fixed labour force, which is what turns a shortage into a spiral. The fix belongs in the
+*expansion signal* (make it consider hiring feasibility / labour tightness), not in the efficiency form — which
+keeps every realistic discontinuity in place, exactly as it should.
+
+## 73. CORRECTION: the demand spike is the HR mechanism exactly — and the administration *is* the trigger
+
+**§72's "expansion" story is dead, and the user's hypothesis was right on both counts.** Tested, not assumed:
+
+| y | Σ facility scale | Σ maxScale | slotCapacity | **capacity / scale** | hrMult | hrScale | hrCoverage |
+|---|---|---|---|---|---|---|---|
+| 50.33 | 17 080 | 26 350 | 6.548 M | 383 | 0.9886 | 56.8 | 11.41 |
+| 50.58 | 17 000 | 26 380 | 6.461 M | 380 | 0.9886 | 58.9 | 11.42 |
+| **50.67** | 16 920 | 26 390 | 6.512 M | 385 | 0.9816 | **78.2** | **0.337** |
+| **50.75** | 16 910 | 26 390 | **8.264 M** | **488.7** | **0.7867** | **112.8** | 0 |
+| 50.83 | 17 070 | 26 390 | **11.40 M** | **667.9** | 0.5915 | 134.9 | 0 |
+| 51.33 | 17 540 | 26 380 | **13.95 M** | **795.0** | 0.5154 | 137.4 | 0 |
+
+- **The scale did *not* double: +3.7 % (16 920 → 17 540), and `maxScale` stayed flat (26 350 → 26 380).**
+  Expansion was **blocked**, exactly as the user said — the `hrHealthy` gate plus the labour-scarcity check did
+  their job. My "expansion is not labour-aware / the capacity boomed" claim is wrong.
+- **The slots per unit of scale doubled: 385 → 795 (×2.06).** And the code says why:
+  ```ts
+  // production.ts:711 — slot capacity is the worker requirement divided by the HR multiplier
+  const combinedProd = ageProd[jobEdu] * avgXpProd * hrMult;
+  const bodies = combinedProd > 0 ? Math.ceil(allocatorFullTarget / combinedProd) : 0;
+  ```
+  **Halving the HR multiplier doubles the worker slots.** That is the user's "HR starved ⇒ demand ×2", in code.
+
+**The verified causal order (all in one sample at y50.67, then the multiplier follows):**
+1. **The administration service supply → 0** at y50.67 (975 800 → 0, price 16 → 66 → 111).
+2. **The HR department consumes the administration service** — its only input:
+   `humanResourcesOfficeFacilityType: needs: [{ administrativeServiceResourceType, 20 }]`
+   (`specialFacilities.ts:64`). So the HR's output goes to 0 with it, and the firms' HR buffer collapses
+   1.25 M → 37 261 → 0.
+3. **`hrStarvation` rises** (smoothed) → `hrProductivityMultiplier` 0.99 → 0.79 → 0.59 → 0.52.
+4. **The slot capacity doubles** (÷ hrMult) at a fixed scale → the labour demand ×2.
+5. **shortagePressure 0.05 → 0.42, vacancyWage 3.4 → 4.3** → the wage/cost spiral accelerates.
+6. The low-margin services lose the competition for workers → the 0.6-year cascade → the grocery → 0 → famine.
+
+**So: yes, it is the HR — by the user's exact mechanism — and the administration is the trigger**, because the HR
+department is served *by* the administration service. The user's original instinct ("administration first") was
+right in the causal sense, even though the healthcare *fill* zeroed 0.3 y earlier. And the HR department is
+independently staffed (`hrSlots` are a separate priority list in `production.ts`), so the HR coverage did not
+fall because its own staff were pulled away — my §68/69 phrasing of that was wrong too.
+
+**What remains open:** what starved the *administration centre* — its own inputs. The IT-devices market collapsed
+one sample earlier (y50.58) and furniture has been chronically scarce since y42.4, which makes them the prime
+suspects; the administration centre's recipe needs checking to close the last link.
+
+**Design lesson, stated correctly this time:** the fragility is not the Leontief `min()` and not the expansion —
+both behaved correctly. It is that the *HR productivity* enters the **worker requirement** (not just the output),
+so an HR shortfall is *amplified* into a labour-demand doubling, which in a fixed labour force is a self-locking
+spiral. That single coupling is where the load sits.
