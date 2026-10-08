@@ -2795,3 +2795,36 @@ resilience over 40 y, and it does move the demand earlier as intended.
 (`lab2`: wage 1.558 at the old weights), so it gives a clean A/B for the weight change at the one labour level
 where the channel actually fires. `now-def` (1.25) was killed to free the slot; the user's new default is 1.5.
 Running now: `now-def15`, `now-lab15`, `now-lab2`, `st6-s50`.
+
+## 65. Is the ×2 significantly better? Yes — categorically on the economy-wide measures
+
+Same seed (1001), same seed scale (0.5), old weights, y20–30 window:
+
+| arm | wage | ignited% | empShare | emp/pop | **coverage** | food | pop y30 | starve avg | **gdp/head** |
+|---|---|---|---|---|---|---|---|---|---|
+| ×1.00 (`st6-s50`) | 1.000 | 0.0 | 0.263 | 0.150 | 2.010 | 2.25 | 11.12 M | 0.0029 | 154.3 |
+| ×1.25 (`lab125`) | 1.000 | 0.0 | 0.343 | 0.198 | 2.112 | 2.83 | 11.17 M | 0.0016 | 193.6 |
+| ×1.50 (`lab15`) | 1.000 | 0.0 | 0.411 | 0.238 | 2.176 | 3.30 | 11.18 M | 0.0019 | 227.4 |
+| **×2.00 (`lab2`)** | **1.720** | **98.3** | **0.967** | **0.544** | **4.535** | 5.68 | 9.50 M | 0.049 | **959.1** |
+
+(`ignited%` = share of y0–30 samples with wage > 1.05; `coverage` = emp/pop × wage × 30 / food = food baskets per
+head.)
+
+- **Coverage 2.1–2.3× better, output per head 4.2–6.2× better, employment share 3.7× better, wage off the floor
+  98.3 % of the time instead of never.** The mechanism is that ×2 spreads income across everyone: 3.6× more of
+  the population is employed, each at a somewhat lower real wage — an egalitarian win via a jobs policy.
+- **Costs:** food +72–152 %, population −15 % (a permanent loss — the famine spell kills ~1.7 M), and an average
+  starvation of 0.049 vs 0.002–0.003 (a transient spike that ends by ~y5).
+
+**And the new weights make the ×2 better still.** `now-lab2-200y` (×2, new weights, first 8 years) ignites
+*faster and harder* than `lab2` (old weights): wage 1.00 → 2.21 by y3 → **peak 3.42 at y5.25**, holding
+2.4–3.0; versus `lab2`'s peak 2.43 and 1.55 at y30. The transient starvation peaks at **0.26 vs 0.51 — halved**
+— employment holds ~0.95, and the population troughs at 8.42 M (vs `lab2`'s 8.36 M) then recovers.
+
+So the bias change *does* act — it just cannot show at ×1.25/×1.5, where the market is too slack for the outside
+option to be reachable at all. Its effect is to make an already-igniting regime ignite higher and with less
+famine.
+
+**On "significantly":** one seed cannot support that word. The regime-level gaps (0 % vs 98 % ignited, 2–6× the
+per-head measures) are far outside plausible seed noise, but the famine/population costs are single-sample. A
+second seed is running — `now-lab2-s2002` (×2, new weights, seed 2002, 30 y) — which should settle the costs.
