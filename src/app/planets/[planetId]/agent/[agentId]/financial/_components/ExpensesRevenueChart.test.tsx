@@ -118,6 +118,11 @@ const curveSegments = (d: string): number => (d.match(/M/g) ?? []).length;
 const axisBottomY = (container: HTMLElement): number =>
     Number(container.querySelector('.recharts-xAxis .recharts-cartesian-axis-line')?.getAttribute('y'));
 
+const yTickYs = (container: HTMLElement): number[] =>
+    [...container.querySelectorAll('.recharts-yAxis .recharts-cartesian-axis-tick-value')].map((node) =>
+        Number(node.getAttribute('y')),
+    );
+
 describe('ExpensesRevenueChart', () => {
     it.each([
         ['en' as const, SERIES_LABELS_EN],
@@ -201,22 +206,26 @@ describe('ExpensesRevenueChart', () => {
         ]);
     });
 
-    it('starts a zero-then-rising series on the bottom axis in log mode instead of mid-air', () => {
+    it('bottoms the log axis at the lowest data decade instead of the epsilon floor', () => {
         const { container } = renderWithIntl(<ExpensesRevenueChart data={ZERO_START_HISTORY} granularity='yearly' />);
 
-        const yStart = (stroke: string): number => {
-            const path = [...container.querySelectorAll('path.recharts-area-curve')]
-                .filter((candidate) => candidate.getAttribute('d') !== null)
-                .find((candidate) => candidate.getAttribute('stroke') === stroke);
-            const match = /^M(-?[\d.]+),(-?[\d.]+)/.exec(path?.getAttribute('d') ?? '');
-            return match ? Number(match[2]) : Number.NaN;
-        };
-        const axisLine = container.querySelector('.recharts-xAxis .recharts-cartesian-axis-line');
-        const bottom = Number(axisLine?.getAttribute('y'));
+        const bottom = axisBottomY(container);
+        const ticks = yTickYs(container);
 
         expect(Number.isFinite(bottom)).toBe(true);
-        expect(Math.abs(yStart('#06b6d4') - bottom)).toBeLessThan(1);
-        expect(Math.abs(yStart('#10b981') - bottom)).toBeLessThan(1);
+        expect(ticks.length).toBeGreaterThan(1);
+        expect(Math.abs(Math.max(...ticks) - bottom)).toBeLessThan(1);
+    });
+
+    it('bottoms the wide-range log axis at the lowest decade so the plot is not mostly empty', () => {
+        const { container } = renderWithIntl(
+            <ExpensesRevenueChart data={WIDE_RANGE_HISTORY} granularity='yearly' live={WIDE_RANGE_LIVE} />,
+        );
+
+        const ticks = yTickYs(container);
+
+        expect(ticks.length).toBeGreaterThan(1);
+        expect(Math.abs(Math.max(...ticks) - axisBottomY(container))).toBeLessThan(1);
     });
 });
 

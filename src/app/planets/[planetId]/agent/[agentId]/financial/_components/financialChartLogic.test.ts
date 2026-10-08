@@ -585,13 +585,13 @@ describe('expenseResolutionMagnitudes', () => {
 });
 
 describe('expenseLinearDomain', () => {
-    it('uses epsilon as the lower bound so the floored line rests on the axis', () => {
-        expect(expenseLinearDomain([100, 500, 2000])).toEqual([EPSILON, 2000 * 1.08]);
+    it('bottoms the axis at zero and scales the top from the real magnitudes', () => {
+        expect(expenseLinearDomain([100, 500, 2000])).toEqual([0, 2000 * 1.08]);
     });
 
-    it('falls back to an epsilon decade when every magnitude is at or below epsilon', () => {
-        expect(expenseLinearDomain([])).toEqual([EPSILON, EPSILON * 10]);
-        expect(expenseLinearDomain([EPSILON])).toEqual([EPSILON, EPSILON * 10]);
+    it('falls back to a unit band when every magnitude is at or below epsilon', () => {
+        expect(expenseLinearDomain([])).toEqual([0, 1]);
+        expect(expenseLinearDomain([EPSILON])).toEqual([0, 1]);
     });
 });
 

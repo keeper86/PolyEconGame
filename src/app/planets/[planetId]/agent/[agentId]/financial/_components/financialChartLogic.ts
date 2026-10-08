@@ -287,9 +287,9 @@ export function expenseResolutionMagnitudes(rows: ReadonlyArray<ResolutionRow>):
 export function expenseLinearDomain(magnitudes: readonly number[]): [number, number] {
     const finite = magnitudes.filter((value) => Number.isFinite(value) && value > EPSILON);
     if (finite.length === 0) {
-        return [EPSILON, EPSILON * 10];
+        return [0, 1];
     }
-    return [EPSILON, Math.max(...finite) * 1.08];
+    return [0, Math.max(...finite) * 1.08];
 }
 
 export type SeriesFloorRow = ResolutionRow & {
