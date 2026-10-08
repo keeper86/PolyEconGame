@@ -45,7 +45,7 @@ const HISTORY: FinancialPoint[] = [
 
 const SERIES_LABELS_EN = ['Revenue', 'Wages', 'Purchases', 'Claims', 'Interest & tax', 'Income', 'Loss'];
 const SERIES_LABELS_DE = ['Erlös', 'Löhne', 'Einkäufe', 'Nutzungsrechte', 'Zinsen & Steuern', 'Gewinn', 'Verlust'];
-const SERIES_COLOURS = ['#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f43f5e'];
+const SERIES_COLOURS = ['#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#10b981', '#f43f5e'];
 const EXPENSE_STROKES = ['#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'];
 
 const WIDE_RANGE_ROWS: [number, number, number][] = [
@@ -105,6 +105,19 @@ const drawnSeries = (container: HTMLElement): (string | null)[] =>
         .filter((path) => path.getAttribute('d') !== null)
         .map((path) => path.getAttribute('stroke'));
 
+const curvePath = (container: HTMLElement, stroke: string): string =>
+    [...container.querySelectorAll('path.recharts-area-curve')]
+        .find((candidate) => candidate.getAttribute('stroke') === stroke && candidate.getAttribute('d') !== null)
+        ?.getAttribute('d') ?? '';
+
+const curveYs = (d: string): number[] =>
+    (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number).filter((_, index) => index % 2 === 1);
+
+const curveSegments = (d: string): number => (d.match(/M/g) ?? []).length;
+
+const axisBottomY = (container: HTMLElement): number =>
+    Number(container.querySelector('.recharts-xAxis .recharts-cartesian-axis-line')?.getAttribute('y'));
+
 describe('ExpensesRevenueChart', () => {
     it.each([
         ['en' as const, SERIES_LABELS_EN],
@@ -140,16 +153,26 @@ describe('ExpensesRevenueChart', () => {
         expect(rising).not.toBe(flat);
     });
 
-    it('draws the income curve for profitable months and the loss curve for loss-making months', () => {
+    it('rests the inactive income/loss curve on the zero axis so neither line vanishes', () => {
         const profitable = HISTORY.map((point) => ({ ...point, avgMonthlyNetIncome: 2000 }));
 
         const { container: losing } = renderWithIntl(<ExpensesRevenueChart data={HISTORY} granularity='yearly' />);
-        expect(drawnSeries(losing)).toContain('#f43f5e');
-        expect(drawnSeries(losing)).not.toContain('#10b981');
+        const losingBottom = axisBottomY(losing);
+        const losingIncome = curveYs(curvePath(losing, '#10b981'));
+        const losingLoss = curveYs(curvePath(losing, '#f43f5e'));
+
+        expect(losingIncome.length).toBeGreaterThan(0);
+        expect(losingLoss.length).toBeGreaterThan(0);
+        expect(losingIncome.every((y) => Math.abs(y - losingBottom) < 1)).toBe(true);
+        expect(losingLoss.some((y) => y < losingBottom - 1)).toBe(true);
 
         const { container: gaining } = renderWithIntl(<ExpensesRevenueChart data={profitable} granularity='yearly' />);
-        expect(drawnSeries(gaining)).toContain('#10b981');
-        expect(drawnSeries(gaining)).not.toContain('#f43f5e');
+        const gainingBottom = axisBottomY(gaining);
+        const gainingIncome = curveYs(curvePath(gaining, '#10b981'));
+        const gainingLoss = curveYs(curvePath(gaining, '#f43f5e'));
+
+        expect(gainingIncome.some((y) => y < gainingBottom - 1)).toBe(true);
+        expect(gainingLoss.every((y) => Math.abs(y - gainingBottom) < 1)).toBe(true);
     });
 
     it('emits no NaN coordinates for stacked areas on the wide-range axis', () => {
@@ -192,8 +215,8 @@ describe('ExpensesRevenueChart', () => {
         const bottom = Number(axisLine?.getAttribute('y'));
 
         expect(Number.isFinite(bottom)).toBe(true);
-        expect(yStart('#06b6d4')).toBeLessThanOrEqual(bottom);
-        expect(yStart('#10b981')).toBeLessThanOrEqual(bottom);
+        expect(Math.abs(yStart('#06b6d4') - bottom)).toBeLessThan(1);
+        expect(Math.abs(yStart('#10b981') - bottom)).toBeLessThan(1);
     });
 });
 
@@ -235,5 +258,25 @@ describe('ExpensesRevenueChart monthly', () => {
         expect(paths.length).toBeGreaterThan(0);
         expect(paths.filter((d) => d.includes('NaN'))).toEqual([]);
         expect(container.querySelectorAll('.recharts-xAxis .recharts-cartesian-axis-tick').length).toBe(12);
+    });
+
+    const zigzag: FinancialChartPoint[] = Array.from({ length: 12 }, (_, index) => ({
+        bucket: index * TICKS_PER_MONTH + 1,
+        monthIdx: index + 1,
+        avgNetBalance: 5000,
+        avgAssetValue: 20000,
+        avgMonthlyNetIncome: index % 2 === 0 ? 500 : -500,
+        avgWages: 0,
+        sumPurchases: 0,
+        sumClaimPayments: 0,
+        sumInterestPaid: 0,
+        sumWealthTaxPaid: 0,
+    }));
+
+    it('keeps both income and loss continuous when the monthly sign flips every month', () => {
+        const { container } = renderWithIntl(<ExpensesRevenueChart data={zigzag} granularity='monthly' />);
+
+        expect(curveSegments(curvePath(container, '#10b981'))).toBe(1);
+        expect(curveSegments(curvePath(container, '#f43f5e'))).toBe(1);
     });
 });

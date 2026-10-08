@@ -13,11 +13,13 @@ import {
     formatDecadeLabel,
     formatYearLabel,
     naturalDomain,
-    applyLogFloor,
+    applySeriesFloors,
+    EPSILON,
+    expenseLinearDomain,
     type ExpenseSeriesKey,
     type FinancialLive,
     type FinancialPoint,
-    type LogFloorRow,
+    type SeriesFloorRow,
     type ResolutionRow,
 } from './financialChartLogic';
 import { MONTHS_PER_YEAR, PREVIOUS_DECEMBER_END_IDX, PREVIOUS_DECEMBER_IDX } from '@/lib/historyChartAxis';
@@ -574,10 +576,27 @@ describe('expenseResolutionMagnitudes', () => {
 
         expect(magnitudes).toEqual([5]);
     });
+
+    it('ignores values at or below epsilon so the floor does not drag the domain down', () => {
+        expect(expenseResolutionMagnitudes([resolutionRow({ wages: EPSILON })])).toEqual([]);
+        expect(expenseResolutionMagnitudes([resolutionRow({ wages: EPSILON / 10 })])).toEqual([]);
+        expect(expenseResolutionMagnitudes([resolutionRow({ wages: 5 })])).toEqual([5, 5]);
+    });
 });
 
-describe('applyLogFloor', () => {
-    const row = (overrides: Partial<LogFloorRow>): LogFloorRow => ({
+describe('expenseLinearDomain', () => {
+    it('uses epsilon as the lower bound so the floored line rests on the axis', () => {
+        expect(expenseLinearDomain([100, 500, 2000])).toEqual([EPSILON, 2000 * 1.08]);
+    });
+
+    it('falls back to an epsilon decade when every magnitude is at or below epsilon', () => {
+        expect(expenseLinearDomain([])).toEqual([EPSILON, EPSILON * 10]);
+        expect(expenseLinearDomain([EPSILON])).toEqual([EPSILON, EPSILON * 10]);
+    });
+});
+
+describe('applySeriesFloors', () => {
+    const row = (overrides: Partial<SeriesFloorRow>): SeriesFloorRow => ({
         wages: null,
         purchases: null,
         claimPayments: null,
@@ -596,7 +615,11 @@ describe('applyLogFloor', () => {
     });
 
     it('lifts expense zeros to the segment floor and leaves nulls as gaps', () => {
-        const [floored] = applyLogFloor([row({ wages: 0, purchases: 5, claimPayments: null, ghostWages: 0 })], 0.25, 1);
+        const [floored] = applySeriesFloors(
+            [row({ wages: 0, purchases: 5, claimPayments: null, ghostWages: 0 })],
+            0.25,
+            1,
+        );
 
         expect(floored.wages).toBe(0.25);
         expect(floored.ghostWages).toBe(0.25);
@@ -604,29 +627,50 @@ describe('applyLogFloor', () => {
         expect(floored.claimPayments).toBeNull();
     });
 
+    it('floors values at or below epsilon to the given floor', () => {
+        const [floored] = applySeriesFloors([row({ wages: EPSILON, purchases: 5, revenue: EPSILON / 10 })], 0.25, 1);
+
+        expect(floored.wages).toBe(0.25);
+        expect(floored.purchases).toBe(5);
+        expect(floored.revenue).toBe(1);
+    });
+
     it('lifts line zeros to the line floor', () => {
-        const [floored] = applyLogFloor([row({ revenue: 0, ghostRevenue: 0 })], 0.25, 1);
+        const [floored] = applySeriesFloors([row({ revenue: 0, ghostRevenue: 0 })], 0.25, 1);
 
         expect(floored.revenue).toBe(1);
         expect(floored.ghostRevenue).toBe(1);
     });
 
     it('lifts the inactive income/loss branch to the line floor so the line reaches the bottom', () => {
-        const [floored] = applyLogFloor([row({ revenue: 100, income: null, loss: 30 })], 0.25, 1);
+        const [floored] = applySeriesFloors([row({ revenue: 100, income: null, loss: 30 })], 0.25, 1);
 
         expect(floored.income).toBe(1);
         expect(floored.loss).toBe(30);
     });
 
+    it('floors the inactive income/loss branch to zero on a linear axis', () => {
+        const floored = applySeriesFloors(
+            [row({ revenue: 100, income: null, loss: 30 }), row({ revenue: 100, income: 30, loss: null })],
+            0,
+            0,
+        );
+
+        expect(floored[0].income).toBe(0);
+        expect(floored[0].loss).toBe(30);
+        expect(floored[1].income).toBe(30);
+        expect(floored[1].loss).toBe(0);
+    });
+
     it('keeps income/loss as gaps when the row has no revenue for that series', () => {
-        const [floored] = applyLogFloor([row({ revenue: null, income: null, loss: null })], 0.25, 1);
+        const [floored] = applySeriesFloors([row({ revenue: null, income: null, loss: null })], 0.25, 1);
 
         expect(floored.income).toBeNull();
         expect(floored.loss).toBeNull();
     });
 
     it('leaves positive values untouched', () => {
-        const [floored] = applyLogFloor([row({ wages: 3, revenue: 7, income: 2 })], 0.25, 1);
+        const [floored] = applySeriesFloors([row({ wages: 3, revenue: 7, income: 2 })], 0.25, 1);
 
         expect(floored.wages).toBe(3);
         expect(floored.revenue).toBe(7);

@@ -21,9 +21,11 @@ import {
     MONTHLY_GRID_VALUES,
     MONTHLY_X_TICKS,
     EXPENSE_SERIES_KEYS,
+    EPSILON,
     bucketDecadeMid,
     computeExpensesRevenueBuckets,
-    applyLogFloor,
+    applySeriesFloors,
+    expenseLinearDomain,
     expenseMagnitudeOrder,
     expenseResolutionMagnitudes,
     formatDecadeLabel,
@@ -77,19 +79,6 @@ export function ExpensesRevenueChart({
 }) {
     const locale = useLocale();
     const t = useTranslations('Financial');
-    const yDomain = (vals: number[]): [number, number] | ['auto', 'auto'] => {
-        const finite = vals.filter(Number.isFinite);
-        if (finite.length === 0) {
-            return ['auto', 'auto'];
-        }
-        const lo = Math.min(0, ...finite);
-        const hi = Math.max(0, ...finite);
-        if (lo === hi) {
-            return [lo * 0.9 - 0.001, hi * 1.1 + 0.001];
-        }
-        const pad = (hi - lo) * 0.08;
-        return [Math.max(0, lo - pad), hi + pad];
-    };
 
     const liveX = live && live.tick > 0 ? liveYearX(live.tick) : null;
 
@@ -101,14 +90,7 @@ export function ExpensesRevenueChart({
             const ghostByMonthIdx = new Map(ghostPts.map((p) => [p.monthIdx, p]));
             const allIdxs = new Set([...currentByMonthIdx.keys(), ...ghostByMonthIdx.keys()]);
             return Array.from(allIdxs)
-                .sort((a, b) => {
-                    const aIsCurrent = currentByMonthIdx.has(a);
-                    const bIsCurrent = currentByMonthIdx.has(b);
-                    if (aIsCurrent === bIsCurrent) {
-                        return a - b;
-                    }
-                    return aIsCurrent ? -1 : 1;
-                })
+                .sort((a, b) => a - b)
                 .map((monthIdx) => {
                     const curr = currentByMonthIdx.get(monthIdx);
                     const ghost = ghostByMonthIdx.get(monthIdx);
@@ -151,17 +133,14 @@ export function ExpensesRevenueChart({
                 for (let e = loExp; e <= hiExp; e++) {
                     logTicks.push(Math.pow(10, e));
                 }
-                const logDomain: [number, number] = [Math.pow(10, loExp), Math.pow(10, hiExp)];
+                const logDomain: [number, number] = [EPSILON, Math.pow(10, hiExp)];
                 return { scale: 'symlog' as const, domain: logDomain, yTicks: logTicks };
             }
         }
-        return { scale: 'linear' as const, domain: yDomain(positive), yTicks: undefined };
+        return { scale: 'linear' as const, domain: expenseLinearDomain(positive), yTicks: undefined };
     }, [chartData]);
 
-    const renderData = useMemo(
-        () => (scale === 'symlog' ? applyLogFloor(chartData, 0.00000001, domain[0]) : chartData),
-        [scale, chartData, domain],
-    );
+    const renderData = useMemo(() => applySeriesFloors(chartData, EPSILON, EPSILON), [chartData]);
 
     const expenseKeys = useMemo(
         () => (scale === 'symlog' ? expenseMagnitudeOrder(chartData) : [...EXPENSE_SERIES_KEYS]),

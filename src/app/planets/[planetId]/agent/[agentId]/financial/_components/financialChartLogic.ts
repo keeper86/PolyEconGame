@@ -22,6 +22,8 @@ export { decadeCentre as bucketDecadeMid, yearCentre as bucketYearMid } from '@/
 export { decadeEnd as bucketDecadeEnd, yearEnd as bucketYearEnd } from '@/lib/historyChartAxis';
 export { MONTHLY_GRID_VALUES, MONTHLY_TICKS as MONTHLY_X_TICKS } from '@/lib/historyChartAxis';
 
+export const EPSILON = 0.00000001;
+
 export type FinancialPoint = {
     bucket: number;
     avgNetBalance: number;
@@ -261,7 +263,7 @@ function stackedTotal(values: readonly (number | null)[]): number | null {
 export function expenseResolutionMagnitudes(rows: ReadonlyArray<ResolutionRow>): number[] {
     const magnitudes: number[] = [];
     const collect = (value: number | null) => {
-        if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        if (typeof value === 'number' && Number.isFinite(value) && value > EPSILON) {
             magnitudes.push(value);
         }
     };
@@ -282,18 +284,30 @@ export function expenseResolutionMagnitudes(rows: ReadonlyArray<ResolutionRow>):
     return magnitudes;
 }
 
-export type LogFloorRow = ResolutionRow & {
+export function expenseLinearDomain(magnitudes: readonly number[]): [number, number] {
+    const finite = magnitudes.filter((value) => Number.isFinite(value) && value > EPSILON);
+    if (finite.length === 0) {
+        return [EPSILON, EPSILON * 10];
+    }
+    return [EPSILON, Math.max(...finite) * 1.08];
+}
+
+export type SeriesFloorRow = ResolutionRow & {
     income: number | null;
     loss: number | null;
     ghostIncome: number | null;
     ghostLoss: number | null;
 };
 
-export function applyLogFloor(rows: readonly LogFloorRow[], segmentFloor: number, lineFloor: number): LogFloorRow[] {
+export function applySeriesFloors(
+    rows: readonly SeriesFloorRow[],
+    segmentFloor: number,
+    lineFloor: number,
+): SeriesFloorRow[] {
     const keepOr = (value: number | null, floor: number): number | null =>
-        value === null ? null : value > 0 ? value : floor;
+        value === null ? null : value > EPSILON ? value : floor;
     const whenPresent = (value: number | null, present: number | null, floor: number): number | null =>
-        present === null ? null : value !== null && value > 0 ? value : floor;
+        present === null ? null : value !== null && value > EPSILON ? value : floor;
     return rows.map((row) => ({
         ...row,
         wages: keepOr(row.wages, segmentFloor),
