@@ -96,14 +96,12 @@ function makeSetup(
     const assets = makeAgentPlanetAssets(planet.id, {
         productionFacilities: [facility],
     });
-    // Author an explicit compartment for the produced resource so the baseline inventory used to anchor
-    // the storage signal (~0 error at target) is physically storable under the explicit-compartment model.
+
     const produceForm = shellFormOfResource(RESOURCE);
     if (produceForm) {
         assets.storage.shells[produceForm].compartments[RESOURCE.name] = 1;
     }
-    // Fill storage up to the current own-production target (STORAGE_TARGET_MONTHS months) so the
-    // baseline storage signal is ~0 rather than oversupplied against the (now shorter) target.
+
     setStorageResourceQuantity(
         assets.storage,
         RESOURCE,
@@ -159,8 +157,7 @@ function setStorageQuantity(agents: Map<string, Agent>, quantity: number): void 
     const assets = agent.assets[Object.keys(agent.assets)[0]];
     setStorageResourceQuantity(assets.storage, RESOURCE, quantity);
 }
-/** Create a planet with enough unemployed workers to pass hasSufficientUnemployedWorkers check
- * and with lastProductionCostFloors set so price inflation factor stays below the caution threshold. */
+
 function makePlanetWithWorkersAndCostFloor(clearingPrice: number, costFloor: number): Planet {
     const planet = makePlanet({
         lastMarketResult: {
@@ -185,9 +182,9 @@ function makePlanetWithWorkersAndCostFloor(clearingPrice: number, costFloor: num
                 unsoldSupply: 0,
             },
         },
-        // Provide enough unemployed workers so hasSufficientUnemployedWorkers passes
+
         population: makePopulationByEducation({ none: 10_000 }),
-        // Set cost floor so price/cost ratio = clearingPrice / costFloor stays reasonable
+
         lastProductionCostFloors: { [RESOURCE_NAME]: costFloor },
     });
     return planet;
@@ -421,7 +418,7 @@ describe('updateAgentProductionScale', () => {
                 lastRawSignal: 0,
                 lastDelta: 0,
             },
-            // Need a worker requirement so hasSufficientUnemployedWorkers passes
+
             workerRequirement: { none: 1 },
             lastTickResults: {
                 overallEfficiency: 1,
@@ -657,7 +654,7 @@ describe('updateAgentProductionScale', () => {
 
         const agent = agents.values().next().value as Agent;
         const assets = agent.assets[planet.id];
-        // Plenty of deposits, but cashflow is negative (high expenses, no revenue)
+
         assets.deposits = 1_000_000_000;
         assets.lastMonthAcc.revenue = 0;
         assets.lastMonthAcc.wages = 1_000_000;
@@ -762,7 +759,7 @@ describe('updateAgentProductionScale', () => {
         updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBeLessThan(initial);
-        // Construction is unchanged
+
         expect(facility.construction).not.toBeNull();
         expect(facility.construction!.type).toBe('expansion');
     });
@@ -1295,7 +1292,6 @@ describe('updateAgentProductionScale', () => {
         const N = 30;
         for (let i = 0; i < N; i++) {
             if (i % 2 === 0) {
-                // Strong oversupply
                 Object.assign(planet.lastMarketResult[RESOURCE_NAME], {
                     unsoldSupply: 90,
                     totalSupply: 100,
@@ -1307,7 +1303,6 @@ describe('updateAgentProductionScale', () => {
                     unfilledDemand: 0,
                 });
             } else {
-                // Strong undersupply
                 Object.assign(planet.lastMarketResult[RESOURCE_NAME], {
                     unsoldSupply: 0,
                     totalSupply: 100,
@@ -1324,8 +1319,6 @@ describe('updateAgentProductionScale', () => {
             updateAgentProductionScale(makeGameState(agents), planet);
         }
 
-        // Scale should not have crashed to 10% — the slow-down rate (PID_OUT_MAX_DOWN) prevents
-        // the per-tick drop from oversupply ticks from overwhelming the per-tick build-up
         expect(facility.scale).toBeGreaterThan(0.3);
     });
 
@@ -2076,7 +2069,7 @@ describe('construction budget constraint', () => {
         assetsDeposits(agents, planet, 1_000_000);
 
         updateAgentProductionScale(makeGameState(agents), planet);
-        // Budget is 0, so expansion should be blocked
+
         expect(facility.construction).toBeNull();
     });
 

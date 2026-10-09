@@ -14,8 +14,6 @@ import {
 const SHELL_BUFFER_FRACTION = 1.5;
 const SHELL_OVERSHOOT_FRACTION = 2;
 
-// Grow or shrink a single shell toward the footprint scale it must hold. Shells are owned by the storage
-// shell itself and are not gated by the shared construction budget, so this neither reads nor returns one.
 export function reconcileShellScale(
     planet: Planet,
     agent: Agent,
@@ -44,8 +42,6 @@ export function reconcileShellScale(
     }
 }
 
-// Facility needs and production fill a shell first; the free-buy floors they do not already cover are the
-// second tier. A buffer trader has no facility footprint, so its whole market target is the first tier.
 const shellResidencyLayers = (agent: Agent, assets: AgentPlanetAssets, planet: Planet): ResidencyLayer[] =>
     agent.agentRole === 'buffer_trader'
         ? [bufferTraderFootprint(agent, planet) ?? {}]

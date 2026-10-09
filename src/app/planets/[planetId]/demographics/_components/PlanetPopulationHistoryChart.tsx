@@ -455,7 +455,6 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
     const trpc = useTRPC();
     const { granularity, setGranularity, currentTick } = useGranularity();
 
-    // Query buffer history (includes population) once instead of separate population queries
     const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getPlanetBufferHistory.queryOptions(
             { planetId, granularity: 'monthly', limit: HISTORY_BUCKET_LIMIT.monthly },
@@ -480,7 +479,6 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
         (granularity === 'yearly' && (loadingYearly || !yearly)) ||
         (granularity === 'decade' && (loadingDecade || !decade));
 
-    // Extract population-only points for the population charts
     const monthlyPoints = useMemo(
         () => (monthly?.history ?? []).map((r) => ({ bucket: r.bucket, avgPopulation: r.avgPopulation })),
         [monthly],
@@ -494,7 +492,6 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
         [decade],
     );
 
-    // Full buffer data for the child chart
     const bufferMonthlyPoints = useMemo(() => (monthly?.history ?? []) as BufferRawPoint[], [monthly]);
     const bufferYearlyPoints = useMemo(() => (yearly?.history ?? []) as BufferRawPoint[], [yearly]);
     const bufferDecadePoints = useMemo(() => (decade?.history ?? []) as BufferRawPoint[], [decade]);

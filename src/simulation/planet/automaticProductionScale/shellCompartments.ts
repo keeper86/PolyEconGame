@@ -23,19 +23,14 @@ export type StorageResidency = {
 
 export type CellAllocation = {
     shares: Record<string, number>;
-    feasible: boolean;
     requiredScale: number;
 };
 
-// One priority tier of a per-form footprint. Index 0 is filled first and keeps its whole share even
-// while the shell is still growing; later tiers only get what is left.
 export type ResidencyLayer = Partial<Record<StorageForm, StorageResidency[]>>;
 
 const bindingShare = (volume: number, mass: number, volCap: number, massCap: number): number =>
     Math.max(volume > 0 ? volume / volCap : 0, mass > 0 ? mass / massCap : 0);
 
-// Minimum shell scale (in per-unit capacities) at which every footprint target fits simultaneously.
-// Kept available so a future growth hook can drive shell.maxScale toward it.
 export const requiredScaleOf = (
     footprint: StorageResidency[],
     volCapPerScale: number,
@@ -48,21 +43,20 @@ export const requiredScaleOf = (
     return Math.max(1, sum);
 };
 
-// A resource that appears in more than one tier is owned by the highest-priority tier that names it;
-// later tiers add their demand onto that owner so a facility's buffer and a free-buy floor stack.
 const foldResidencyLayers = (layers: StorageResidency[][]): StorageResidency[][] => {
-    const owner = new Map<string, StorageResidency>();
     const folded = layers.map(() => [] as StorageResidency[]);
+    const owners = new Map<string, { entry: StorageResidency; source: StorageResidency }>();
     layers.forEach((layer, index) => {
         for (const entry of layer) {
-            const first = owner.get(entry.name);
-            if (!first) {
-                owner.set(entry.name, entry);
-                folded[index].push(entry);
-            } else if (first !== entry) {
-                first.targetQuantity += entry.targetQuantity;
-                first.volume += entry.volume;
-                first.mass += entry.mass;
+            const owner = owners.get(entry.name);
+            if (!owner) {
+                const copy = { ...entry };
+                owners.set(entry.name, { entry: copy, source: entry });
+                folded[index].push(copy);
+            } else if (owner.source !== entry) {
+                owner.entry.targetQuantity += entry.targetQuantity;
+                owner.entry.volume += entry.volume;
+                owner.entry.mass += entry.mass;
             }
         }
     });
@@ -76,7 +70,7 @@ export const allocateShellCells = (shell: StorageFacility, layers: StorageReside
     const massCapPerScale = shell.capacity.mass;
     const live = flat.filter((r) => r.resource.volumePerQuantity > 0 || r.resource.massPerQuantity > 0);
     if (live.length === 0 || volCapPerScale <= 0 || massCapPerScale <= 0 || shell.maxScale <= 0) {
-        return { shares: {}, feasible: true, requiredScale: 0 };
+        return { shares: {}, requiredScale: 0 };
     }
 
     const required = requiredScaleOf(flat, volCapPerScale, massCapPerScale);
@@ -118,8 +112,7 @@ export const allocateShellCells = (shell: StorageFacility, layers: StorageReside
         available -= granted;
     }
 
-    const total = Object.values(shares).reduce((a, b) => a + b, 0);
-    return { shares, feasible: total <= 1 + 1e-9, requiredScale: required };
+    return { shares, requiredScale: required };
 };
 
 export const resolveFormShell = (storage: Storage, form: StorageForm, layers: StorageResidency[][]): CellAllocation => {
@@ -142,10 +135,6 @@ export const resolveFormShell = (storage: Storage, form: StorageForm, layers: St
     return allocation;
 };
 
-// Target months of a resource a shell must hold to cover what a facility touches per tick, applied to
-// every physical resource a facility stores while it runs: production inputs AND outputs, and a
-// ship-builder's material inputs (a ship itself is not a stored good). Reserving both directions keeps
-// the seed-time prefill and steady-state production from overflowing an output-only-sized shell.
 export const residencyMonthsTicks = (): number =>
     (getStorageCapacityMonths() ?? getStorageTargetMonths() ?? STORAGE_CAPACITY_MONTHS) * TICKS_PER_MONTH;
 
@@ -201,8 +190,6 @@ const groupedToFootprint = (
     return result;
 };
 
-// Aggregate every physical resource a facility holds (inputs and outputs/flow sources) into one
-// per-shape footprint entry, so a shell is sized to keep each resource it stores, not just its outputs.
 export const footprintForFacilities = (
     productionFacilities: ProductionFacility[],
     shipConstructionFacilities: ShipConstructionFacility[],
@@ -236,8 +223,6 @@ export const footprintForFacilities = (
 export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<StorageForm, StorageResidency[]>> =>
     footprintForFacilities(assets.productionFacilities, assets.shipConstructionFacilities);
 
-// Free-buy inventory floors live on the buy config, not on any facility, so a resource an agent never
-// needs or produces still has to be authored into a shell's compartments or its bid is capped to zero.
 export const footprintForFreeBuys = (assets: AgentPlanetAssets): Partial<Record<StorageForm, StorageResidency[]>> => {
     const grouped = emptyGroups();
     for (const bid of Object.values(assets.market.buy)) {
@@ -250,11 +235,6 @@ export const footprintForFreeBuys = (assets: AgentPlanetAssets): Partial<Record<
     return groupedToFootprint(grouped);
 };
 
-// Re-partition every physical shell of an agent each tick, returning the final cell allocation per shell
-// so the caller can grow or shrink a shell via construction once its installed scale drops shy or
-// overshoots the held footprint. Layers are filled in priority order: the facility footprint first, then
-// the free-buy footprint. Only resources in the authored footprint receive a compartment; anything else
-// has no allocated capacity until it is explicitly authored (see facility.ts computeCompartmentShare).
 export const authorShellCompartments = (
     assets: AgentPlanetAssets,
     layers?: ResidencyLayer[],

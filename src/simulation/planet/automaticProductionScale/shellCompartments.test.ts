@@ -22,8 +22,8 @@ import {
     type StorageResidency,
 } from './shellCompartments';
 
-const V0 = STORAGE_SHELL_CAPACITY.volume; // one scale of volume
-const M0 = STORAGE_SHELL_CAPACITY.mass; // one scale of mass
+const V0 = STORAGE_SHELL_CAPACITY.volume;
+const M0 = STORAGE_SHELL_CAPACITY.mass;
 
 const solidStorage = (): { storage: Storage; shell: Storage['shells']['solid'] } => {
     const storage = makeStorageFacility() as Storage;
@@ -33,7 +33,6 @@ const solidStorage = (): { storage: Storage; shell: Storage['shells']['solid'] }
     return { storage, shell };
 };
 
-// A physical good carrying (volShare*V0, massShare*M0) of footprint per one opened shell scale.
 const byCapacityShare = (
     name: string,
     volShare: number,
@@ -136,7 +135,7 @@ describe('allocateShellCells against realistic per-scale capacity', () => {
         const footprint: StorageResidency[] = [byCapacityShare('bulk', 0.6, 0.05), byCapacityShare('dense', 0.02, 0.3)];
         const { storage, shell } = solidStorage();
         const allocation = allocateShellCells(shell, [footprint]);
-        expect(allocation.feasible).toBe(true);
+        expect(sumShares(allocation.shares)).toBeLessThanOrEqual(1 + 1e-9);
         expect(allocation.shares.bulk).toBeCloseTo(0.6);
         expect(allocation.shares.dense).toBeCloseTo(0.3);
         expect(sumShares(allocation.shares)).toBeLessThanOrEqual(1 + 1e-9);
@@ -147,7 +146,7 @@ describe('allocateShellCells against realistic per-scale capacity', () => {
         const footprint: StorageResidency[] = [byCapacityShare('bulk', 0.9, 0.1), byCapacityShare('dense', 0.1, 0.9)];
         const { shell } = solidStorage();
         const allocation = allocateShellCells(shell, [footprint]);
-        expect(allocation.feasible).toBe(true);
+        expect(sumShares(allocation.shares)).toBeLessThanOrEqual(1 + 1e-9);
         expect(allocation.requiredScale).toBeCloseTo(1.8, 6);
         expect(allocation.shares.bulk).toBeCloseTo(0.5);
         expect(allocation.shares.dense).toBeCloseTo(0.5);
@@ -156,13 +155,13 @@ describe('allocateShellCells against realistic per-scale capacity', () => {
     it('keeps a cell above what is physically already stacked in it', () => {
         const footprint: StorageResidency[] = [byCapacityShare('ore', 0.2, 0.2)];
         const { shell } = solidStorage();
-        // Hold 45% of a full scale by mass so an authored 0.2 share can never strand it.
+
         shell.currentInStorage.ore = {
             resource: byCapacityShare('ore', 0.1, 0.45).resource,
             quantity: 0.45 * M0,
         };
         const allocation = allocateShellCells(shell, [footprint]);
-        expect(allocation.feasible).toBe(true);
+        expect(sumShares(allocation.shares)).toBeLessThanOrEqual(1 + 1e-9);
         expect(allocation.shares.ore).toBeGreaterThanOrEqual(0.45 - 1e-9);
     });
 
@@ -170,11 +169,22 @@ describe('allocateShellCells against realistic per-scale capacity', () => {
         const footprint: StorageResidency[] = [byCapacityShare('a', 0.9, 0.1), byCapacityShare('b', 1.0, 0.5)];
         const { shell } = solidStorage();
         const allocation = allocateShellCells(shell, [footprint]);
-        expect(allocation.feasible).toBe(true);
         expect(allocation.requiredScale).toBeCloseTo(1.9, 6);
         const shares = Object.values(allocation.shares);
         expect(shares.every((share) => share > 0)).toBe(true);
         expect(shares.reduce((sum, share) => sum + share, 0)).toBeCloseTo(1, 6);
+    });
+
+    it('folds a resource named by two layers into one cell without mutating the layer footprints', () => {
+        const { shell } = solidStorage();
+        const facility: StorageResidency[] = [byCapacityShare('ore', 0.6, 0.6)];
+        const freeBuy: StorageResidency[] = [byCapacityShare('ore', 0.4, 0.4)];
+        const facilityBefore = { ...facility[0] };
+
+        const allocation = allocateShellCells(shell, [facility, freeBuy]);
+
+        expect(allocation.shares.ore).toBeCloseTo(1, 6);
+        expect(facility[0]).toEqual(facilityBefore);
     });
 });
 
@@ -184,7 +194,7 @@ describe('resolveFormShell grows a shell to the footprint scale', () => {
         const footprint: StorageResidency[] = [byCapacityShare('ore', 2.4, 3.0)];
 
         const before = resolveFormShell(storage, 'solid', [footprint]);
-        expect(before.feasible).toBe(true);
+        expect(sumShares(before.shares)).toBeLessThanOrEqual(1 + 1e-9);
         expect(before.requiredScale).toBeCloseTo(3, 6);
 
         const grownStorage = solidStorage().storage;
@@ -192,14 +202,13 @@ describe('resolveFormShell grows a shell to the footprint scale', () => {
         grownShell.scale = Math.ceil(before.requiredScale);
         grownShell.maxScale = grownShell.scale;
         const grown = resolveFormShell(grownStorage, 'solid', [footprint]);
-        expect(grown.feasible).toBe(true);
+        expect(sumShares(grown.shares)).toBeLessThanOrEqual(1 + 1e-9);
         const state = getStorageCapacityState(grownStorage, footprint[0].resource);
         expect(state.capacity.volume).toBeGreaterThanOrEqual(footprint[0].volume - 1e-6);
         expect(state.capacity.mass).toBeGreaterThanOrEqual(footprint[0].mass - 1e-6);
     });
 
     it('reports one shared footprint scale that fits a numerically skewed pair', () => {
-        // metal volume-heavy, fabric mass-heavy: each binds on a different axis.
         const resident: StorageResidency[] = [
             byCapacityShare('metal', 0.45, 0.05),
             byCapacityShare('fabric', 0.05, 0.4),
@@ -207,7 +216,7 @@ describe('resolveFormShell grows a shell to the footprint scale', () => {
         const { storage } = solidStorage();
         const planned = resolveFormShell(storage, 'solid', [resident]);
         expect(planned.requiredScale).toBeLessThanOrEqual(1 + 1e-9);
-        expect(planned.feasible).toBe(true);
+        expect(sumShares(planned.shares)).toBeLessThanOrEqual(1 + 1e-9);
     });
 });
 
@@ -257,7 +266,7 @@ describe('authorShellCompartments sizing', () => {
         expect(Object.keys(sizing)).toHaveLength(0);
     });
 
-    it('reports an infeasible solid allocation when a single facility out-ships one shell-scale', () => {
+    it('reports the required scale when a single facility out-ships one shell-scale', () => {
         const storage = makeStorageFacility() as Storage;
         const resource = makeProdResource('ore', 'solid', 1, 1);
         const maxScale = Math.max(1, Math.ceil((8 * V0) / (4 * 30)));
@@ -273,11 +282,9 @@ describe('authorShellCompartments sizing', () => {
         expect(sizing.solid!.requiredScale).toBeGreaterThan(1);
     });
 
-    it('pre-grants the required shell scale so a world-scale overcapacity becomes feasible immediately', () => {
-        // Iron ore output at 4 production-scales per tick for the whole capacity window needs more than
-        // one storage shell-scale; authorShellCompartments reports that requirement.
+    it('pre-grants the required shell scale so a world-scale overcapacity fits immediately', () => {
         const storage = makeStorageFacility() as Storage;
-        const ore = makeProdResource('Iron Ore', 'solid', 0.3, 1); // matches catalog-ish densities for mass 1/unit
+        const ore = makeProdResource('Iron Ore', 'solid', 0.3, 1);
         const maxScale = 4;
         const furnace = makeProductionFacility(undefined, {
             produces: [{ resource: ore, quantity: 6_000_000 }],
@@ -290,19 +297,16 @@ describe('authorShellCompartments sizing', () => {
         );
         expect(sizing.solid!.requiredScale).toBeGreaterThan(1);
 
-        // Emulate the world presizer: install the reported scale onto the shell (ceil stays integer).
         const solid = storage.shells.solid;
         solid.scale = Math.ceil(sizing.solid!.requiredScale);
         solid.maxScale = solid.scale;
         solid.compartments = {};
 
         const grown = authorShellCompartments(makeAgentPlanetAssets('p', { productionFacilities: [furnace], storage }));
-        expect(grown.solid!.feasible).toBe(true);
+        expect(sumShares(grown.solid!.shares)).toBeLessThanOrEqual(1 + 1e-9);
     });
 
     it('reserves physical room for each production input alongside its output', () => {
-        // A facility that turns ore into metal stores BOTH while it runs (a seed prefill of inputs and a
-        // standing output buffer). The shell footprint must reserve months of each, not just the output.
         const storage = makeStorageFacility() as Storage;
         const ore = makeProdResource('ore', 'solid', 1, 0.1);
         const metal = makeProdResource('metal', 'solid', 0.1, 1);
@@ -447,7 +451,7 @@ describe('free market buy residency', () => {
         const facility: StorageResidency[] = [byCapacityShare('steel', 0.5, 0.1)];
         const freeBuy: StorageResidency[] = [byCapacityShare('nickel', 1.0, 0.1)];
         const { storage, shell } = solidStorage();
-        // Footprint needs 1.5 scales but only one scale is installed: the facility keeps its full 0.5.
+
         resolveFormShell(storage, 'solid', [facility, freeBuy]);
 
         expect(shell.compartments.steel).toBeCloseTo(0.5, 6);

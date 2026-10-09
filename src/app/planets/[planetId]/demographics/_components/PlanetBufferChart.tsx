@@ -132,7 +132,6 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
         }
     }
 
-    // Insert live data point with fractional month index
     if (live.tick > 0) {
         const { year: liveYear, monthIndex: liveMi, day: liveDay } = tickToDate(live.tick);
         if (liveYear === latestYear) {

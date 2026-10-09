@@ -51,4 +51,11 @@ describe('trimmedLogAxis', () => {
             domain: [1, 1000],
         });
     });
+
+    it('anchors the domain on the trimmed magnitudes, leaving a value beyond the outer decade off the axis', () => {
+        expect(trimmedLogAxis([1, 1, 1, 1, 1, 1, 1, 1, 5, 20, 1000, 1_000_000])).toEqual({
+            ticks: [1, 10, 100],
+            domain: [1, 100],
+        });
+    });
 });

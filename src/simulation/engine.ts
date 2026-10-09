@@ -43,13 +43,7 @@ export { seedRng };
 
 const MAX_TICKER_EVENTS = 200;
 
-// ── Tick profiler ──────────────────────────────────────────────────────────────
-// Activated by process.env.SIM_DEBUG === '1'.  Accumulates per-phase timings
-// across all planets and logs a breakdown every REPORT_INTERVAL ticks.
-
 const REPORT_INTERVAL = 17;
-
-// ── advanceTick ────────────────────────────────────────────────────────────────
 
 export function advanceTick(gameState: GameState) {
     const tickStart = performance.now();
@@ -83,7 +77,6 @@ export function advanceTick(gameState: GameState) {
                 }
             }
 
-            // ── Environment + Government ──
             if (profile.isEnabled) {
                 t = profile.mark();
             }
@@ -133,7 +126,6 @@ export function advanceTick(gameState: GameState) {
                 t = profile.markAndAccum('hire', ' hire', t);
             }
 
-            // ── Claims + Financial ──
             if (profile.isEnabled) {
                 t = profile.mark();
             }
@@ -155,7 +147,6 @@ export function advanceTick(gameState: GameState) {
                 t = profile.markAndAccum('govSupport', '  governmentSupportTick', t);
             }
 
-            // ── Market (pricing + clearing) ──
             if (profile.isEnabled) {
                 t = profile.mark();
             }
@@ -167,7 +158,6 @@ export function advanceTick(gameState: GameState) {
                 t = profile.markAndAccum('market', 'updateCostFloor + pricing + marketTick', t);
             }
 
-            // ── Production + Construction ──
             if (profile.isEnabled) {
                 t = profile.mark();
             }
@@ -182,13 +172,11 @@ export function advanceTick(gameState: GameState) {
                 t = profile.markAndAccum('production', 'production + construction', t);
             }
 
-            // Must be after productionTick, to infer claim usage
             claimBillingTick(gameState.agents, planet, gameState.tick, gameState);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('claimBilling', '  claimBillingTick', t);
             }
 
-            // ── Month boundary ──
             if (profile.isEnabled) {
                 t = profile.mark();
             }
@@ -201,7 +189,6 @@ export function advanceTick(gameState: GameState) {
                 profile.markAndAccum('monthBoundary', 'monthBoundary (laborMarket + wageAdjust)', t);
             }
 
-            // ── Year boundary ──
             if (profile.isEnabled) {
                 t = profile.mark();
             }
@@ -257,7 +244,6 @@ export function advanceTick(gameState: GameState) {
         }
     });
 
-    // ── Global phases (after per-planet loop) ──
     let t: number = 0;
     if (profile.isEnabled) {
         t = profile.mark();
@@ -291,10 +277,6 @@ export function advanceTick(gameState: GameState) {
         gameState.tickerEvents = gameState.tickerEvents.slice(-MAX_TICKER_EVENTS);
     }
 
-    // ── Post-global invariants check ──
-    // The per-planet loop above checks invariants, but the global phases (forex, ships, arbitrage)
-    // can move money between planets and agent types. We need a second check here to catch leaks
-    // introduced by those phases.
     if (process.env.SIM_DEBUG) {
         for (const planet of gameState.planets.values()) {
             const planetMap = new Map([[planet.id, planet]]);
@@ -315,7 +297,6 @@ export function advanceTick(gameState: GameState) {
         }
     }
 
-    // ── Log profile every REPORT_INTERVAL ticks ──
     const elapsed = performance.now() - tickStart;
     if (profile.isEnabled && gameState.tick % REPORT_INTERVAL === 0) {
         profile.logBreakdown(gameState.tick, elapsed);

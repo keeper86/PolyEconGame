@@ -1,19 +1,4 @@
-/**
- * Toy model of the wage / quit / employment loop.
- *
- * Reproduces the shipping wage law (automaticWorkerAllocation.ts) and quit law
- * (laborMarket.ts) in a small firm population so the parameter space can be
- * mapped. The quit law is replicated locally because the shipping
- * quitPropensity() reads module-level constants that cannot be swept per run;
- * `--fidelity` asserts the replica equals the real function at defaults.
- *
- * Usage:
- *   npx tsx tools/longrun/wageToy.ts --fidelity
- *   npx tsx tools/longrun/wageToy.ts --validate
- *   npx tsx tools/longrun/wageToy.ts --ignition
- *   npx tsx tools/longrun/wageToy.ts --sweep
- *   npx tsx tools/longrun/wageToy.ts --detail
- */
+
 import {
     betterOfferStats,
     jobFindingProbability,
@@ -70,10 +55,10 @@ const quitRate = (law: QuitLaw, wage: number, tightness: number, vacancyWage: nu
     return Math.max(0, Math.min(raw, QUIT_RATE_CAP));
 };
 
-// The shipping propensity is applied per TICK, so the monthly attrition over one
-// month is 1-(1-q)^TICKS_PER_MONTH. The controller compares that monthly figure
-// against QUIT_TARGET_RATE, which is why the per-tick sensitivities are not
-// budget-limited: 1-(1-0.0083)^30 = 0.22, far above the 0.009 target.
+
+
+
+
 const monthlyQuitFromPropensity = (q: number): number => 1 - Math.pow(1 - Math.min(1, Math.max(0, q)), TICKS_PER_MONTH);
 
 const ceilingSpringPressure = (wage: number, ceiling: number): number =>
