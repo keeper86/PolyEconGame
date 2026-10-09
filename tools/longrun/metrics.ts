@@ -55,6 +55,34 @@ import { computeLoanConditions } from '../../src/simulation/financial/loanCondit
 import { calculateCostsForConstruction, getFacilityType } from '../../src/simulation/planet/facility';
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from '../../src/simulation/planet/productionFacilities';
 
+const percentileOf = (values: number[], q: number): number => {
+    if (values.length === 0) {
+        return 0;
+    }
+    const sorted = [...values].sort((a, b) => a - b);
+    const index = Math.min(sorted.length - 1, Math.max(0, Math.floor(q * sorted.length)));
+    return sorted[index] ?? 0;
+};
+
+const weightedPercentileOf = (pairs: { ratio: number; weight: number }[], q: number): number => {
+    if (pairs.length === 0) {
+        return 0;
+    }
+    const sorted = [...pairs].sort((a, b) => a.ratio - b.ratio);
+    const total = sorted.reduce((sum, p) => sum + p.weight, 0);
+    if (total <= 0) {
+        return 0;
+    }
+    let accumulated = 0;
+    for (const pair of sorted) {
+        accumulated += pair.weight;
+        if (accumulated >= q * total) {
+            return pair.ratio;
+        }
+    }
+    return sorted[sorted.length - 1]?.ratio ?? 0;
+};
+
 export type MetricMap = Record<string, number>;
 
 function median(values: number[]): number {
@@ -232,6 +260,12 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let wageQuitRate = 0;
     let wageCeiling = 0;
     let wageDebugWeight = 0;
+    let wagePrimaryWeightedSum = 0;
+    let wagePrimaryWeight = 0;
+    const wageOverCeilingRatios: number[] = [];
+    const wageOverCeilingWeighted: { ratio: number; weight: number }[] = [];
+    let workersAboveCeiling = 0;
+    let workersWithCeiling = 0;
     let voluntaryDepartingTotal = 0;
     let companyWageMin = Number.POSITIVE_INFINITY;
     let companyWageMax = 0;
@@ -1003,6 +1037,11 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             if (typeof assets.wagePerEdu?.[edu] === 'number') {
                 wageByEdu[edu] += assets.wagePerEdu[edu];
                 wageByEduCount[edu] += 1;
+                if (edu === 'primary') {
+                    const activePrimary = wf ? totalActiveForEdu(wf, edu) : 0;
+                    wagePrimaryWeightedSum += assets.wagePerEdu[edu] * activePrimary;
+                    wagePrimaryWeight += activePrimary;
+                }
             }
             capacityByEdu[edu] += assets.totalSlotCapacity?.[edu] ?? 0;
             slotsFilledByEdu[edu] += slotsFilled[edu];
@@ -1031,6 +1070,18 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 wageChurnPressure += debug.churnPressure * weight;
                 wageQuitRate += debug.quitRate * weight;
                 wageCeiling += debug.ceiling * weight;
+                const wageHere = assets.wagePerEdu?.[edu];
+                if (typeof wageHere === 'number' && debug.ceiling > 0) {
+                    const ratio = wageHere / debug.ceiling;
+                    wageOverCeilingRatios.push(ratio);
+                    if (weight > 0) {
+                        wageOverCeilingWeighted.push({ ratio, weight });
+                        workersWithCeiling += weight;
+                        if (ratio > 1) {
+                            workersAboveCeiling += weight;
+                        }
+                    }
+                }
             }
         }
         if (typeof assets.wagePerEdu?.primary === 'number') {
@@ -1377,6 +1428,17 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         wageChurnPressure: wageDebugWeight > 0 ? wageChurnPressure / wageDebugWeight : 0,
         wageQuitRate: wageDebugWeight > 0 ? wageQuitRate / wageDebugWeight : 0,
         wageCeiling: wageDebugWeight > 0 ? wageCeiling / wageDebugWeight : 0,
+        wagePrimaryWeighted: wagePrimaryWeight > 0 ? wagePrimaryWeightedSum / wagePrimaryWeight : 0,
+        wageOverCeilingMean:
+            wageOverCeilingRatios.reduce((sum, r) => sum + r, 0) / Math.max(1, wageOverCeilingRatios.length),
+        wageOverCeilingWeightedMean:
+            wageOverCeilingWeighted.reduce((sum, p) => sum + p.ratio * p.weight, 0) /
+            Math.max(1e-9, wageOverCeilingWeighted.reduce((sum, p) => sum + p.weight, 0)),
+        wageOverCeilingP50: percentileOf(wageOverCeilingRatios, 0.5),
+        wageOverCeilingP90: percentileOf(wageOverCeilingRatios, 0.9),
+        wageOverCeilingMax: percentileOf(wageOverCeilingRatios, 1),
+        wageOverCeilingWeightedP50: weightedPercentileOf(wageOverCeilingWeighted, 0.5),
+        workersAboveCeilingFrac: workersWithCeiling > 0 ? workersAboveCeiling / workersWithCeiling : 0,
         voluntaryDeparting: voluntaryDepartingTotal,
         companyWageMin: Number.isFinite(companyWageMin) ? companyWageMin : 0,
         companyWageMax,
@@ -1762,6 +1824,14 @@ export const METRIC_KEYS: string[] = [
     'wageChurnPressure',
     'wageQuitRate',
     'wageCeiling',
+    'wagePrimaryWeighted',
+    'wageOverCeilingMean',
+    'wageOverCeilingWeightedMean',
+    'wageOverCeilingP50',
+    'wageOverCeilingP90',
+    'wageOverCeilingMax',
+    'wageOverCeilingWeightedP50',
+    'workersAboveCeilingFrac',
     'companyWageMin',
     'companyWageMax',
     'voluntaryDeparting',

@@ -23,15 +23,14 @@ export type StorageResidency = {
 
 export type CellAllocation = {
     shares: Record<string, number>;
-    feasible: boolean;
     requiredScale: number;
 };
+
+export type ResidencyLayer = Partial<Record<StorageForm, StorageResidency[]>>;
 
 const bindingShare = (volume: number, mass: number, volCap: number, massCap: number): number =>
     Math.max(volume > 0 ? volume / volCap : 0, mass > 0 ? mass / massCap : 0);
 
-// Minimum shell scale (in per-unit capacities) at which every footprint target fits simultaneously.
-// Kept available so a future growth hook can drive shell.maxScale toward it.
 export const requiredScaleOf = (
     footprint: StorageResidency[],
     volCapPerScale: number,
@@ -44,68 +43,83 @@ export const requiredScaleOf = (
     return Math.max(1, sum);
 };
 
-export const allocateShellCells = (
-    shell: StorageFacility,
-    footprint: StorageResidency[],
-    scale: number,
-): CellAllocation => {
-    const live = footprint.filter((r) =>
-        ((resource: Resource): boolean => resource.volumePerQuantity > 0 || resource.massPerQuantity > 0)(r.resource),
-    );
-    const volCapPerScale = shell.capacity.volume;
-    const massCapPerScale = shell.capacity.mass;
-    if (live.length === 0 || volCapPerScale <= 0 || massCapPerScale <= 0 || scale <= 0) {
-        return { shares: {}, feasible: true, requiredScale: 0 };
-    }
-
-    const required = requiredScaleOf(footprint, volCapPerScale, massCapPerScale);
-    const volCap = volCapPerScale * required;
-    const massCap = massCapPerScale * required;
-
-    const declared = live.map((r) => bindingShare(r.volume, r.mass, volCap, massCap));
-    const declaredScale = declared.reduce((a, b) => a + b, 0);
-    const feasible = declaredScale <= 1;
-
-    const shares: Record<string, number> = {};
-
-    const lockedList = live.map((r) => {
-        const held = ((shell: StorageFacility, name: string): { volume: number; mass: number } => {
-            const entry = shell.currentInStorage[name];
-            if (!entry || entry.quantity <= 0) {
-                return { volume: 0, mass: 0 };
+const foldResidencyLayers = (layers: StorageResidency[][]): StorageResidency[][] => {
+    const folded = layers.map(() => [] as StorageResidency[]);
+    const owners = new Map<string, { entry: StorageResidency; source: StorageResidency }>();
+    layers.forEach((layer, index) => {
+        for (const entry of layer) {
+            const owner = owners.get(entry.name);
+            if (!owner) {
+                const copy = { ...entry };
+                owners.set(entry.name, { entry: copy, source: entry });
+                folded[index].push(copy);
+            } else if (owner.source !== entry) {
+                owner.entry.targetQuantity += entry.targetQuantity;
+                owner.entry.volume += entry.volume;
+                owner.entry.mass += entry.mass;
             }
-            return {
-                volume: entry.quantity * entry.resource.volumePerQuantity,
-                mass: entry.quantity * entry.resource.massPerQuantity,
-            };
-        })(shell, r.name);
-        return Math.min(1, bindingShare(held.volume, held.mass, volCap, massCap));
-    });
-
-    if (feasible) {
-        for (let i = 0; i < live.length; i++) {
-            shares[live[i].name] = Math.min(1, Math.max(declared[i], lockedList[i]));
         }
-        return { shares, feasible, requiredScale: requiredScaleOf(footprint, volCapPerScale, massCapPerScale) };
-    }
-
-    const sharedCap = Math.max(0, 1 - lockedList.reduce((a, b) => a + b, 0));
-    const growableCount = lockedList.reduce((acc, s) => acc + (s < 1 ? 1 : 0), 0);
-    const equalExtra = growableCount > 0 ? sharedCap / growableCount : 0;
-    for (let i = 0; i < live.length; i++) {
-        shares[live[i].name] = lockedList[i] < 1 ? Math.min(1, lockedList[i] + equalExtra) : lockedList[i];
-    }
-    return { shares, feasible, requiredScale: requiredScaleOf(footprint, volCapPerScale, massCapPerScale) };
+    });
+    return folded;
 };
 
-export const resolveFormShell = (
-    storage: Storage,
-    form: StorageForm,
-    footprint: StorageResidency[],
-): CellAllocation => {
-    const shell = storage.shells[form];
-    const allocation = allocateShellCells(shell, footprint, shell.maxScale);
+export const allocateShellCells = (shell: StorageFacility, layers: StorageResidency[][]): CellAllocation => {
+    const folded = foldResidencyLayers(layers);
+    const flat = folded.flat();
+    const volCapPerScale = shell.capacity.volume;
+    const massCapPerScale = shell.capacity.mass;
+    const live = flat.filter((r) => r.resource.volumePerQuantity > 0 || r.resource.massPerQuantity > 0);
+    if (live.length === 0 || volCapPerScale <= 0 || massCapPerScale <= 0 || shell.maxScale <= 0) {
+        return { shares: {}, requiredScale: 0 };
+    }
 
+    const required = requiredScaleOf(flat, volCapPerScale, massCapPerScale);
+    const capacityScale = Math.min(shell.maxScale, required);
+    const volCap = volCapPerScale * capacityScale;
+    const massCap = massCapPerScale * capacityScale;
+
+    const rawOf = (r: StorageResidency): number => bindingShare(r.volume, r.mass, volCapPerScale, massCapPerScale);
+    const lockedOf = (r: StorageResidency): number => {
+        const entry = shell.currentInStorage[r.name];
+        if (!entry || entry.quantity <= 0) {
+            return 0;
+        }
+        return Math.min(
+            1,
+            bindingShare(
+                entry.quantity * entry.resource.volumePerQuantity,
+                entry.quantity * entry.resource.massPerQuantity,
+                volCap,
+                massCap,
+            ),
+        );
+    };
+
+    const shares: Record<string, number> = {};
+    for (const r of flat) {
+        shares[r.name] = lockedOf(r);
+    }
+
+    let available = capacityScale;
+    for (const layer of folded) {
+        const demand = layer.reduce((acc, r) => acc + rawOf(r), 0);
+        const granted = Math.min(demand, available);
+        const factor = demand > 0 ? granted / demand : 0;
+        for (const r of layer) {
+            const grant = rawOf(r) * factor;
+            shares[r.name] = Math.min(1, Math.max(grant / capacityScale, shares[r.name]));
+        }
+        available -= granted;
+    }
+
+    return { shares, requiredScale: required };
+};
+
+export const resolveFormShell = (storage: Storage, form: StorageForm, layers: StorageResidency[][]): CellAllocation => {
+    const shell = storage.shells[form];
+    const allocation = allocateShellCells(shell, layers);
+
+    const footprint = layers.flat();
     const footprintNames = new Set(footprint.map((r) => r.name));
     for (const name of Object.keys(shell.compartments)) {
         if (!footprintNames.has(name)) {
@@ -121,53 +135,66 @@ export const resolveFormShell = (
     return allocation;
 };
 
-// Target months of a resource a shell must hold to cover what a facility touches per tick, applied to
-// every physical resource a facility stores while it runs: production inputs AND outputs, and a
-// ship-builder's material inputs (a ship itself is not a stored good). Reserving both directions keeps
-// the seed-time prefill and steady-state production from overflowing an output-only-sized shell.
 export const residencyMonthsTicks = (): number =>
     (getStorageCapacityMonths() ?? getStorageTargetMonths() ?? STORAGE_CAPACITY_MONTHS) * TICKS_PER_MONTH;
+
+const addResidencyQuantity = (
+    grouped: Record<StorageForm, Map<string, StorageResidency>>,
+    resource: Resource,
+    targetQuantity: number,
+): void => {
+    const form = shellFormOfResource(resource);
+    if (!form || targetQuantity <= 0) {
+        return;
+    }
+    const existing = grouped[form].get(resource.name);
+    if (existing) {
+        existing.targetQuantity += targetQuantity;
+        existing.volume += targetQuantity * resource.volumePerQuantity;
+        existing.mass += targetQuantity * resource.massPerQuantity;
+    } else {
+        grouped[form].set(resource.name, {
+            name: resource.name,
+            resource,
+            targetQuantity,
+            volume: targetQuantity * resource.volumePerQuantity,
+            mass: targetQuantity * resource.massPerQuantity,
+        });
+    }
+};
 
 const addResidency = (
     grouped: Record<StorageForm, Map<string, StorageResidency>>,
     resource: Resource,
     flowQuantityPerTick: number,
 ): void => {
-    const form = shellFormOfResource(resource);
-    if (!form || flowQuantityPerTick <= 0) {
-        return;
-    }
-    const target = residencyMonthsTicks() * flowQuantityPerTick;
-    if (target <= 0) {
-        return;
-    }
-    const existing = grouped[form].get(resource.name);
-    if (existing) {
-        existing.targetQuantity += target;
-        existing.volume += target * resource.volumePerQuantity;
-        existing.mass += target * resource.massPerQuantity;
-    } else {
-        grouped[form].set(resource.name, {
-            name: resource.name,
-            resource,
-            targetQuantity: target,
-            volume: target * resource.volumePerQuantity,
-            mass: target * resource.massPerQuantity,
-        });
-    }
+    addResidencyQuantity(grouped, resource, residencyMonthsTicks() * flowQuantityPerTick);
 };
 
-// Aggregate every physical resource a facility holds (inputs and outputs/flow sources) into one
-// per-shape footprint entry, so a shell is sized to keep each resource it stores, not just its outputs.
+const emptyGroups = (): Record<StorageForm, Map<string, StorageResidency>> => ({
+    solid: new Map(),
+    liquid: new Map(),
+    pieces: new Map(),
+});
+
+const groupedToFootprint = (
+    grouped: Record<StorageForm, Map<string, StorageResidency>>,
+): Partial<Record<StorageForm, StorageResidency[]>> => {
+    const result: Partial<Record<StorageForm, StorageResidency[]>> = {};
+    for (const form of storageFormKeys()) {
+        const values = [...grouped[form].values()];
+        if (values.length > 0) {
+            result[form] = values;
+        }
+    }
+    return result;
+};
+
 export const footprintForFacilities = (
     productionFacilities: ProductionFacility[],
     shipConstructionFacilities: ShipConstructionFacility[],
 ): Partial<Record<StorageForm, StorageResidency[]>> => {
-    const grouped: Record<StorageForm, Map<string, StorageResidency>> = {
-        solid: new Map(),
-        liquid: new Map(),
-        pieces: new Map(),
-    };
+    const grouped = emptyGroups();
 
     for (const facility of productionFacilities) {
         const plannedScale = facility.construction?.constructionTargetMaxScale ?? facility.maxScale;
@@ -190,65 +217,36 @@ export const footprintForFacilities = (
         }
     }
 
-    const result: Partial<Record<StorageForm, StorageResidency[]>> = {};
-    for (const form of storageFormKeys()) {
-        const values = [...grouped[form].values()];
-        if (values.length > 0) {
-            result[form] = values;
-        }
-    }
-    return result;
+    return groupedToFootprint(grouped);
 };
 
 export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<StorageForm, StorageResidency[]>> =>
     footprintForFacilities(assets.productionFacilities, assets.shipConstructionFacilities);
 
-// Re-partition every physical shell of an agent each tick, returning the final cell allocation per shell
-// so the caller can grow or shrink a shell via construction once its installed scale drops shy or
-// overshoots the held footprint. Only resources in the authored footprint receive a compartment; anything
-// else has no allocated capacity until it is explicitly authored (see facility.ts computeCompartmentShare).
-export const mergeResidency = (
-    base: Partial<Record<StorageForm, StorageResidency[]>>,
-    additional?: Partial<Record<StorageForm, StorageResidency[]>>,
-): Partial<Record<StorageForm, StorageResidency[]>> => {
-    if (!additional) {
-        return base;
+export const footprintForFreeBuys = (assets: AgentPlanetAssets): Partial<Record<StorageForm, StorageResidency[]>> => {
+    const grouped = emptyGroups();
+    for (const bid of Object.values(assets.market.buy)) {
+        const freeBuyQuantity = bid.autoConfig?.freeBuyQuantity ?? 0;
+        if (!bid.automated || freeBuyQuantity <= 0) {
+            continue;
+        }
+        addResidencyQuantity(grouped, bid.resource, freeBuyQuantity);
     }
-    const merged: Partial<Record<StorageForm, StorageResidency[]>> = {};
-    for (const form of storageFormKeys()) {
-        const byName = new Map<string, StorageResidency>();
-        for (const entry of base[form] ?? []) {
-            byName.set(entry.name, entry);
-        }
-        for (const entry of additional[form] ?? []) {
-            const existing = byName.get(entry.name);
-            if (existing) {
-                existing.targetQuantity += entry.targetQuantity;
-                existing.volume += entry.volume;
-                existing.mass += entry.mass;
-            } else {
-                byName.set(entry.name, entry);
-            }
-        }
-        const values = [...byName.values()];
-        if (values.length > 0) {
-            merged[form] = values;
-        }
-    }
-    return merged;
+    return groupedToFootprint(grouped);
 };
 
-export const updateAgentShellCompartments = (
+export const authorShellCompartments = (
     assets: AgentPlanetAssets,
-    additionalResidency?: Partial<Record<StorageForm, StorageResidency[]>>,
+    layers?: ResidencyLayer[],
 ): Partial<Record<StorageForm, CellAllocation>> => {
+    const effectiveLayers = layers ?? [footprintPerForm(assets)];
     const result: Partial<Record<StorageForm, CellAllocation>> = {};
-    const footprint = mergeResidency(footprintPerForm(assets), additionalResidency);
     for (const form of storageFormKeys()) {
-        const residency = footprint[form];
-        if (residency && residency.length > 0) {
-            result[form] = resolveFormShell(assets.storage, form, residency);
+        const formLayers = effectiveLayers.map((layer) => layer[form] ?? []);
+        if (formLayers.every((layer) => layer.length === 0)) {
+            continue;
         }
+        result[form] = resolveFormShell(assets.storage, form, formLayers);
     }
     return result;
 };

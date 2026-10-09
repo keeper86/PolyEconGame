@@ -3,7 +3,7 @@ import { beforeEach, describe, it, expect } from 'vitest';
 import { automaticWageAdjustment, automaticWorkerAllocation } from './automaticWorkerAllocation';
 import { setFireRateLimitPerMonth, setHireFlowMultiplier } from './hireWorkforce';
 import { makeAgent, makePlanetWithPopulation, makeProductionFacility, agentMap } from '../utils/testHelper';
-import { MAX_WAGE, MIN_WAGE, NOTICE_PERIOD_MONTHS } from '../constants';
+import { MAX_WAGE, MIN_WAGE, NOTICE_PERIOD_MONTHS, WAGE_SHARE } from '../constants';
 
 beforeEach(() => {
     setHireFlowMultiplier(Number.POSITIVE_INFINITY);
@@ -202,7 +202,7 @@ describe('automaticWageAdjustment', () => {
         expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
     });
 
-    it('never pays above the affordable ceiling implied by last month accounting', () => {
+    it('pulls an over-reference wage down even when a large shortage push is present', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
@@ -212,9 +212,32 @@ describe('automaticWageAdjustment', () => {
         agent.assets.p.lastMonthAcc.claimPayments = 0;
         agent.assets.p.lastMonthAcc.totalWorkersTicks = 100;
 
-        automaticWageAdjustment(agentMap(agent), planet);
+        for (let month = 0; month < 200; month++) {
+            automaticWageAdjustment(agentMap(agent), planet);
+        }
 
-        expect(agent.assets.p.wagePerEdu.tertiary).toBeLessThanOrEqual(10);
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeLessThan(100);
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeGreaterThan(5);
+    });
+
+    it('never lets an upward push carry the wage past the fair-wage reference', () => {
+        const { planet } = makePlanetWithPopulation({});
+        const agent = makeAgent();
+        agent.assets.p.wagePerEdu = { none: 5, primary: 5, secondary: 5, tertiary: 5 };
+        agent.assets.p.totalSlotCapacity.tertiary = 1000;
+        agent.assets.p.workforceDemography[30].tertiary.active = 1000;
+        agent.assets.p._monthlyVoluntaryQuits = { none: 0, primary: 0, secondary: 0, tertiary: 1000 };
+        agent.assets.p.lastMonthAcc.revenue = 1000;
+        agent.assets.p.lastMonthAcc.purchases = 0;
+        agent.assets.p.lastMonthAcc.claimPayments = 0;
+        agent.assets.p.lastMonthAcc.totalWorkersTicks = 100;
+
+        for (let month = 0; month < 200; month++) {
+            automaticWageAdjustment(agentMap(agent), planet);
+        }
+
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeGreaterThan(5);
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeLessThanOrEqual(WAGE_SHARE * 10 * 1.001);
     });
 
     it('raises the wage when the quit rate exceeds the target', () => {

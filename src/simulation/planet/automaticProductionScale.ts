@@ -1,13 +1,8 @@
 import { processFacilityContraction } from '../agents/recycler';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
-import type { HRFacility, PidState, ProductionFacility, StorageFacility } from './facility';
-import {
-    calculateCostsForConstruction,
-    getTransportStarvation,
-    isConstructionActive,
-    storageFormKeys,
-} from './facility';
+import type { HRFacility, PidState, ProductionFacility } from './facility';
+import { calculateCostsForConstruction, getTransportStarvation, isConstructionActive } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
 import { PRODUCED_HR_QUANTITY } from './specialFacilities';
@@ -76,8 +71,6 @@ import { computePidDelta, getDefaultPidState } from './automaticProductionScale/
 import { updateServiceFlowSignal } from './automaticProductionScale/serviceFlow';
 import { computeFacilityStorageSignal } from './automaticProductionScale/signalComputation';
 import { computeStorageExpansionTarget, computeStorageSignal } from './automaticProductionScale/storageAutoscale';
-import { updateAgentShellCompartments, scaleToHoldContents } from './automaticProductionScale/shellCompartments';
-import { bufferTraderFootprint } from '../agents/bufferTrader';
 
 export function applySoftFloorScale(currentScale: number, delta: number, minScale: number, maxScale: number): number {
     let newScale = currentScale + delta;
@@ -100,44 +93,6 @@ function computeHrSignal(hrDepartment: HRFacility): number {
     const pMax = computeBufferCapacity(computeMaxDailyHROutput(hrDepartment.maxScale));
     const fillRate = pMax > 0 ? hrDepartment.hrBuffer / pMax : 0;
     return Math.max(-1, Math.min(1, (HR_TARGET_FILL_RATE - fillRate) / HR_TARGET_FILL_RATE));
-}
-
-const SHELL_BUFFER_FRACTION = 1.5;
-const SHELL_OVERSHOOT_FRACTION = 2;
-
-// Returns the construction budget still available after deciding growth (contraction frees budget).
-export function reconcileShellScale(
-    planet: Planet,
-    agent: Agent,
-    gameState: GameState,
-    assets: AgentPlanetAssets,
-    shell: StorageFacility,
-    requiredScale: number,
-    remainingConstructionBudget: number,
-): number {
-    if (requiredScale <= 0 || shell.construction !== null) {
-        return remainingConstructionBudget;
-    }
-
-    const heldScale = scaleToHoldContents(assets.storage);
-    const heldForm = storageFormKeys().find((form) => assets.storage.shells[form] === shell);
-    const flooredRequired = heldForm ? Math.max(requiredScale, heldScale[heldForm]) : requiredScale;
-
-    const bufferScale = Math.max(1, Math.ceil(flooredRequired * SHELL_BUFFER_FRACTION));
-
-    if (shell.maxScale < flooredRequired) {
-        const started = initiateCapacityExpansion(shell, assets, planet, true, bufferScale);
-        if (!started) {
-            return remainingConstructionBudget;
-        }
-        return Math.max(0, remainingConstructionBudget - shell.construction!.maximumConstructionServiceConsumption);
-    }
-
-    if (shell.maxScale > flooredRequired * SHELL_OVERSHOOT_FRACTION && shell.maxScale > bufferScale) {
-        processFacilityContraction(planet, shell, agent, bufferScale, gameState, 0.5);
-    }
-
-    return remainingConstructionBudget;
 }
 
 type AutoscaleDebugEntry = {
@@ -789,41 +744,6 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             }
 
             storageDepartment.pidState = stoState;
-        }
-
-        const shellSizing = updateAgentShellCompartments(
-            assets,
-            agent.agentRole === 'buffer_trader' ? bufferTraderFootprint(agent, planet) : undefined,
-        );
-
-        for (const form of storageFormKeys()) {
-            const sizing = shellSizing[form];
-            if (!sizing) {
-                continue;
-            }
-            remainingConstructionBudget = reconcileShellScale(
-                planet,
-                agent,
-                gameState,
-                assets,
-                assets.storage.shells[form],
-                sizing.requiredScale,
-                remainingConstructionBudget,
-            );
-        }
-    });
-
-    // Non-automated (player) agents never get production-scale autoscaling, but they still trade, so their
-    // shell compartments must be authored to the production footprint or their physical-good bids find no
-    // allocated storage and are dropped. No shell reconcile here: growing/shrinking shells is the player's
-    // own construction decision.
-    gameState.agents.forEach((agent) => {
-        if (agent.automated) {
-            return;
-        }
-        const assets = agent.assets[planet.id];
-        if (assets) {
-            updateAgentShellCompartments(assets);
         }
     });
 

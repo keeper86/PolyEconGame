@@ -8,11 +8,19 @@ import {
     computeExpensesRevenueBuckets,
     computeFinancialGhostData,
     computeFinancialMonthlyData,
+    expenseMagnitudeOrder,
+    expenseResolutionMagnitudes,
     formatDecadeLabel,
     formatYearLabel,
     naturalDomain,
+    applySeriesFloors,
+    EPSILON,
+    expenseLinearDomain,
+    type ExpenseSeriesKey,
     type FinancialLive,
     type FinancialPoint,
+    type SeriesFloorRow,
+    type ResolutionRow,
 } from './financialChartLogic';
 import { MONTHS_PER_YEAR, PREVIOUS_DECEMBER_END_IDX, PREVIOUS_DECEMBER_IDX } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
@@ -53,7 +61,7 @@ describe('computeFinancialMonthlyData live point', () => {
     };
 
     it('appends the live point at the fractional month index, mixing levels and filling up accumulators', () => {
-        const result = computeFinancialMonthlyData(data, live.tick, live);
+        const result = computeFinancialMonthlyData(data, live.tick, live, 'centre');
         const livePoint = result.find(isLivePoint);
         const progress = 6 / TICKS_PER_MONTH;
         expect(livePoint).toBeDefined();
@@ -68,7 +76,7 @@ describe('computeFinancialMonthlyData live point', () => {
 
     it('adds the live extrapolation from the first tick of a month', () => {
         const firstDay = { ...live, tick: gameTickFor(1, 3, 1) };
-        const result = computeFinancialMonthlyData(data, firstDay.tick, firstDay);
+        const result = computeFinancialMonthlyData(data, firstDay.tick, firstDay, 'centre');
         const livePoint = result.find(isLivePoint);
         const progress = 1 / TICKS_PER_MONTH;
         expect(livePoint?.avgNetBalance).toBeCloseTo(200 + (1111 - 200) * progress, 6);
@@ -77,7 +85,7 @@ describe('computeFinancialMonthlyData live point', () => {
     });
 
     it('omits the live point when no live data is provided', () => {
-        const result = computeFinancialMonthlyData(data, live.tick);
+        const result = computeFinancialMonthlyData(data, live.tick, undefined, 'centre');
         expect(result.some(isLivePoint)).toBe(false);
         expect(result.some((p) => p.avgNetBalance === 1111)).toBe(false);
     });
@@ -98,7 +106,7 @@ describe('computeFinancialGhostData live threshold', () => {
             sumInterestPaid: 0,
             sumWealthTaxPaid: 0,
         };
-        const ghost = computeFinancialGhostData(data, live.tick, live);
+        const ghost = computeFinancialGhostData(data, live.tick, live, 'centre');
         const monthIdxs = ghost.map((p) => p.monthIdx);
         expect(monthIdxs.includes(2.5)).toBe(false);
         expect(monthIdxs.includes(3.5)).toBe(true);
@@ -117,7 +125,7 @@ describe('computeFinancialGhostData live threshold', () => {
             sumInterestPaid: 0,
             sumWealthTaxPaid: 0,
         };
-        const ghost = computeFinancialGhostData(data, live.tick, live);
+        const ghost = computeFinancialGhostData(data, live.tick, live, 'centre');
         expect(ghost.map((p) => p.monthIdx)).toEqual([4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5]);
     });
 });
@@ -460,5 +468,212 @@ describe('year tooltip labels', () => {
     it('names the decade the interval covers', () => {
         expect(formatDecadeLabel('en', 2205)).toBe('2200s');
         expect(formatDecadeLabel('en', 2215)).toBe('2210s');
+    });
+});
+
+describe('expenseMagnitudeOrder', () => {
+    const row = (values: Record<ExpenseSeriesKey, number | null>): Record<ExpenseSeriesKey, number | null> => values;
+
+    it('orders the smallest mean magnitude first', () => {
+        const rows = [
+            row({ wages: 400, purchases: 200, claimPayments: 50, misc: 900 }),
+            row({ wages: 600, purchases: 100, claimPayments: 30, misc: 1100 }),
+        ];
+
+        expect(expenseMagnitudeOrder(rows)).toEqual(['claimPayments', 'purchases', 'wages', 'misc']);
+    });
+
+    it('averages over the whole range so the order is stable across the chart', () => {
+        const rows = [
+            row({ wages: 10, purchases: 1000, claimPayments: 5, misc: 100 }),
+            row({ wages: 10, purchases: 0, claimPayments: 5, misc: 100 }),
+            row({ wages: 10000, purchases: 0, claimPayments: 5, misc: 100 }),
+        ];
+
+        expect(expenseMagnitudeOrder(rows)).toEqual(['claimPayments', 'misc', 'purchases', 'wages']);
+    });
+
+    it('ignores null entries when averaging', () => {
+        const rows = [
+            row({ wages: null, purchases: null, claimPayments: 100, misc: 100 }),
+            row({ wages: 900, purchases: null, claimPayments: 100, misc: 100 }),
+        ];
+
+        expect(expenseMagnitudeOrder(rows)).toEqual(['purchases', 'claimPayments', 'misc', 'wages']);
+    });
+
+    it('keeps the canonical order when every series is flat zero', () => {
+        expect(expenseMagnitudeOrder([row({ wages: 0, purchases: 0, claimPayments: 0, misc: 0 })])).toEqual([
+            'wages',
+            'purchases',
+            'claimPayments',
+            'misc',
+        ]);
+    });
+});
+
+describe('expenseResolutionMagnitudes', () => {
+    const resolutionRow = (overrides: Partial<ResolutionRow>): ResolutionRow => ({
+        wages: null,
+        purchases: null,
+        claimPayments: null,
+        misc: null,
+        revenue: null,
+        ghostWages: null,
+        ghostPurchases: null,
+        ghostClaimPayments: null,
+        ghostMisc: null,
+        ghostRevenue: null,
+        ...overrides,
+    });
+
+    it('accounts for the stacking by including the cumulative expense total', () => {
+        const magnitudes = expenseResolutionMagnitudes([
+            resolutionRow({ wages: 100, purchases: 50, claimPayments: 30, misc: 20 }),
+        ]);
+
+        expect(magnitudes).toContain(200);
+        expect(Math.max(...magnitudes)).toBe(200);
+    });
+
+    it('keeps the smallest segment so the bottom band still resolves', () => {
+        const magnitudes = expenseResolutionMagnitudes([
+            resolutionRow({ wages: 1000, purchases: 1000, claimPayments: 1000, misc: 1 }),
+        ]);
+
+        expect(Math.min(...magnitudes)).toBe(1);
+        expect(Math.max(...magnitudes)).toBe(3001);
+    });
+
+    it('ignores income and loss so a profit/loss flip does not rescale the axis', () => {
+        const row = { ...resolutionRow({ revenue: 500, wages: 100 }), income: 400, loss: 50 };
+
+        const magnitudes = expenseResolutionMagnitudes([row]);
+
+        expect(magnitudes).toContain(500);
+        expect(magnitudes).not.toContain(400);
+        expect(magnitudes).not.toContain(50);
+    });
+
+    it('includes the ghost stack total', () => {
+        const magnitudes = expenseResolutionMagnitudes([
+            resolutionRow({ ghostWages: 10, ghostPurchases: 20, ghostClaimPayments: 30, ghostMisc: 40 }),
+        ]);
+
+        expect(Math.max(...magnitudes)).toBe(100);
+    });
+
+    it('ignores zero, null and non-finite values', () => {
+        const magnitudes = expenseResolutionMagnitudes([
+            resolutionRow({
+                wages: 0,
+                purchases: null,
+                claimPayments: Number.NaN,
+                misc: Number.POSITIVE_INFINITY,
+                revenue: 5,
+            }),
+        ]);
+
+        expect(magnitudes).toEqual([5]);
+    });
+
+    it('ignores values at or below epsilon so the floor does not drag the domain down', () => {
+        expect(expenseResolutionMagnitudes([resolutionRow({ wages: EPSILON })])).toEqual([]);
+        expect(expenseResolutionMagnitudes([resolutionRow({ wages: EPSILON / 10 })])).toEqual([]);
+        expect(expenseResolutionMagnitudes([resolutionRow({ wages: 5 })])).toEqual([5, 5]);
+    });
+});
+
+describe('expenseLinearDomain', () => {
+    it('bottoms the axis at zero and scales the top from the real magnitudes', () => {
+        expect(expenseLinearDomain([100, 500, 2000])).toEqual([0, 2000 * 1.08]);
+    });
+
+    it('falls back to a unit band when every magnitude is at or below epsilon', () => {
+        expect(expenseLinearDomain([])).toEqual([0, 1]);
+        expect(expenseLinearDomain([EPSILON])).toEqual([0, 1]);
+    });
+});
+
+describe('applySeriesFloors', () => {
+    const row = (overrides: Partial<SeriesFloorRow>): SeriesFloorRow => ({
+        wages: null,
+        purchases: null,
+        claimPayments: null,
+        misc: null,
+        revenue: null,
+        income: null,
+        loss: null,
+        ghostWages: null,
+        ghostPurchases: null,
+        ghostClaimPayments: null,
+        ghostMisc: null,
+        ghostRevenue: null,
+        ghostIncome: null,
+        ghostLoss: null,
+        ...overrides,
+    });
+
+    it('lifts expense zeros to the segment floor and leaves nulls as gaps', () => {
+        const [floored] = applySeriesFloors(
+            [row({ wages: 0, purchases: 5, claimPayments: null, ghostWages: 0 })],
+            0.25,
+            1,
+        );
+
+        expect(floored.wages).toBe(0.25);
+        expect(floored.ghostWages).toBe(0.25);
+        expect(floored.purchases).toBe(5);
+        expect(floored.claimPayments).toBeNull();
+    });
+
+    it('floors values at or below epsilon to the given floor', () => {
+        const [floored] = applySeriesFloors([row({ wages: EPSILON, purchases: 5, revenue: EPSILON / 10 })], 0.25, 1);
+
+        expect(floored.wages).toBe(0.25);
+        expect(floored.purchases).toBe(5);
+        expect(floored.revenue).toBe(1);
+    });
+
+    it('lifts line zeros to the line floor', () => {
+        const [floored] = applySeriesFloors([row({ revenue: 0, ghostRevenue: 0 })], 0.25, 1);
+
+        expect(floored.revenue).toBe(1);
+        expect(floored.ghostRevenue).toBe(1);
+    });
+
+    it('lifts the inactive income/loss branch to the line floor so the line reaches the bottom', () => {
+        const [floored] = applySeriesFloors([row({ revenue: 100, income: null, loss: 30 })], 0.25, 1);
+
+        expect(floored.income).toBe(1);
+        expect(floored.loss).toBe(30);
+    });
+
+    it('floors the inactive income/loss branch to zero on a linear axis', () => {
+        const floored = applySeriesFloors(
+            [row({ revenue: 100, income: null, loss: 30 }), row({ revenue: 100, income: 30, loss: null })],
+            0,
+            0,
+        );
+
+        expect(floored[0].income).toBe(0);
+        expect(floored[0].loss).toBe(30);
+        expect(floored[1].income).toBe(30);
+        expect(floored[1].loss).toBe(0);
+    });
+
+    it('keeps income/loss as gaps when the row has no revenue for that series', () => {
+        const [floored] = applySeriesFloors([row({ revenue: null, income: null, loss: null })], 0.25, 1);
+
+        expect(floored.income).toBeNull();
+        expect(floored.loss).toBeNull();
+    });
+
+    it('leaves positive values untouched', () => {
+        const [floored] = applySeriesFloors([row({ wages: 3, revenue: 7, income: 2 })], 0.25, 1);
+
+        expect(floored.wages).toBe(3);
+        expect(floored.revenue).toBe(7);
+        expect(floored.income).toBe(2);
     });
 });

@@ -1,5 +1,14 @@
 export const START_YEAR = 2200;
 
+const envNumber = (name: string, fallback: number): number => {
+    const raw = process.env[name];
+    if (raw === undefined) {
+        return fallback;
+    }
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 export const COMMERCIAL_LICENSE_COST = 50_000;
 
 export const WORKFORCE_LICENSE_COST = 25_000;
@@ -124,6 +133,12 @@ export const WAGE_SHARE = 0.6;
 export const WAGE_CHURN_GAIN = 3;
 export const WAGE_CEILING_SMOOTHING = 0.1;
 
+// Restoring pressure that pulls the wage back toward WAGE_SHARE * ceiling once it
+// has risen past it. The headroom cap stops further rises there; the spring is what
+// brings an already-too-high wage back down, which a below-target churn cannot do
+// while the quit flow is strong.
+export const WAGE_CEILING_SPRING_GAIN = 1.0;
+
 export const HIRE_RAMP_MONTHS = 3;
 export const HIRE_HR_SERVICE_PER_WORKER = 1;
 export const MIN_HIRES_PER_TICK = 5;
@@ -131,18 +146,18 @@ export const FIRE_RATE_LIMIT_PER_MONTH = 0.05;
 
 export const SEARCH_HORIZON_TICKS = TICKS_PER_MONTH / 2;
 
-export const QUIT_OUTSIDE_SENSITIVITY = 0.005;
-export const QUIT_FAIRNESS_SENSITIVITY = 0.0033;
-export const QUIT_OUTSIDE_WAGE_BIAS = 0.975;
-export const QUIT_TARGET_RATE = 0.009;
+export const QUIT_OUTSIDE_SENSITIVITY = envNumber('QUIT_OUTSIDE_SENSITIVITY', 0.01);
+
+export const QUIT_FAIRNESS_SENSITIVITY = QUIT_OUTSIDE_SENSITIVITY * 1.3;
+export const QUIT_OUTSIDE_WAGE_BIAS = 0.95;
+export const QUIT_TARGET_RATE = envNumber('QUIT_TARGET_RATE', 0.002);
+
+export const QUIT_JOB_FINDING_FLOOR = 0.8;
 
 export const ACCEPT_BASE = 0.05;
 
 export const WAGE_ACCEPT_SCALE = 1.0;
 
-// Worker reservation wage is a fraction of the going (reachable) tier wage,
-// eroded by expected search duration, so that prolonged joblessness drives the
-// reservation DOWN and no CoL/wage lock can keep a worker refusing forever.
 export const WAGE_ACCEPT_FRACTION = 0.8;
 export const WAGE_DURATION_DECAY = 0.8;
 
@@ -179,12 +194,6 @@ export const SHIP_MARKET_EMA_ALPHA = 0.3;
 export const SELL_THROUGH_EMA_ALPHA = 0.3;
 export const FILL_RATE_EMA_ALPHA = 0.3;
 
-/**
- * Smoothing for the demand half of the storage trend (`q*s - d`). The production half is exact, so
- * only the market take is filtered. One month, matching the storage error's zoom window: fast enough
- * to keep the trend's phase up to the loop's own period, slow enough that the tick-to-tick market
- * noise does not print straight through into the scale command.
- */
 export const STORAGE_TREND_DEMAND_EMA_ALPHA = 2 / (TICKS_PER_MONTH + 1);
 
 export const SHIP_MARKET_MAX_TRADE_HISTORY = 100;
@@ -247,6 +256,5 @@ export const ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS = 60;
 
 export const ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT = 0.9;
 
-// ── Recycler Agent ──────────────────────────────────────────────────────────
 export const RECYCLER_BASE_RECOVERY_EFFICIENCY = 0.85;
 export const RECYCLER_PAYMENT_RATIO = 0.85;

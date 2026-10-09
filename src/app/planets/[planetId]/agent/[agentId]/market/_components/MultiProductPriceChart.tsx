@@ -15,6 +15,7 @@ import {
     YEAR_WINDOW,
     monthShortName,
 } from '@/lib/historyChartAxis';
+import { trimmedLogAxis } from '@/lib/logScaleAxis';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
@@ -81,91 +82,58 @@ const LEVEL_LABEL_KEYS = {
 } as const;
 
 const RESOURCE_COLOR_MAP: Record<string, string> = {
-    // -------------------------------------------------------------
-    // Iron / Steel / Metal — ColorBrewer "Oranges" / "YlOrRd" ramp
-    // -------------------------------------------------------------
-    [ironOreResourceType.name]: '#b34728', // Raw rust / iron ore
-    [steelResourceType.name]: '#cc6633', // Refined steel orange
-    [machineryResourceType.name]: '#e68540', // Heavy industrial orange
-    [vehicleResourceType.name]: '#fa9d52', // Bright finished vehicle orange
+    [ironOreResourceType.name]: '#b34728',
+    [steelResourceType.name]: '#cc6633',
+    [machineryResourceType.name]: '#e68540',
+    [vehicleResourceType.name]: '#fa9d52',
 
-    // -------------------------------------------------------------
-    // Water — Nord / ColorBrewer "Blues"
-    // -------------------------------------------------------------
-    [waterResourceType.name]: '#3b82f6', // Vibrant liquid blue
+    [waterResourceType.name]: '#3b82f6',
 
-    // -------------------------------------------------------------
-    // Food & Drink — ColorBrewer "YlGn" (Fresh agricultural green)
-    // -------------------------------------------------------------
-    [produceResourceType.name]: '#409c48', // Fresh produce green
-    [processedFoodResourceType.name]: '#6abf59', // Processed goods lime-green
-    [beverageResourceType.name]: '#93db6e', // Light refreshing green
+    [produceResourceType.name]: '#409c48',
+    [processedFoodResourceType.name]: '#6abf59',
+    [beverageResourceType.name]: '#93db6e',
 
-    // -------------------------------------------------------------
-    // Coal — Earth / Dark Carbon tone
-    // -------------------------------------------------------------
-    [coalResourceType.name]: '#4a3b32', // Dark anthracite charcoal
+    [coalResourceType.name]: '#4a3b32',
 
-    // -------------------------------------------------------------
-    // Oil & Petrochemicals — Viridis / Goldenrod to Chemical Green
-    // -------------------------------------------------------------
-    [crudeOilResourceType.name]: '#6b5314', // Dark raw petroleum
-    [fuelResourceType.name]: '#a88118', // Refined fuel gold
-    [plasticResourceType.name]: '#d4a828', // Synthetic plastic yellow
-    [chemicalResourceType.name]: '#a3b828', // Industrial chemical olive-yellow
-    [pesticideResourceType.name]: '#7d9e2b', // Agrochemical green
-    [pharmaceuticalResourceType.name]: '#528a38', // Clinical green
+    [crudeOilResourceType.name]: '#6b5314',
+    [fuelResourceType.name]: '#a88118',
+    [plasticResourceType.name]: '#d4a828',
+    [chemicalResourceType.name]: '#a3b828',
+    [pesticideResourceType.name]: '#7d9e2b',
+    [pharmaceuticalResourceType.name]: '#528a38',
 
-    // -------------------------------------------------------------
-    // Wood & Paper — ColorBrewer "Greens" (Forest to Pulp)
-    // -------------------------------------------------------------
-    [logsResourceType.name]: '#345229', // Deep forest timber
-    [lumberResourceType.name]: '#4d733e', // Milled lumber green
-    [paperResourceType.name]: '#6f965d', // Light craft paper sage
-    [furnitureResourceType.name]: '#94b882', // Finished wood light green
+    [logsResourceType.name]: '#345229',
+    [lumberResourceType.name]: '#4d733e',
+    [paperResourceType.name]: '#6f965d',
+    [furnitureResourceType.name]: '#94b882',
 
-    // -------------------------------------------------------------
-    // Stone & Construction — Natural Mineral & Glass palette
-    // -------------------------------------------------------------
-    [stoneResourceType.name]: '#706e6b', // Rough granite gray
-    [sandResourceType.name]: '#c2b280', // Warm desert sand
-    [limestoneResourceType.name]: '#9c988b', // Pale mineral gray
-    [cementResourceType.name]: '#7e8387', // Cool powdered cement
-    [concreteResourceType.name]: '#61676c', // Dark structural concrete
-    [glassResourceType.name]: '#78c6d6', // Translucent cyan glass
+    [stoneResourceType.name]: '#706e6b',
+    [sandResourceType.name]: '#c2b280',
+    [limestoneResourceType.name]: '#9c988b',
+    [cementResourceType.name]: '#7e8387',
+    [concreteResourceType.name]: '#61676c',
+    [glassResourceType.name]: '#78c6d6',
 
-    // -------------------------------------------------------------
-    // Copper & Electronics — Metallic Copper to High-Tech Teal
-    // -------------------------------------------------------------
-    [copperOreResourceType.name]: '#a35029', // Raw copper rock
-    [copperResourceType.name]: '#c96f3c', // Refined metallic copper
-    [siliconWaferResourceType.name]: '#4b9bb0', // Clean tech silicon blue
-    [electronicsResourceType.name]: '#337f94', // Circuit board teal
-    [consumerElectronicsResourceType.name]: '#226073', // Finished tech dark teal
+    [copperOreResourceType.name]: '#a35029',
+    [copperResourceType.name]: '#c96f3c',
+    [siliconWaferResourceType.name]: '#4b9bb0',
+    [electronicsResourceType.name]: '#337f94',
+    [consumerElectronicsResourceType.name]: '#226073',
 
-    // -------------------------------------------------------------
-    // Cotton & Textiles — ColorBrewer "Purples" / "BuPu"
-    // -------------------------------------------------------------
-    [cottonResourceType.name]: '#c4b5fd', // Soft raw cotton lavender
-    [fabricResourceType.name]: '#a78bfa', // Woven fabric violet
-    [clothingResourceType.name]: '#8b5cf6', // Finished garment rich purple
+    [cottonResourceType.name]: '#c4b5fd',
+    [fabricResourceType.name]: '#a78bfa',
+    [clothingResourceType.name]: '#8b5cf6',
 
-    // -------------------------------------------------------------
-    // Packaging — ColorBrewer "RdPu" (Muted Berry Pink)
-    // -------------------------------------------------------------
-    [packagingResourceType.name]: '#db7093', // Distinct cardboard/wrap magenta-pink
+    [packagingResourceType.name]: '#db7093',
 
-    // -------------------------------------------------------------
-    // Services — Nord Slate / Teal Blue Sequential Palette
-    // -------------------------------------------------------------
-    [administrativeServiceResourceType.name]: '#475569', // Bureaucratic slate
-    [logisticsServiceResourceType.name]: '#3b82f6', // Freight blue
-    [constructionServiceResourceType.name]: '#60a5fa', // Builder light blue
-    [groceryServiceResourceType.name]: '#34d399', // Market mint green
-    [retailServiceResourceType.name]: '#38bdf8', // Commercial sky blue
-    [healthcareServiceResourceType.name]: '#2dd4bf', // Medical teal
-    [educationServiceResourceType.name]: '#818cf8', // Academic indigo
-    [maintenanceServiceResourceType.name]: '#64748b', // Utility steel gray
+    [administrativeServiceResourceType.name]: '#475569',
+    [logisticsServiceResourceType.name]: '#3b82f6',
+    [constructionServiceResourceType.name]: '#60a5fa',
+    [groceryServiceResourceType.name]: '#34d399',
+    [retailServiceResourceType.name]: '#38bdf8',
+    [healthcareServiceResourceType.name]: '#2dd4bf',
+    [educationServiceResourceType.name]: '#818cf8',
+    [maintenanceServiceResourceType.name]: '#64748b',
 };
 function resourceColor(name: string): string {
     return RESOURCE_COLOR_MAP[name] ?? '#a0a0a0';
@@ -360,52 +328,6 @@ function yDomainFor(points: MergedPoint[], productNames: string[]): [number, num
     }
     const pad = (hi - lo) * 0.08;
     return [lo - pad, hi + pad];
-}
-
-function logTicksFor(points: MergedPoint[], productNames: string[]): number[] | undefined {
-    const allValues: number[] = [];
-    for (const p of points) {
-        for (const name of productNames) {
-            const v = p[name];
-            if (v !== null && typeof v === 'number' && v > 0) {
-                allValues.push(v);
-            }
-        }
-    }
-    if (allValues.length === 0) {
-        return undefined;
-    }
-    const minP = Math.min(...allValues);
-    const maxP = Math.max(...allValues);
-    if (minP === maxP) {
-        const e = Math.floor(Math.log10(minP));
-        const lower = Math.pow(10, e);
-        const upper = Math.pow(10, e + 1);
-        return lower === upper ? [lower] : [lower, upper];
-    }
-    const result: number[] = [];
-    for (let e = Math.floor(Math.log10(minP)); e <= Math.ceil(Math.log10(maxP)); e++) {
-        result.push(Math.pow(10, e));
-    }
-    return result;
-}
-
-function usesLogScale(points: MergedPoint[], productNames: string[]): boolean {
-    const allValues: number[] = [];
-    for (const p of points) {
-        for (const name of productNames) {
-            const v = p[name];
-            if (v !== null && typeof v === 'number' && v > 0) {
-                allValues.push(v);
-            }
-        }
-    }
-    if (allValues.length < 2) {
-        return false;
-    }
-    const lo = Math.min(...allValues);
-    const hi = Math.max(...allValues);
-    return lo > 0 && hi / lo >= 10;
 }
 
 type QueryResult = { productName: string; granularity: Granularity; history: Row[]; isLoading: boolean };
@@ -625,26 +547,27 @@ export default function MultiProductPriceChart({
         return sorted;
     }, [results, selectedProducts, granularity, rescaleMode, liveTick, livePrices, locale]);
 
-    const scale = useMemo(() => {
-        if (mergedData.length === 0) {
-            return 'linear' as const;
+    const valueSpread = useMemo(() => {
+        const values: number[] = [];
+        for (const p of mergedData) {
+            for (const name of selectedProducts) {
+                const v = p[name];
+                if (typeof v === 'number') {
+                    values.push(v);
+                }
+            }
         }
-        return usesLogScale(mergedData, selectedProducts) ? ('log' as const) : ('linear' as const);
+        return values;
     }, [mergedData, selectedProducts]);
 
-    const yTicks = useMemo(() => {
-        if (scale === 'log') {
-            return logTicksFor(mergedData, selectedProducts);
-        }
-        return undefined;
-    }, [mergedData, selectedProducts, scale]);
+    const logAxis = useMemo(() => trimmedLogAxis(valueSpread), [valueSpread]);
+    const yDomain = useMemo(
+        () => logAxis?.domain ?? yDomainFor(mergedData, selectedProducts),
+        [logAxis, mergedData, selectedProducts],
+    );
 
-    const yDomain = useMemo(() => {
-        if (scale === 'log' && yTicks) {
-            return [Math.min(...yTicks), Math.max(...yTicks)] as [number, number];
-        }
-        return yDomainFor(mergedData, selectedProducts);
-    }, [mergedData, selectedProducts, scale, yTicks]);
+    const scale = logAxis ? ('log' as const) : ('linear' as const);
+    const yTicks = logAxis?.ticks;
 
     const xTickFormatter = (bucket: number) => {
         if (bucket === liveTick) {

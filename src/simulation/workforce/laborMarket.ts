@@ -2,6 +2,7 @@ import {
     ACCEPT_BASE,
     MIN_EMPLOYABLE_AGE,
     QUIT_FAIRNESS_SENSITIVITY,
+    QUIT_JOB_FINDING_FLOOR,
     QUIT_OUTSIDE_SENSITIVITY,
     QUIT_OUTSIDE_WAGE_BIAS,
     SEARCH_HORIZON_TICKS,
@@ -43,18 +44,11 @@ export const jobFindingProbability = (tightness: number): number =>
     1 - Math.pow(1 - Math.min(1, tightness), SEARCH_HORIZON_TICKS);
 
 export const outsideIncome = (tightness: number, vacancyWage: number): number =>
-    jobFindingProbability(tightness) * vacancyWage;
+    (QUIT_JOB_FINDING_FLOOR + (1 - QUIT_JOB_FINDING_FLOOR) * jobFindingProbability(tightness)) * vacancyWage;
 
 export const acceptProbability = (wage: number, threshold: number): number =>
     ACCEPT_BASE / (1 + Math.exp(-(wage - threshold) / WAGE_ACCEPT_SCALE));
 
-// A worker of a given education tier only takes a job that clears their personal
-// reservation, formed from the going wage of their tier (reachableVacancyWage)
-// discounted by how long they'd realistically have to search. Anchoring to the
-// tier's own wage ladder (not to costOfLiving, which lags market-price spikes)
-// and eroding the reservation with longer expected joblessness removes the
-// wage/CoL refusal lock that otherwise turns a goods shortage into a labour
-// collapse. See tools/longrun/labor-market-col-wedge.md.
 export const reservationWage = (reachableTightness: number, reachableVacancyWage: number): number => {
     const jobProb = jobFindingProbability(reachableTightness);
     const expectedWaiting = jobProb > 0 ? 1 / jobProb : Number.POSITIVE_INFINITY;
@@ -74,9 +68,7 @@ export const quitPropensity = (wage: number, tightness: number, vacancyWage: num
     const exitGap = clampUnit((outside - wage) / wage);
     const fairnessGap = clampUnit((fairWage - wage) / fairWage);
 
-    const raw =
-        QUIT_OUTSIDE_SENSITIVITY * exitGap + //
-        QUIT_FAIRNESS_SENSITIVITY * fairnessGap;
+    const raw = QUIT_OUTSIDE_SENSITIVITY * exitGap + QUIT_FAIRNESS_SENSITIVITY * fairnessGap;
     return Math.max(0, Math.min(raw, QUIT_RATE_CAP));
 };
 

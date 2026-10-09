@@ -6,6 +6,7 @@ import { tickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { usePriceScaleModePreference, type PriceScaleMode } from '@/hooks/uiPreferences';
 import { liveYearX } from '@/lib/chartTime';
+import { trimmedLogAxis } from '@/lib/logScaleAxis';
 import { useTRPC } from '@/lib/trpc';
 import type { Locale } from '@/i18n/config';
 import { formatNumberWithUnit } from '@/lib/utils';
@@ -68,42 +69,6 @@ function yDomainFor(points: ChartPoint[]): [number, number] {
     }
     const pad = (hi - lo) * 0.08;
     return [lo - pad, hi + pad];
-}
-
-function logTicksFor(points: ChartPoint[]): number[] | undefined {
-    const prices = points.map((d) => d.avgPrice).filter((v) => v > 0);
-    if (prices.length === 0) {
-        return undefined;
-    }
-    const minP = Math.min(...prices);
-    const maxP = Math.max(...prices);
-    if (minP === maxP) {
-        const e = Math.floor(Math.log10(minP));
-        const lower = Math.pow(10, e);
-        const upper = Math.pow(10, e + 1);
-        return lower === upper ? [lower] : [lower, upper];
-    }
-    const result: number[] = [];
-    for (let e = Math.floor(Math.log10(minP)); e <= Math.ceil(Math.log10(maxP)); e++) {
-        result.push(Math.pow(10, e));
-    }
-    return result;
-}
-
-function logDomainFor(ticks: number[]): [number, number] {
-    const min = Math.min(...ticks);
-    const max = Math.max(...ticks);
-    return [min, max];
-}
-
-function usesLogScale(points: ChartPoint[]): boolean {
-    const prices = points.map((d) => d.avgPrice).filter((v) => v > 0);
-    if (prices.length < 2) {
-        return false;
-    }
-    const lo = Math.min(...prices);
-    const hi = Math.max(...prices);
-    return lo > 0 && hi / lo >= 10;
 }
 
 type PriceLabelKey =
@@ -654,12 +619,8 @@ function YearlyChart({
 
     const scaleData = useMemo(() => (rescaleMode === 'relative' ? rescalePoints(data) : data), [data, rescaleMode]);
 
-    const useLog = useMemo(() => usesLogScale(scaleData), [scaleData]);
-    const yTicks = useMemo(() => (useLog ? logTicksFor(scaleData) : undefined), [scaleData, useLog]);
-    const yDomain = useMemo(
-        () => (useLog && yTicks ? logDomainFor(yTicks) : yDomainFor(scaleData)),
-        [scaleData, useLog, yTicks],
-    );
+    const logAxis = useMemo(() => trimmedLogAxis(scaleData.map((d) => d.avgPrice)), [scaleData]);
+    const yDomain = useMemo(() => logAxis?.domain ?? yDomainFor(scaleData), [scaleData, logAxis]);
     const gradId = `grad_yr_${productName.replace(/\s+/g, '_')}`;
 
     const yearlyAxis = yearWindowAxis(
@@ -677,9 +638,9 @@ function YearlyChart({
                 xTicks={yearlyAxis.ticks}
                 xTickFormatter={yearlyAxis.tickFormatter}
                 tooltipLabelFormatter={(v) => formatYearLabel(locale, v)}
-                scale={useLog ? 'log' : 'linear'}
+                scale={logAxis ? 'log' : 'linear'}
                 yDomain={yDomain}
-                yTicks={data.length === 0 ? [] : yTicks}
+                yTicks={data.length === 0 ? [] : logAxis?.ticks}
                 verticalGridValues={yearlyAxis.gridValues}
                 rescaleMode={rescaleMode}
                 planetId={planetId}
@@ -720,12 +681,8 @@ function DecadesChart({
 
     const scaleData = useMemo(() => (rescaleMode === 'relative' ? rescalePoints(data) : data), [data, rescaleMode]);
 
-    const useLog = useMemo(() => usesLogScale(scaleData), [scaleData]);
-    const yTicks = useMemo(() => (useLog ? logTicksFor(scaleData) : undefined), [scaleData, useLog]);
-    const yDomain = useMemo(
-        () => (useLog && yTicks ? logDomainFor(yTicks) : yDomainFor(scaleData)),
-        [scaleData, useLog, yTicks],
-    );
+    const logAxis = useMemo(() => trimmedLogAxis(scaleData.map((d) => d.avgPrice)), [scaleData]);
+    const yDomain = useMemo(() => logAxis?.domain ?? yDomainFor(scaleData), [scaleData, logAxis]);
     const gradId = `grad_dec_${productName.replace(/\s+/g, '_')}`;
 
     const decade = decadeWindowAxis(
@@ -743,9 +700,9 @@ function DecadesChart({
                 xTicks={decade.ticks}
                 xTickFormatter={decade.tickFormatter}
                 tooltipLabelFormatter={(v) => formatDecadeLabel(locale, v)}
-                scale={useLog ? 'log' : 'linear'}
+                scale={logAxis ? 'log' : 'linear'}
                 yDomain={yDomain}
-                yTicks={data.length === 0 ? [] : yTicks}
+                yTicks={data.length === 0 ? [] : logAxis?.ticks}
                 verticalGridValues={decade.gridValues}
                 rescaleMode={rescaleMode}
                 planetId={planetId}

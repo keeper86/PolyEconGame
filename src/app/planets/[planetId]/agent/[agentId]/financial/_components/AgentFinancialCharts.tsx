@@ -59,18 +59,10 @@ export default function AgentFinancialCharts({
 
     const monthlyHistory = useMemo(() => monthlyData?.history ?? [], [monthlyData]);
     const activeMonthlyData = useMemo(
-        () => (currentTick > 0 ? computeFinancialMonthlyData(monthlyHistory, currentTick, live) : []),
-        [monthlyHistory, currentTick, live],
-    );
-    const activeGhostData = useMemo(
-        () => (currentTick > 0 ? computeFinancialGhostData(monthlyHistory, currentTick, live) : []),
-        [monthlyHistory, currentTick, live],
-    );
-    const balanceMonthlyData = useMemo(
         () => (currentTick > 0 ? computeFinancialMonthlyData(monthlyHistory, currentTick, live, 'end') : []),
         [monthlyHistory, currentTick, live],
     );
-    const balanceGhostData = useMemo(
+    const activeGhostData = useMemo(
         () => (currentTick > 0 ? computeFinancialGhostData(monthlyHistory, currentTick, live, 'end') : []),
         [monthlyHistory, currentTick, live],
     );
@@ -78,13 +70,6 @@ export default function AgentFinancialCharts({
     const activeData: FinancialPoint[] | FinancialChartPoint[] =
         granularity === 'monthly'
             ? activeMonthlyData
-            : granularity === 'yearly'
-              ? (yearlyData?.history ?? [])
-              : (decadeData?.history ?? []);
-
-    const balanceActiveData: FinancialPoint[] | FinancialChartPoint[] =
-        granularity === 'monthly'
-            ? balanceMonthlyData
             : granularity === 'yearly'
               ? (yearlyData?.history ?? [])
               : (decadeData?.history ?? []);
@@ -113,8 +98,8 @@ export default function AgentFinancialCharts({
                 )}
                 <div data-tour='financial-balance-flow-chart'>
                     <BalanceFlowChart
-                        data={balanceActiveData}
-                        ghostData={granularity === 'monthly' ? balanceGhostData : undefined}
+                        data={activeData}
+                        ghostData={granularity === 'monthly' ? activeGhostData : undefined}
                         granularity={granularity}
                         live={live}
                     />

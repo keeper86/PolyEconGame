@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { liveYearX } from '@/lib/chartTime';
 import { PREVIOUS_DECEMBER_END_IDX } from '@/lib/historyChartAxis';
-import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
-import { computeMonthlyPopulation, computeMonthlyPopulationGhost } from './populationChartLogic';
+import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
+import {
+    computeDecadePopulation,
+    computeMonthlyPopulation,
+    computeMonthlyPopulationGhost,
+    computeYearlyPopulation,
+} from './populationChartLogic';
 import type { PopulationBucketPoint, PopulationLive } from './populationChartLogic';
 
 function bucketTick(yearOffset: number, monthIndex: number): number {
@@ -75,5 +81,47 @@ describe('computeMonthlyPopulationGhost', () => {
 
     it('returns nothing without a live tick', () => {
         expect(computeMonthlyPopulationGhost(buckets, { tick: 0, population: 0 })).toEqual([]);
+    });
+});
+
+describe('computeYearlyPopulation', () => {
+    const yearlyBuckets: PopulationBucketPoint[] = [
+        { bucket: bucketTick(0, 0), avgPopulation: 1000 },
+        { bucket: bucketTick(1, 0), avgPopulation: 1100 },
+        { bucket: bucketTick(2, 0), avgPopulation: 1200 },
+    ];
+
+    it('places each averaged year at the interval centre, not the year end', () => {
+        const rows = computeYearlyPopulation(yearlyBuckets);
+        expect(rows.map((p) => p.xPos)).toEqual([START_YEAR + 0.5, START_YEAR + 1.5, START_YEAR + 2.5]);
+        expect(rows.map((p) => p.labelYear)).toEqual([START_YEAR, START_YEAR + 1, START_YEAR + 2]);
+        expect(rows.map((p) => p.value)).toEqual([1000, 1100, 1200]);
+    });
+
+    it('appends the live sample at its fractional year position', () => {
+        const rows = computeYearlyPopulation(yearlyBuckets, live);
+        expect(rows).toHaveLength(yearlyBuckets.length + 1);
+        expect(rows[rows.length - 1].xPos).toBeCloseTo(liveYearX(live.tick), 6);
+        expect(rows[rows.length - 1].value).toBe(live.population);
+    });
+});
+
+describe('computeDecadePopulation', () => {
+    const decadeBuckets: PopulationBucketPoint[] = [
+        { bucket: bucketTick(0, 0), avgPopulation: 1000 },
+        { bucket: bucketTick(10, 0), avgPopulation: 1100 },
+        { bucket: bucketTick(20, 0), avgPopulation: 1200 },
+    ];
+
+    it('places each averaged decade at the interval centre, not the decade end', () => {
+        const rows = computeDecadePopulation(decadeBuckets);
+        expect(rows.map((p) => p.xPos)).toEqual([START_YEAR + 5, START_YEAR + 15, START_YEAR + 25]);
+        expect(rows.map((p) => p.labelYear)).toEqual([START_YEAR, START_YEAR + 10, START_YEAR + 20]);
+    });
+
+    it('appends the live sample at its fractional year position', () => {
+        const rows = computeDecadePopulation(decadeBuckets, live);
+        expect(rows).toHaveLength(decadeBuckets.length + 1);
+        expect(rows[rows.length - 1].xPos).toBeCloseTo(liveYearX(live.tick), 6);
     });
 });

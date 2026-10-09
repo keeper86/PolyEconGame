@@ -4,7 +4,7 @@ import { tickToDate } from '@/components/client/TickDisplay';
 import { liveYearX } from '@/lib/chartTime';
 import {
     DECADE_WINDOW,
-    PREVIOUS_DECEMBER_IDX,
+    PREVIOUS_DECEMBER_END_IDX,
     YEAR_WINDOW,
     decadeCentre,
     decadeStart,
@@ -12,10 +12,10 @@ import {
     formatDecadeLabel,
     formatMonthLabel,
     formatYearLabel,
-    ghostMonthVisible,
-    isLiveMonthPoint,
+    ghostMonthEndVisible,
+    isLiveMonthEndPoint,
     monthAxis,
-    monthCentre,
+    monthEnd,
     yearCentre,
     yearStart,
     yearWindowAxis,
@@ -92,7 +92,7 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
             const point: ChartPoint = {
                 tick: p.bucket,
                 year: latestYear,
-                monthIdx: monthCentre(p.bucket),
+                monthIdx: monthEnd(p.bucket),
             };
             for (const key of BUFFER_KEYS) {
                 const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
@@ -106,7 +106,11 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
         return year === latestYear - 1 && monthIndex === 11;
     });
     if (prevDecPoint) {
-        const prev: ChartPoint = { tick: prevDecPoint.bucket, year: latestYear - 1, monthIdx: PREVIOUS_DECEMBER_IDX };
+        const prev: ChartPoint = {
+            tick: prevDecPoint.bucket,
+            year: latestYear - 1,
+            monthIdx: PREVIOUS_DECEMBER_END_IDX,
+        };
         for (const key of BUFFER_KEYS) {
             const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
             prev[key] = toPercent(prevDecPoint[dbKey] as number);
@@ -118,7 +122,7 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
             const prev: ChartPoint = {
                 tick: lastBefore.bucket,
                 year: latestYear - 1,
-                monthIdx: PREVIOUS_DECEMBER_IDX,
+                monthIdx: PREVIOUS_DECEMBER_END_IDX,
             };
             for (const key of BUFFER_KEYS) {
                 const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
@@ -128,7 +132,6 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
         }
     }
 
-    // Insert live data point with fractional month index
     if (live.tick > 0) {
         const { year: liveYear, monthIndex: liveMi, day: liveDay } = tickToDate(live.tick);
         if (liveYear === latestYear) {
@@ -160,12 +163,12 @@ function computeBufferGhostData(allPts: RawPoint[], currentTick: number): ChartP
     const livePosition = monthIndex + Math.max(day - 1, 0.001) / TICKS_PER_MONTH;
 
     return pts
-        .filter((p) => tickToDate(p.bucket).year === latestYear - 1 && ghostMonthVisible(p.bucket, livePosition))
+        .filter((p) => tickToDate(p.bucket).year === latestYear - 1 && ghostMonthEndVisible(p.bucket, livePosition))
         .map((p) => {
             const point: ChartPoint = {
                 tick: p.bucket,
                 year: latestYear - 1,
-                monthIdx: monthCentre(p.bucket),
+                monthIdx: monthEnd(p.bucket),
             };
             for (const key of BUFFER_KEYS) {
                 const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
@@ -333,7 +336,11 @@ function BufferAreaChart({
                             const point = payload[0]?.payload as ChartPoint | undefined;
                             const pointLabel =
                                 granularity === 'monthly'
-                                    ? formatMonthLabel(locale, label as number, point?.year ?? 0)
+                                    ? formatMonthLabel(
+                                          locale,
+                                          point ? tickToDate(point.tick).monthIndex : Math.floor(label as number),
+                                          point ? tickToDate(point.tick).year : 0,
+                                      )
                                     : granularity === 'yearly'
                                       ? formatYearLabel(locale, label as number)
                                       : formatDecadeLabel(locale, label as number);
@@ -381,13 +388,13 @@ function BufferAreaChart({
                                     const tick = payload?.tick;
                                     const dotKey = monthIdx ?? tick;
                                     const value = payload?.[key];
-                                    if (monthIdx === PREVIOUS_DECEMBER_IDX) {
+                                    if (monthIdx === PREVIOUS_DECEMBER_END_IDX) {
                                         return <circle key={`${key}_${dotKey}_anchor`} r={0} visibility='hidden' />;
                                     }
                                     if (value == null || typeof value !== 'number') {
                                         return <circle key={`${key}_${dotKey}_null`} r={0} visibility='hidden' />;
                                     }
-                                    if (cx != null && !isNaN(cx) && isLiveMonthPoint(monthIdx)) {
+                                    if (cx != null && !isNaN(cx) && isLiveMonthEndPoint(monthIdx)) {
                                         return (
                                             <circle
                                                 key={`${key}_${dotKey}_live`}

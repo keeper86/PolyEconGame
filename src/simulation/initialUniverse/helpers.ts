@@ -15,7 +15,7 @@ import {
     type ProductionFacility,
     type Storage,
 } from '../planet/facility';
-import { updateAgentShellCompartments } from '../planet/automaticProductionScale/shellCompartments';
+import { authorShellCompartments } from '../planet/automaticProductionScale/shellCompartments';
 import {
     createEmptyAccumulator,
     createEmptyDemographicEventCounters,
@@ -171,18 +171,11 @@ export function prefillAgentStorageFromFacilities(gameState: { agents: Map<strin
     }
 }
 
-// Seed-time equivalent of the runtime reconcile step: give each physical shell the scale the
-// compartment allocator reports as required for the agent's produced footprint, so a fresh world does
-// not start under-capacity and has to fight for construction budget before the market matures.
-// The allocator runs a second time because it derives shares from the shell's current scale: the first
-// pass reports the required scale while the shell is still undersized and may fall back to equal shares
-// that do not match the footprint, so re-allocating after the resize leaves the prefill with the final
-// compartment split instead of a stale one.
 export function presizeAgentShellForFacilities(gameState: { agents: Map<string, Agent> }): void {
     for (const agent of gameState.agents.values()) {
         for (const [, rawAssets] of Object.entries(agent.assets)) {
             const assets = rawAssets as AgentPlanetAssets;
-            const sizing = updateAgentShellCompartments(assets);
+            const sizing = authorShellCompartments(assets);
             for (const form of storageFormKeys()) {
                 const required = sizing[form]?.requiredScale;
                 if (!required) {
@@ -193,7 +186,7 @@ export function presizeAgentShellForFacilities(gameState: { agents: Map<string, 
                 shell.scale = target;
                 shell.maxScale = target;
             }
-            updateAgentShellCompartments(assets);
+            authorShellCompartments(assets);
         }
     }
 }
@@ -224,8 +217,9 @@ export function createPopulation(total: number, buffer: number = DEFAULT_GROCERY
         }
 
         if (age === 0) {
-            // do nothing
-        } else if (age < 15) {
+            continue;
+        }
+        if (age < 15) {
             const noneEdu = Math.floor(ageCount * 0.8);
             addTo(pop, age, 'education', 'none', noneEdu);
             addTo(pop, age, 'education', 'primary', ageCount - noneEdu);

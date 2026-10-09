@@ -1,5 +1,15 @@
 import { tickToDate } from '@/components/client/TickDisplay';
-import { PREVIOUS_DECEMBER_END_IDX, monthEnd } from '@/lib/historyChartAxis';
+import { liveYearX } from '@/lib/chartTime';
+import {
+    DECADE_WINDOW,
+    PREVIOUS_DECEMBER_END_IDX,
+    YEAR_WINDOW,
+    decadeCentre,
+    decadeStart,
+    monthEnd,
+    yearCentre,
+    yearStart,
+} from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
 
 export type PopulationBucketPoint = {
@@ -99,4 +109,48 @@ export function computeMonthlyPopulationGhost(
             monthIdx: monthEnd(p.bucket),
             value: p.avgPopulation,
         }));
+}
+
+export type PopulationAxisPoint = {
+    tick: number;
+    xPos: number;
+    labelYear: number;
+    value: number;
+};
+
+function liveAxisPoint(live: PopulationLive): PopulationAxisPoint {
+    const xPos = liveYearX(live.tick);
+    return { tick: live.tick, xPos, labelYear: xPos, value: live.population };
+}
+
+export function computeYearlyPopulation(
+    buckets: PopulationBucketPoint[],
+    live?: PopulationLive,
+): PopulationAxisPoint[] {
+    const rows = [...buckets]
+        .sort((a, b) => a.bucket - b.bucket)
+        .slice(-YEAR_WINDOW)
+        .map((p) => ({
+            tick: p.bucket,
+            xPos: yearCentre(p.bucket),
+            labelYear: yearStart(p.bucket),
+            value: p.avgPopulation,
+        }));
+    return live && live.tick > 0 ? [...rows, liveAxisPoint(live)] : rows;
+}
+
+export function computeDecadePopulation(
+    buckets: PopulationBucketPoint[],
+    live?: PopulationLive,
+): PopulationAxisPoint[] {
+    const rows = [...buckets]
+        .sort((a, b) => a.bucket - b.bucket)
+        .slice(-DECADE_WINDOW)
+        .map((p) => ({
+            tick: p.bucket,
+            xPos: decadeCentre(p.bucket),
+            labelYear: decadeStart(p.bucket),
+            value: p.avgPopulation,
+        }));
+    return live && live.tick > 0 ? [...rows, liveAxisPoint(live)] : rows;
 }

@@ -4,7 +4,6 @@ import { tickToDate } from '@/components/client/TickDisplay';
 import { liveYearX } from '@/lib/chartTime';
 import {
     DECADE_WINDOW,
-    DECADE_YEARS,
     YEAR_WINDOW,
     blendLive,
     bucketProgress,
@@ -32,8 +31,8 @@ import { FinancialTooltip } from './FinancialTooltip';
 import {
     MONTHLY_GRID_VALUES,
     MONTHLY_X_TICKS,
-    bucketDecadeEnd,
-    bucketYearEnd,
+    bucketDecadeMid,
+    bucketYearMid,
     formatDecadeLabel,
     formatYearLabel,
     naturalDomain,
@@ -115,7 +114,7 @@ export function BalanceFlowChart({
         const rows = [...(data as FinancialPoint[])]
             .sort((a, b) => a.bucket - b.bucket)
             .map((p) => {
-                const xVal = granularity === 'decade' ? bucketDecadeEnd(p.bucket) : bucketYearEnd(p.bucket);
+                const xVal = granularity === 'decade' ? bucketDecadeMid(p.bucket) : bucketYearMid(p.bucket);
                 const labelAnchor = granularity === 'decade' ? decadeStart(p.bucket) : tickToDate(p.bucket).year;
                 return {
                     xVal,
@@ -167,8 +166,8 @@ export function BalanceFlowChart({
         if (granularity === 'yearly') {
             const yearlyPts = (data as FinancialPoint[]).slice(-YEAR_WINDOW);
             const axis = yearWindowAxis(
-                yearlyPts.length > 0 ? yearStart(yearlyPts[0].bucket) + 1 : undefined,
-                liveRow ? liveRow.xVal + 1 : undefined,
+                yearlyPts.length > 0 ? yearStart(yearlyPts[0].bucket) : undefined,
+                liveRow?.xVal,
             );
             return {
                 dataKey: 'xVal' as const,
@@ -181,9 +180,9 @@ export function BalanceFlowChart({
             };
         }
         const decadePts = (data as FinancialPoint[]).slice(-DECADE_WINDOW);
-        const lastDecadeX = decadePts.length > 0 ? bucketDecadeEnd(decadePts[decadePts.length - 1].bucket) : undefined;
+        const lastDecadeX = decadePts.length > 0 ? bucketDecadeMid(decadePts[decadePts.length - 1].bucket) : undefined;
         const decade = decadeWindowAxis(
-            decadePts.length > 0 ? decadeStart(decadePts[0].bucket) + DECADE_YEARS : undefined,
+            decadePts.length > 0 ? decadeStart(decadePts[0].bucket) : undefined,
             liveRow?.xVal ?? lastDecadeX,
         );
         return {

@@ -46,7 +46,12 @@ import {
     reservationWage,
 } from './laborMarket';
 import { workforceDemographicTick } from './workforceDemographicTick';
-import { QUIT_FAIRNESS_SENSITIVITY, QUIT_OUTSIDE_SENSITIVITY, QUIT_OUTSIDE_WAGE_BIAS } from '../constants';
+import {
+    QUIT_FAIRNESS_SENSITIVITY,
+    QUIT_JOB_FINDING_FLOOR,
+    QUIT_OUTSIDE_SENSITIVITY,
+    QUIT_OUTSIDE_WAGE_BIAS,
+} from '../constants';
 
 const BIASED_PARITY_WAGE = 100 / QUIT_OUTSIDE_WAGE_BIAS;
 
@@ -78,10 +83,19 @@ describe('labor market helpers', () => {
         expect(jobFindingProbability(0.01)).toBeCloseTo(1 - Math.pow(0.99, SEARCH_HORIZON_TICKS), 10);
     });
 
-    it('outsideIncome equals the job-finding probability times the vacancy wage', () => {
-        expect(outsideIncome(0, 100)).toBe(0);
+    it('outsideIncome floors the job-finding chance so unemployment cannot zero the outside option', () => {
+        expect(jobFindingProbability(0)).toBe(0);
+        expect(outsideIncome(0, 100)).toBeCloseTo(QUIT_JOB_FINDING_FLOOR * 100, 10);
         expect(outsideIncome(1, 100)).toBe(100);
-        expect(outsideIncome(0.01, 100)).toBeCloseTo((1 - Math.pow(0.99, SEARCH_HORIZON_TICKS)) * 100, 6);
+        const floored =
+            QUIT_JOB_FINDING_FLOOR + (1 - QUIT_JOB_FINDING_FLOOR) * (1 - Math.pow(0.99, SEARCH_HORIZON_TICKS));
+        expect(outsideIncome(0.01, 100)).toBeCloseTo(floored * 100, 6);
+    });
+
+    it('caps the unemployment drag at half, so a comparable outside market is not a dead end', () => {
+        expect(quitPropensity(100, 0, 100, 100)).toBe(0);
+        expect(quitPropensity(100, 0, 100, 1000)).toBeGreaterThan(0);
+        expect(quitPropensity(100, 0, 10, 1000)).toBeGreaterThan(0);
     });
 
     it('acceptProbability rises with wage and saturates at ACCEPT_BASE', () => {
@@ -108,37 +122,36 @@ describe('labor market helpers', () => {
         expect(quitPropensity(100, 1, 130, 100)).toBeGreaterThan(0);
     });
 
-    it('makes the ratio of the two weights, not their size, decide ignition', () => {
-        const deadOutsideMarket = quitPropensity(100, 0, 0, 1e9);
-        const fairnessOutweighsOutside = QUIT_FAIRNESS_SENSITIVITY > QUIT_OUTSIDE_SENSITIVITY;
+    it('fairness outweighs the outside option, but only once the outside market has its floored chance', () => {
+        const deadOutsideMarket = quitPropensity(100, 0, 0, 200);
+        const flooredOutsideMarket = quitPropensity(100, 0, 100, 300);
+        const liveOutsideMarket = quitPropensity(100, 1, 130, 300);
 
-        expect(deadOutsideMarket > 0).toBe(fairnessOutweighsOutside);
+        expect(QUIT_FAIRNESS_SENSITIVITY).toBeGreaterThan(QUIT_OUTSIDE_SENSITIVITY);
+        expect(deadOutsideMarket).toBe(0);
+        expect(flooredOutsideMarket).toBeGreaterThan(0);
+        expect(liveOutsideMarket).toBeGreaterThan(flooredOutsideMarket);
     });
 
     it('reservationWage anchors to the going tier rate and does NOT depend on cost of living', () => {
-        // In a tight market (instant-ish search) the reservation is a fixed FRACTION of the
-        // tier's reachable vacancy wage. costOfLiving is not an input, so a consumer price
-        // spike cannot raise the reservation (the pre-fix refusal lock) on its own.
-        const tight = reservationWage(1.0, 200); // jobFindingProbability(tightness 1)=1 -> discount=WAGE_DURATION_DECAY
+        const tight = reservationWage(1.0, 200);
         expect(tight).toBeCloseTo(0.8 * 200 * WAGE_DURATION_DECAY, 6);
-        // A very high tier wage raises the reservation; low tier wage lowers it.
+
         expect(reservationWage(1.0, 10000)).toBeGreaterThan(tight);
     });
 
     it('reservationWage erodes as jobs get harder to find, so protracted unemployment lowers the bar', () => {
-        // 0.5 reachable tightness => finding prob <1 => expected waiting grows => reservation falls.
         const instant = reservationWage(1.0, 100);
         const scarce = reservationWage(0.2, 100);
         expect(scarce).toBeLessThan(instant);
-        // With essentially no reachable vacancies the reservation collapses so any wage clears it:
-        // workers in deep unemployment eventually take almost any job (no CoL refusal lock).
+
         expect(reservationWage(0, 100)).toBeLessThan(0.05);
         expect(acceptProbability(1, reservationWage(0, 100))).toBeGreaterThan(acceptProbability(1, 100));
     });
 
     it('a wage at the going tier rate is accepted in a tight market', () => {
         const threshold = reservationWage(1.0, 100);
-        // offered wage == the going rate clears the reservation comfortably -> high acceptance
+
         expect(acceptProbability(100, threshold)).toBeGreaterThan(0.04);
     });
 });
@@ -154,7 +167,6 @@ describe('betterOfferMeanWage', () => {
     });
 
     it('returns the vacancy-weighted mean of the offers above the current wage', () => {
-        // 100 vacancies at wage 10, 200 vacancies at wage 20
         const steps = [
             { wage: 10, cumVacancy: 100, cumWage: 1000 },
             { wage: 20, cumVacancy: 300, cumWage: 5000 },
@@ -362,15 +374,15 @@ describe('hireWorkforce', () => {
         hireWorkforce(agentMap(agent), p);
 
         const workforce = agent.assets.p.workforceDemography!;
-        // Workers go to onboarding pipeline, not active directly
+
         expect(totalActiveForEdu(workforce, 'primary')).toBe(0);
         let onboardingTotal = 0;
         for (let age = 0; age < workforce.length; age++) {
             onboardingTotal += workforce[age].primary.onboarding[NOTICE_PERIOD_MONTHS - 1];
         }
-        // The wage dominates the outside option, so workers accept at the base rate and the full target is filled.
+
         expect(onboardingTotal).toBe(500);
-        // Population should have been transferred from unoccupied to employed
+
         expect(sumPopOcc(p, 'primary', 'employed')).toBe(500);
     });
 
@@ -446,15 +458,14 @@ describe('hireWorkforce', () => {
         hireWorkforce(agentMap(agent), p);
 
         const workforce = agent.assets.p.workforceDemography!;
-        // Workers go to the last onboarding slot, not directly to active
+
         expect(totalActiveForEdu(workforce, 'primary')).toBe(0);
-        // Check the last onboarding slot has the workers
+
         let onboardingTotal = 0;
         for (let age = 0; age < workforce.length; age++) {
             onboardingTotal += workforce[age].primary.onboarding[NOTICE_PERIOD_MONTHS - 1];
         }
-        // With probToAccept ≈ 0.05, totalWilling = 100000 * 0.05 = 5000
-        // Cap: Math.floor(min(3000, 5000)) = 3000
+
         expect(onboardingTotal).toBe(3000);
     });
 
@@ -518,14 +529,13 @@ describe('hireWorkforce', () => {
         hireWorkforce(agentMap(regularAgent), p);
 
         const wf = regularAgent.assets.p.workforceDemography!;
-        // Workers go to onboarding pipeline, not active
+
         expect(totalActiveForEdu(wf, 'none')).toBe(0);
         let onboardingTotal = 0;
         for (let age = 0; age < wf.length; age++) {
             onboardingTotal += wf[age].none.onboarding[NOTICE_PERIOD_MONTHS - 1];
         }
-        // With probToAccept ≈ 0.05, totalWilling = 10000 * 0.05 = 500
-        // Cap: Math.floor(min(500, 500)) = 500
+
         expect(onboardingTotal).toBe(500);
     });
 });
@@ -631,7 +641,7 @@ describe('per-education level isolation', () => {
         hireWorkforce(agentMap(agent), planet);
 
         const wf = agent.assets.p.workforceDemography!;
-        // No native none workers exist, so the none slot shortfall is filled by primary workers.
+
         expect(sumPopOcc(planet, 'none', 'employed')).toBe(0);
         expect(totalOnboardingForEdu(wf, 'primary')).toBe(500);
     });
@@ -646,8 +656,6 @@ describe('per-education level isolation', () => {
         agent.assets.p.wagePerEdu.none = 1e9;
         hireWorkforce(agentMap(agent), planet);
 
-        // After first hire, workers are in the last onboarding slot
-        // Move them to active for the firing test
         const wf = agent.assets.p.workforceDemography!;
         for (let age = 0; age < wf.length; age++) {
             const cat = wf[age].none;
@@ -663,8 +671,6 @@ describe('per-education level isolation', () => {
 
         hireWorkforce(agentMap(agent), planet);
 
-        // With probToAccept ≈ 0.05, totalWilling = 10000 * 0.05 = 500
-        // Cap: Math.floor(min(500, 500)) = 500
         expect(totalActiveForEdu(wf, 'primary')).toBe(500);
     });
 });
@@ -784,8 +790,6 @@ describe('overqualified backfill substitution', () => {
         automaticWorkerAllocation(agentMap(agent), planet);
         hireWorkforce(agentMap(agent), planet);
 
-        // target[none] = used[none] * 1.05 (slots are full, so no slot gap) — only the 5% idle
-        // buffer creates demand. ~3 natives enter the buffer, but the 950 overqualified stay.
         expect(unoccNoneBefore - sumPopOcc(planet, 'none', 'unoccupied')).toBeLessThanOrEqual(5);
         expect(totalActiveForEdu(wf, 'secondary')).toBe(950);
     });

@@ -685,7 +685,7 @@
     },
     "Financial": {
         "balanceFlowTitle": "Cash Balance & Net Position",
-        "expensesRevenueTitle": "Expenses & Revenue",
+        "expensesRevenueTitle": "Expenses (stacked) & Revenue",
         "details": "Details",
         "monthlyFlow": "Monthly flow",
         "current": "current",

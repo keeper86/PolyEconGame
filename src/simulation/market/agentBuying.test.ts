@@ -9,7 +9,7 @@ import {
     SPRING_NORMALIZATION,
     TARGET_FILL_RATE,
 } from '../constants';
-import { updateAgentShellCompartments } from '../planet/automaticProductionScale/shellCompartments';
+import { authorShellCompartments } from '../planet/automaticProductionScale/shellCompartments';
 import {
     getAvailableStorageCapacity,
     putIntoStorageFacility,
@@ -38,9 +38,8 @@ function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
         20,
     );
     agent.assets[planetId].productionFacilities = [ironSmelter(planetId, 'steel-fac-1')];
-    // Author the shell compartments that a real production tick would derive from the iron smelter's
-    // coal input and steel output, so stored goods always have explicit physical room.
-    updateAgentShellCompartments(agent.assets[planetId]);
+
+    authorShellCompartments(agent.assets[planetId]);
     return agent;
 }
 
@@ -112,7 +111,7 @@ describe('automaticPricing — buy side', () => {
         const bid = buyer.assets.p.market!.buy[COAL]!;
 
         expect(bid.bidStorageTarget).toBeGreaterThan(0);
-        // With empty storage: baseRate * (1 + smoothingMaxExtra)
+
         const baseRate = rawTarget / INPUT_BUFFER_TARGET_TICKS;
         const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA);
         expect(bid.bidStorageTarget).toBeCloseTo(smoothedTarget, 0);
@@ -192,17 +191,14 @@ describe('automaticPricing — buy side', () => {
         const coalNeed = facility.needs.find((n) => n.resource.name === COAL)!;
         const bufferTarget = coalNeed.quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
 
-        // Fill exactly to the buffer target (smoothed demand would be 0 since shortfall is 0)
         putIntoStorageFacility(buyer.assets.p.storage, coalResourceType, bufferTarget);
 
-        // First automaticPricing run: creates the buy entry without autoConfig
         automaticPricing(agentMap(buyer), planet);
 
         const inventoryQty = queryStorageFacility(buyer.assets.p.storage, COAL);
         const baselineTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget ?? 0;
         expect(baselineTarget).toBeLessThanOrEqual(inventoryQty);
 
-        // Config free buy quantity
         buyer.assets.p.market!.buy[COAL]!.autoConfig = { freeBuyQuantity: 1000, freeBuyQuantitySmoothingMaxExtra: 2 };
 
         automaticPricing(agentMap(buyer), planet);
@@ -210,15 +206,10 @@ describe('automaticPricing — buy side', () => {
         const newTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget ?? 0;
         expect(newTarget).toBeGreaterThan(inventoryQty);
 
-        // After the fix: diagnostics.shortfall should equal bidStorageTarget - inventory (both per-tick)
         const effectiveQty = Math.max(0, newTarget - inventoryQty);
         const diagnostics = buyer.assets.p.market!.buy[COAL]!.diagnostics;
         expect(diagnostics).toBeDefined();
-        // With freeBuyQuantitySmoothingMaxExtra=2, per-tick = 1000/2 = 500
-        // freeInventory = max(0, inventory - storageTarget) = 0 (inventory ≈ storageTarget when full)
-        // freeRemaining = max(0, 1000 - 0) = 1000
-        // smoothedFreeShortfall = min(1000, 500) = 500
-        // So diagnostics.shortfall should be close to 500
+
         expect(diagnostics!.shortfall).toBeGreaterThan(0);
         expect(diagnostics!.shortfall).toBeCloseTo(effectiveQty, 0);
     });
@@ -226,16 +217,13 @@ describe('automaticPricing — buy side', () => {
     it('freeBuyQuantity diagnostics.shortfall matches effective bid qty with combined buffer + free demand', () => {
         const buyer = makeSteelProducer();
 
-        // Put some but not all inventory — structural shortfall exists
         putIntoStorageFacility(buyer.assets.p.storage, coalResourceType, 100);
 
-        // First run to initialise the buy entry
         automaticPricing(agentMap(buyer), planet);
 
-        // Add free buy quantity with a large smoothing window
         buyer.assets.p.market!.buy[COAL]!.autoConfig = {
             freeBuyQuantity: 6000,
-            freeBuyQuantitySmoothingMaxExtra: 30, // 30 days → 200/tick
+            freeBuyQuantitySmoothingMaxExtra: 30,
         };
 
         automaticPricing(agentMap(buyer), planet);
@@ -246,10 +234,9 @@ describe('automaticPricing — buy side', () => {
         const diagnostics = bid.diagnostics;
 
         expect(diagnostics).toBeDefined();
-        // diagnostics.shortfall (from code = totalShortfall) must equal effectiveQty (bidStorageTarget - inventory)
-        // This was the bug: diagnostics showed the smoothed per-tick amount while the bid used the full unsmoothed target
+
         expect(diagnostics!.shortfall).toBeCloseTo(effectiveQty, 0);
-        // The effective quantity should be less than the full freeTarget, proving smoothing is applied
+
         expect(effectiveQty).toBeLessThan(6000);
     });
 
@@ -386,15 +373,13 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
         const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
 
-        // Set aggressive priceAdjustMaxUp
         buyer.assets.p.market!.buy[COAL]!.autoConfig = { priceAdjustMaxUp: 1.2 } as AutomatedPricingConfig;
         buyer.assets.p.market!.buy[COAL]!.lastBought = 0;
 
         automaticPricing(agentMap(buyer), planet);
 
         const newPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
-        // With priceAdjustMaxUp=1.20 and fillRate=0, baseFactor = PRICE_ADJUST_MAX_UP (1.20)
-        // Without overDeviation kicking in, factor should be exactly 1.20
+
         expect(newPrice).toBeCloseTo(firstBidPrice * 1.2, 5);
     });
 
@@ -403,7 +388,6 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
         const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
 
-        // Custom conservative priceAdjustMaxDown = 0.98
         buyer.assets.p.market!.buy[COAL]!.autoConfig = { priceAdjustMaxDown: 0.98 } as AutomatedPricingConfig;
         const firstBidTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget!;
         buyer.assets.p.market!.buy[COAL]!.lastEffectiveQty = firstBidTarget;
@@ -412,7 +396,7 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
 
         const newPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
-        // Fully filled → normalized fill rate saturates → baseFactor = priceAdjustMaxDown = 0.98
+
         expect(newPrice).toBeCloseTo(firstBidPrice * 0.98, 5);
     });
 
@@ -421,7 +405,6 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
         const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
 
-        // Set fill rate to 0.8 with targetFillRate=0.5 → smoothedFillRate (0.8) >= target (0.5) → bid should go down
         buyer.assets.p.market!.buy[COAL]!.autoConfig = { targetFillRate: 0.5 } as AutomatedPricingConfig;
         const firstBidTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget!;
         buyer.assets.p.market!.buy[COAL]!.smoothedFillRate = 0.8;
@@ -431,7 +414,7 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
 
         const newPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
-        // smoothedFillRate=0.8 >= target=0.5 → downward adjustment
+
         expect(newPrice).toBeLessThan(firstBidPrice);
     });
 
@@ -453,7 +436,7 @@ describe('automaticPricing — buy side', () => {
         const bid = buyer.assets.p.market!.buy[COAL]!;
         const facility = buyer.assets.p.productionFacilities[0]!;
         const coalNeed = facility.needs.find((n) => n.resource.name === COAL)!;
-        const rawTarget = coalNeed.quantity * facility.scale * 60; // using custom 60 ticks
+        const rawTarget = coalNeed.quantity * facility.scale * 60;
         const baseRate = rawTarget / 60;
         const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA);
         planet.lastProductionCostFloors[COAL] = planet.marketPrices[COAL];
@@ -468,8 +451,8 @@ describe('automaticPricing — buy side', () => {
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
         bid.autoConfig = {} as AutomatedPricingConfig;
-        bid.bidPrice = 5; // above costFloor × bidOfferMaxCostMultiplier (per-agent ceiling)
-        bid.lastBought = 0; // completely unfilled → base factor pushes up
+        bid.bidPrice = 5;
+        bid.lastBought = 0;
         bid.lastEffectiveQty = 10;
         bid.smoothedFillRate = 0;
 
@@ -477,7 +460,7 @@ describe('automaticPricing — buy side', () => {
 
         const diagnostics = bid.diagnostics;
         expect(diagnostics).toBeDefined();
-        // unfilled → the fill-rate factor wants to raise the bid, but the ceiling spring dampens it
+
         expect(diagnostics!.baseFactor).toBeGreaterThan(1);
         expect(diagnostics!.ceilingSpring).toBeGreaterThan(0);
         expect(diagnostics!.netFactor).toBeLessThan(diagnostics!.baseFactor);
@@ -488,8 +471,7 @@ describe('automaticPricing — buy side', () => {
             (diagnostics!.baseFactor -
                 DEFAULT_COST_SPRING_STRENGTH * SPRING_NORMALIZATION * Math.sqrt(5 / ceiling - 1));
         expect(bid.bidPrice!).toBeCloseTo(expectedPrice, 5);
-        // with SPRING_NORMALIZATION the spring no longer wins against the fill-rate push in a single tick,
-        // but the bid rises strictly less than it would without the spring
+
         expect(bid.bidPrice!).toBeGreaterThan(5);
         expect(bid.bidPrice!).toBeLessThan(5 * diagnostics!.baseFactor);
     });
@@ -512,9 +494,8 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
         const costPriceShortfall = bid.diagnostics!.shortfall;
 
-        // no quantity throttle: the demanded quantity is identical at 10× cost and at cost
         expect(highPriceShortfall).toBeCloseTo(costPriceShortfall, 10);
-        // the price anchoring happens on the bid price, not the quantity
+
         expect(bid.diagnostics!.ceilingSpring).toBeGreaterThan(0);
         expect(bid.bidPrice!).toBeLessThan(50);
     });
@@ -527,16 +508,14 @@ describe('automaticPricing — buy side', () => {
             id: 'storage-free',
         });
 
-        // Give the shell scale so mass capacity comfortably holds the full ~1M-unit free-buy drive.
         const freeStorageScale = Math.ceil(1_000_000 / STORAGE_SHELL_CAPACITY.mass);
         buyer.assets.p.storage.shells.solid.scale = freeStorageScale;
         buyer.assets.p.storage.shells.solid.maxScale = freeStorageScale;
         buyer.assets.p.storage.shells.solid.compartments[COAL] = 1;
 
-        // No production facilities, no management, no ships — pure free buy
         const FREE_TARGET = 1_000_000;
         const SMOOTHING_DAYS = 20;
-        const PER_TICK = FREE_TARGET / SMOOTHING_DAYS; // 50,000
+        const PER_TICK = FREE_TARGET / SMOOTHING_DAYS;
 
         planet.marketPrices[COAL] = 1.0;
         buyer.assets.p.market = {
@@ -554,28 +533,21 @@ describe('automaticPricing — buy side', () => {
             },
         };
 
-        // Simulate over several ticks — the per-tick quantity should stay at PER_TICK
-        // until inventory approaches the freeBuyQuantity target.
         for (let tick = 0; tick < 15; tick++) {
             automaticPricing(agentMap(buyer), planet);
 
             const bid = buyer.assets.p.market!.buy[COAL]!;
             const inventory = queryStorageFacility(buyer.assets.p.storage, COAL);
 
-            // diagnostics.shortfall should be ≤ PER_TICK (the smoothed per-tick amount)
             expect(bid.diagnostics).toBeDefined();
             expect(bid.diagnostics!.shortfall).toBeGreaterThan(0);
             const perTickFromShortfall = bid.diagnostics!.shortfall;
 
-            // The effective order quantity (bidStorageTarget - inventory) should match shortfall
             const effectiveQty = Math.max(0, bid.bidStorageTarget! - inventory);
             expect(effectiveQty).toBeCloseTo(perTickFromShortfall, 0);
 
-            // The shortfall should not exceed PER_TICK by any meaningful margin
-            // (allow small rounding)
             expect(perTickFromShortfall).toBeLessThanOrEqual(PER_TICK + 1);
 
-            // Simulate buying — the bid is placed and fully filled at the shortfall
             const placed = perTickFromShortfall;
             if (inventory + placed <= FREE_TARGET) {
                 putIntoStorageFacility(buyer.assets.p.storage, coalResourceType, placed);
@@ -585,7 +557,6 @@ describe('automaticPricing — buy side', () => {
             bid.lastEffectiveQty = placed;
         }
 
-        // After 15 ticks at ~50k/tick we should have ~750k inventory
         const finalInventory = queryStorageFacility(buyer.assets.p.storage, COAL);
         expect(finalInventory).toBeGreaterThan(700_000);
         expect(finalInventory).toBeLessThan(800_000);
@@ -602,11 +573,10 @@ describe('automaticPricing — buy side', () => {
 
         const FREE_TARGET = 10_000;
         const SMOOTHING_DAYS = 10;
-        const PER_TICK = FREE_TARGET / SMOOTHING_DAYS; // 1,000
+        const PER_TICK = FREE_TARGET / SMOOTHING_DAYS;
 
         planet.marketPrices[COAL] = 1.0;
 
-        // Start with inventory near the target
         putIntoStorageFacility(buyer.assets.p.storage, coalResourceType, 9_500);
 
         buyer.assets.p.market = {
@@ -624,22 +594,18 @@ describe('automaticPricing — buy side', () => {
             },
         };
 
-        // First tick: inventory=9500, freeRemaining=500, freeRemaining < freeFillRate (=1000)
-        // So shortfall should be 500 (not 1000)
         automaticPricing(agentMap(buyer), planet);
         const bid = buyer.assets.p.market!.buy[COAL]!;
         const inventory = queryStorageFacility(buyer.assets.p.storage, COAL);
         const effectiveQty = Math.max(0, bid.bidStorageTarget! - inventory);
 
-        // When close to target, should buy less than the full per-tick rate
         expect(effectiveQty).toBeGreaterThan(0);
         expect(effectiveQty).toBeLessThan(PER_TICK);
-        // freeRemaining = 10,000 - 9,500 = 500
+
         expect(effectiveQty).toBeCloseTo(500, 0);
     });
 
     it('freeBuyQuantity with services skips smoothing', () => {
-        // Use a service resource — smoothing is skipped for services
         const serviceResource = {
             name: 'TestService',
             form: 'services' as const,
@@ -658,7 +624,7 @@ describe('automaticPricing — buy side', () => {
                 [serviceResource.name]: {
                     resource: serviceResource,
                     automated: true,
-                    bidPrice: 5, // pre-set price so diagnostics are computed
+                    bidPrice: 5,
                     autoConfig: { freeBuyQuantity: 1000 } as AutomatedPricingConfig,
                 },
             },
@@ -667,9 +633,7 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(agent), planet);
 
         const bid = agent.assets.p.market!.buy[serviceResource.name]!;
-        // For services, freeTarget is added directly without smoothing
-        // freeTarget = 1000, storageTarget = 0, totalShortfall = 0 + 1000 = 1000
-        // Since services skip smoothing: totalShortfall directly adds freeTarget
+
         expect(bid.bidStorageTarget).toBeGreaterThan(0);
         const diagnostics = bid.diagnostics;
         expect(diagnostics).toBeDefined();
@@ -682,7 +646,6 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
         const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
 
-        // Only override priceAdjustMaxUp, leave everything else as defaults
         buyer.assets.p.market!.buy[COAL]!.autoConfig = { priceAdjustMaxUp: 1.15 } as AutomatedPricingConfig;
         buyer.assets.p.market!.buy[COAL]!.lastBought = 0;
 
@@ -691,7 +654,7 @@ describe('automaticPricing — buy side', () => {
         const diagnostics = buyer.assets.p.market!.buy[COAL]!.diagnostics;
         expect(diagnostics).toBeDefined();
         expect(diagnostics!.targetFillRate).toBe(TARGET_FILL_RATE);
-        // priceAdjustMaxUp=1.15 applied → factor should reflect that
+
         const newPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
         expect(newPrice).toBeCloseTo(firstBidPrice * 1.15, 5);
     });
@@ -978,8 +941,7 @@ describe('marketTick — agent buying', () => {
     it('a bid whose target exceeds the authored compartment is capped at collection and settles cleanly', () => {
         const seller = makeCoalSeller(3000, 1.0);
         const buyer = makeSteelProducer();
-        // Rebuild storage without footprint authoring, then author a deliberately small coal compartment
-        // (2k of the shell's mass capacity) so the 100-unit target cannot physically fit end to end.
+
         const compartmentMass = 2_000;
         const storage = makeStorageFacility({ planetId: 'p', id: 'storage-p' });
         storage.shells.solid.compartments[COAL] = compartmentMass / STORAGE_SHELL_CAPACITY.mass;
@@ -996,9 +958,6 @@ describe('marketTick — agent buying', () => {
             },
         };
 
-        // The compartment limits how much the delivery can be capped to at collection, so every placed
-        // bid is fully storable and never needs a settlement refund. Read that limit via the same free
-        // capacity API the bid validation uses.
         const coalConditioned = getAvailableStorageCapacity(storage, coalResourceType);
 
         const depositsBefore = buyer.assets.p.deposits;

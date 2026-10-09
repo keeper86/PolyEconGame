@@ -7,7 +7,7 @@ import {
     makePlanet,
     makeStorageFacility,
 } from '../../utils/testHelper';
-import { reconcileShellScale } from '../automaticProductionScale';
+import { reconcileShellScale } from './agentStorage';
 import type { Storage } from '../facility';
 import { coalResourceType } from '../resources';
 import { constructionServiceResourceType } from '../services';
@@ -34,12 +34,11 @@ describe('reconcileShellScale', () => {
         const { planet, agent, state, storage, assets } = fixture();
         const shell = storage.shells.solid;
 
-        const remaining = reconcileShellScale(planet, agent, state, assets, shell, 10, 5000);
+        reconcileShellScale(planet, agent, state, assets, shell, 10);
 
         expect(shell.construction).not.toBeNull();
         expect(shell.construction!.type).toBe('expansion');
         expect(shell.construction!.constructionTargetMaxScale).toBe(15);
-        expect(remaining).toBeLessThan(5000);
     });
 
     it('skips construction entirely when the installed scale already holds a slightly large footprint', () => {
@@ -47,13 +46,12 @@ describe('reconcileShellScale', () => {
         const shell = storage.shells.solid;
         shell.maxScale = 3;
 
-        const remaining = reconcileShellScale(planet, agent, state, assets, shell, 2, 5000);
+        reconcileShellScale(planet, agent, state, assets, shell, 2);
 
         expect(shell.construction).toBeNull();
-        expect(remaining).toBe(5000);
     });
 
-    it('does not start when an expansion is already in flight, leaving the budget untouched', () => {
+    it('does not start when an expansion is already in flight', () => {
         const { planet, agent, state, storage, assets } = fixture();
         const shell = storage.shells.solid;
         shell.construction = {
@@ -66,22 +64,10 @@ describe('reconcileShellScale', () => {
             suspended: false,
         };
 
-        const remaining = reconcileShellScale(planet, agent, state, assets, shell, 10, 5000);
+        reconcileShellScale(planet, agent, state, assets, shell, 10);
 
         expect(shell.construction).not.toBeNull();
         expect(shell.construction!.constructionTargetMaxScale).toBe(12);
-        expect(remaining).toBe(5000);
-    });
-
-    it('starts an expansion even with no remaining construction budget (shells are not budget-gated)', () => {
-        const { planet, agent, state, storage, assets } = fixture();
-        const shell = storage.shells.solid;
-
-        const remaining = reconcileShellScale(planet, agent, state, assets, shell, 10, 0);
-
-        expect(shell.construction).not.toBeNull();
-        expect(shell.construction!.constructionTargetMaxScale).toBe(15);
-        expect(remaining).toBe(0);
     });
 
     it('contracts an oversized shell back toward the buffer scale', () => {
@@ -99,7 +85,7 @@ describe('reconcileShellScale', () => {
         shell.maxScale = 500;
         shell.scale = 500;
 
-        reconcileShellScale(planet, agent, state, assets, shell, 10, 5000);
+        reconcileShellScale(planet, agent, state, assets, shell, 10);
 
         expect(shell.maxScale).toBe(15);
     });
@@ -124,7 +110,7 @@ describe('reconcileShellScale', () => {
             quantity: shell.capacity.mass * 300,
         };
 
-        reconcileShellScale(planet, agent, state, assets, shell, 10, 5000);
+        reconcileShellScale(planet, agent, state, assets, shell, 10);
 
         expect(shell.maxScale).toBeGreaterThanOrEqual(300);
     });
