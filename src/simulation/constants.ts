@@ -1,5 +1,14 @@
 export const START_YEAR = 2200;
 
+const envNumber = (name: string, fallback: number): number => {
+    const raw = process.env[name];
+    if (raw === undefined) {
+        return fallback;
+    }
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 export const COMMERCIAL_LICENSE_COST = 50_000;
 
 export const WORKFORCE_LICENSE_COST = 25_000;
@@ -142,7 +151,7 @@ export const QUIT_OUTSIDE_SENSITIVITY = 0.005;
 // is what lets a genuine wage grievance register as quits at all.
 export const QUIT_FAIRNESS_SENSITIVITY = QUIT_OUTSIDE_SENSITIVITY;
 export const QUIT_OUTSIDE_WAGE_BIAS = 0.975;
-export const QUIT_TARGET_RATE = 0.009;
+export const QUIT_TARGET_RATE = envNumber('QUIT_TARGET_RATE', 0.009);
 // High unemployment must not zero the outside chance. It can halve the chance at
 // most, so the exit gap bottoms near -0.5 against comparable outside pay and only
 // reaches -1 when outside wages are genuinely far below the worker's own.
