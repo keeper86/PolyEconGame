@@ -12,6 +12,7 @@ import {
     yearStart,
     yearWindowAxis,
 } from '@/lib/historyChartAxis';
+import { trimmedLogAxis } from '@/lib/logScaleAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { computeNetIncome } from '@/simulation/financial/netIncome';
 import { useMemo } from 'react';
@@ -122,32 +123,9 @@ export function ExpensesRevenueChart({
 
     const { scale, domain, yTicks } = useMemo(() => {
         const positive = expenseResolutionMagnitudes(chartData);
-
-        if (positive.length >= 2) {
-            const sorted = [...positive].sort((a, b) => a - b);
-
-            const min = sorted[0];
-            const max = sorted[sorted.length - 1];
-
-            const candidateLo = sorted[2];
-            const candidateHi = sorted[sorted.length - 3];
-
-            // Trim only if the resulting domain has a non-zero range.
-            const canTrim = candidateLo !== undefined && candidateHi !== undefined && candidateLo < candidateHi;
-
-            const lo = canTrim ? candidateLo : min;
-            const hi = canTrim ? candidateHi : max;
-
-            if (hi / lo > 10) {
-                const loExp = Math.floor(Math.log10(lo));
-                const hiExp = Math.ceil(Math.log10(hi));
-                const logTicks: number[] = [];
-                for (let e = loExp; e <= hiExp; e++) {
-                    logTicks.push(Math.pow(10, e));
-                }
-                const logDomain: [number, number] = [Math.pow(10, loExp), Math.pow(10, hiExp)];
-                return { scale: 'symlog' as const, domain: logDomain, yTicks: logTicks };
-            }
+        const logAxis = trimmedLogAxis(positive);
+        if (logAxis) {
+            return { scale: 'symlog' as const, domain: logAxis.domain, yTicks: logAxis.ticks };
         }
         return { scale: 'linear' as const, domain: expenseLinearDomain(positive), yTicks: undefined };
     }, [chartData]);

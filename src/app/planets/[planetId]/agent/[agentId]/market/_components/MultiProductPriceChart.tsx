@@ -15,6 +15,7 @@ import {
     YEAR_WINDOW,
     monthShortName,
 } from '@/lib/historyChartAxis';
+import { trimmedLogAxis } from '@/lib/logScaleAxis';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
@@ -362,52 +363,6 @@ function yDomainFor(points: MergedPoint[], productNames: string[]): [number, num
     return [lo - pad, hi + pad];
 }
 
-function logTicksFor(points: MergedPoint[], productNames: string[]): number[] | undefined {
-    const allValues: number[] = [];
-    for (const p of points) {
-        for (const name of productNames) {
-            const v = p[name];
-            if (v !== null && typeof v === 'number' && v > 0) {
-                allValues.push(v);
-            }
-        }
-    }
-    if (allValues.length === 0) {
-        return undefined;
-    }
-    const minP = Math.min(...allValues);
-    const maxP = Math.max(...allValues);
-    if (minP === maxP) {
-        const e = Math.floor(Math.log10(minP));
-        const lower = Math.pow(10, e);
-        const upper = Math.pow(10, e + 1);
-        return lower === upper ? [lower] : [lower, upper];
-    }
-    const result: number[] = [];
-    for (let e = Math.floor(Math.log10(minP)); e <= Math.ceil(Math.log10(maxP)); e++) {
-        result.push(Math.pow(10, e));
-    }
-    return result;
-}
-
-function usesLogScale(points: MergedPoint[], productNames: string[]): boolean {
-    const allValues: number[] = [];
-    for (const p of points) {
-        for (const name of productNames) {
-            const v = p[name];
-            if (v !== null && typeof v === 'number' && v > 0) {
-                allValues.push(v);
-            }
-        }
-    }
-    if (allValues.length < 2) {
-        return false;
-    }
-    const lo = Math.min(...allValues);
-    const hi = Math.max(...allValues);
-    return lo > 0 && hi / lo >= 10;
-}
-
 type QueryResult = { productName: string; granularity: Granularity; history: Row[]; isLoading: boolean };
 
 function resultKey(granularity: Granularity, productName: string): string {
@@ -625,26 +580,27 @@ export default function MultiProductPriceChart({
         return sorted;
     }, [results, selectedProducts, granularity, rescaleMode, liveTick, livePrices, locale]);
 
-    const scale = useMemo(() => {
-        if (mergedData.length === 0) {
-            return 'linear' as const;
+    const valueSpread = useMemo(() => {
+        const values: number[] = [];
+        for (const p of mergedData) {
+            for (const name of selectedProducts) {
+                const v = p[name];
+                if (typeof v === 'number') {
+                    values.push(v);
+                }
+            }
         }
-        return usesLogScale(mergedData, selectedProducts) ? ('log' as const) : ('linear' as const);
+        return values;
     }, [mergedData, selectedProducts]);
 
-    const yTicks = useMemo(() => {
-        if (scale === 'log') {
-            return logTicksFor(mergedData, selectedProducts);
-        }
-        return undefined;
-    }, [mergedData, selectedProducts, scale]);
+    const logAxis = useMemo(() => trimmedLogAxis(valueSpread), [valueSpread]);
+    const yDomain = useMemo(
+        () => logAxis?.domain ?? yDomainFor(mergedData, selectedProducts),
+        [logAxis, mergedData, selectedProducts],
+    );
 
-    const yDomain = useMemo(() => {
-        if (scale === 'log' && yTicks) {
-            return [Math.min(...yTicks), Math.max(...yTicks)] as [number, number];
-        }
-        return yDomainFor(mergedData, selectedProducts);
-    }, [mergedData, selectedProducts, scale, yTicks]);
+    const scale = logAxis ? ('log' as const) : ('linear' as const);
+    const yTicks = logAxis?.ticks;
 
     const xTickFormatter = (bucket: number) => {
         if (bucket === liveTick) {
