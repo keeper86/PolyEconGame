@@ -96,8 +96,7 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             const churnPressure = WAGE_CHURN_GAIN * (quitRate - QUIT_TARGET_RATE);
 
             const headroom = ceilingHeadroom(current, ceiling);
-            const pressure =
-                dampedByHeadroom(shortagePressure, headroom) + dampedByHeadroom(churnPressure, headroom);
+            const pressure = dampedByHeadroom(shortagePressure, headroom) + dampedByHeadroom(churnPressure, headroom);
             wageStepDebug[edu] = { shortagePressure, churnPressure, quitRate, ceiling };
 
             const maxStep = WAGE_ADJUSTMENT_RATE * current;
