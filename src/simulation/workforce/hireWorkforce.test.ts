@@ -46,7 +46,7 @@ import {
     reservationWage,
 } from './laborMarket';
 import { workforceDemographicTick } from './workforceDemographicTick';
-import { QUIT_FAIRNESS_SENSITIVITY, QUIT_OUTSIDE_SENSITIVITY, QUIT_OUTSIDE_WAGE_BIAS } from '../constants';
+import { QUIT_FAIRNESS_SENSITIVITY, QUIT_JOB_FINDING_FLOOR, QUIT_OUTSIDE_SENSITIVITY, QUIT_OUTSIDE_WAGE_BIAS } from '../constants';
 
 const BIASED_PARITY_WAGE = 100 / QUIT_OUTSIDE_WAGE_BIAS;
 
@@ -78,10 +78,19 @@ describe('labor market helpers', () => {
         expect(jobFindingProbability(0.01)).toBeCloseTo(1 - Math.pow(0.99, SEARCH_HORIZON_TICKS), 10);
     });
 
-    it('outsideIncome equals the job-finding probability times the vacancy wage', () => {
-        expect(outsideIncome(0, 100)).toBe(0);
+    it('outsideIncome floors the job-finding chance so unemployment cannot zero the outside option', () => {
+        expect(jobFindingProbability(0)).toBe(0);
+        expect(outsideIncome(0, 100)).toBeCloseTo(QUIT_JOB_FINDING_FLOOR * 100, 10);
         expect(outsideIncome(1, 100)).toBe(100);
-        expect(outsideIncome(0.01, 100)).toBeCloseTo((1 - Math.pow(0.99, SEARCH_HORIZON_TICKS)) * 100, 6);
+        const floored = QUIT_JOB_FINDING_FLOOR + (1 - QUIT_JOB_FINDING_FLOOR) * (1 - Math.pow(0.99, SEARCH_HORIZON_TICKS));
+        expect(outsideIncome(0.01, 100)).toBeCloseTo(floored * 100, 6);
+    });
+
+    it('caps the unemployment drag at half, but still reaches -1 when outside pay is far below the own wage', () => {
+        const fairGapLarge = 1000;
+        expect(quitPropensity(100, 0, 100, fairGapLarge)).toBeGreaterThan(0);
+        expect(quitPropensity(100, 0, 10, fairGapLarge)).toBe(0);
+        expect(quitPropensity(100, 0, 100, 100)).toBe(0);
     });
 
     it('acceptProbability rises with wage and saturates at ACCEPT_BASE', () => {
@@ -108,11 +117,13 @@ describe('labor market helpers', () => {
         expect(quitPropensity(100, 1, 130, 100)).toBeGreaterThan(0);
     });
 
-    it('makes the ratio of the two weights, not their size, decide ignition', () => {
+    it('with equal weights a spark needs the outside market to be alive, not just present', () => {
         const deadOutsideMarket = quitPropensity(100, 0, 0, 1e9);
-        const fairnessOutweighsOutside = QUIT_FAIRNESS_SENSITIVITY > QUIT_OUTSIDE_SENSITIVITY;
+        const liveOutsideMarket = quitPropensity(100, 1, 130, 1e9);
 
-        expect(deadOutsideMarket > 0).toBe(fairnessOutweighsOutside);
+        expect(QUIT_FAIRNESS_SENSITIVITY).toBe(QUIT_OUTSIDE_SENSITIVITY);
+        expect(deadOutsideMarket).toBe(0);
+        expect(liveOutsideMarket).toBeGreaterThan(0);
     });
 
     it('reservationWage anchors to the going tier rate and does NOT depend on cost of living', () => {

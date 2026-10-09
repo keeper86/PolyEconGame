@@ -25,6 +25,7 @@ import {
     MAX_WAGE,
     MIN_WAGE,
     QUIT_FAIRNESS_SENSITIVITY,
+    QUIT_JOB_FINDING_FLOOR,
     QUIT_OUTSIDE_SENSITIVITY,
     QUIT_OUTSIDE_WAGE_BIAS,
     QUIT_TARGET_RATE,
@@ -61,7 +62,8 @@ const quitRate = (law: QuitLaw, wage: number, tightness: number, vacancyWage: nu
     if (wage <= 0) {
         return QUIT_RATE_CAP;
     }
-    const outside = QUIT_OUTSIDE_WAGE_BIAS * jobFindingProbability(tightness) * vacancyWage;
+    const chance = QUIT_JOB_FINDING_FLOOR + (1 - QUIT_JOB_FINDING_FLOOR) * jobFindingProbability(tightness);
+    const outside = QUIT_OUTSIDE_WAGE_BIAS * chance * vacancyWage;
     const exitGap = clampUnit((outside - wage) / wage);
     const fairnessGap = fairWage > 0 ? clampUnit((fairWage - wage) / fairWage) : 0;
     const raw = law.outSens * exitGap + law.fairSens * fairnessGap;
@@ -207,7 +209,9 @@ const run = (law: QuitLaw, p: EconParams): Month[] => {
                     : p.tightnessMode === 'fill'
                       ? f.workers / Math.max(1, f.capacity)
                       : marketTightness * better.share;
-            const outside = QUIT_OUTSIDE_WAGE_BIAS * jobFindingProbability(effectiveTightness) * better.medianWage;
+            const chance =
+                QUIT_JOB_FINDING_FLOOR + (1 - QUIT_JOB_FINDING_FLOOR) * jobFindingProbability(effectiveTightness);
+            const outside = QUIT_OUTSIDE_WAGE_BIAS * chance * better.medianWage;
             exitAcc += f.wage > 0 ? clampUnit((outside - f.wage) / f.wage) : 0;
             fairAcc += fairWage > 0 ? clampUnit((fairWage - f.wage) / fairWage) : 0;
 
@@ -306,9 +310,10 @@ function validate(): void {
     console.log(
         `  wageShare=${law.wageShare} ceiling~=${MIN_WAGE} -> fairWage=${fairWage.toFixed(3)} vs wage=${MIN_WAGE} -> fairnessGap=${clampUnit((fairWage - MIN_WAGE) / fairWage).toFixed(3)}`,
     );
-    console.log('\n  ' + line(['tightness', 'jfp', 'exitGap', 'quit', 'churnPress'], [10, 8, 9, 10, 11]));
+    console.log('\n  ' + line(['tightness', 'chance', 'exitGap', 'quit', 'churnPress'], [10, 8, 9, 10, 11]));
     for (const tightness of [0.00007, 0.001, 0.02, 0.2, 1.0]) {
-        const outside = QUIT_OUTSIDE_WAGE_BIAS * jobFindingProbability(tightness) * MIN_WAGE;
+        const chance = QUIT_JOB_FINDING_FLOOR + (1 - QUIT_JOB_FINDING_FLOOR) * jobFindingProbability(tightness);
+        const outside = QUIT_OUTSIDE_WAGE_BIAS * chance * MIN_WAGE;
         const exitGap = clampUnit((outside - MIN_WAGE) / MIN_WAGE);
         const q = quitRate(law, MIN_WAGE, tightness, MIN_WAGE, fairWage);
         console.log(
@@ -316,7 +321,7 @@ function validate(): void {
                 line(
                     [
                         tightness.toFixed(5),
-                        jobFindingProbability(tightness).toFixed(3),
+                        chance.toFixed(3),
                         exitGap.toFixed(3),
                         q.toFixed(6),
                         (law.churnGain * (q - law.quitTarget)).toFixed(4),
@@ -332,8 +337,9 @@ function validate(): void {
     console.log(
         `  vs quitTarget=${law.quitTarget}: reachable = ${maxQuitMonthly > law.quitTarget}  => NO budget lock (the per-tick form is not the unit the controller compares)`,
     );
+    const ordering = law.fairSens > law.outSens ? 'FAIRNESS DOMINATES' : law.fairSens < law.outSens ? 'OUTSIDE DOMINATES' : 'TIED: a spark then needs the outside market to be ALIVE (a vacancy paying above the own wage)';
     console.log(
-        `  the real lock is the ordering: fairSens=${law.fairSens} vs outSens=${law.outSens} -> ${law.fairSens > law.outSens ? 'fairness can dominate' : 'OUTSIDE DOMINATES: quit is 0 in every state, so churn is pinned at its worst value'}`,
+        `  the real lock is the ordering: fairSens=${law.fairSens} vs outSens=${law.outSens} -> ${ordering}`,
     );
     console.log(
         `  observed: quitRate=0, churnPressure=${(law.churnGain * (0 - law.quitTarget)).toFixed(4)}, wage=MIN_WAGE -> reproduced`,
@@ -353,7 +359,7 @@ function ignitionBoundary(): void {
         '\n  ' + line(['outSens', 'fairSens', 'fair>out', 'monthlyMax', 'aboveTarget'], [10, 10, 11, 11, 12]),
     );
     for (const out of [0.005, 0.01, 0.02, 0.05, 0.1]) {
-        for (const fair of [0.0033, 0.01, 0.03, 0.06]) {
+        for (const fair of [0.005, 0.01, 0.03, 0.06]) {
             console.log(
                 '  ' +
                     line(
@@ -382,7 +388,7 @@ function sweep(): void {
             ),
     );
     for (const out of [0.005, 0.02, 0.05, 0.1]) {
-        for (const fair of [0.0033, 0.03, 0.06]) {
+        for (const fair of [0.005, 0.03, 0.06]) {
             for (const target of [0.002, 0.009, 0.02]) {
                 const law = { ...defaults(), outSens: out, fairSens: fair, quitTarget: target };
                 const h = run(law, econDefaults());
@@ -520,7 +526,7 @@ function sweepAnchor(): void {
             ),
     );
     for (const out of [0.005, 0.02, 0.05]) {
-        for (const fair of [0.0033, 0.03, 0.06]) {
+        for (const fair of [0.005, 0.03, 0.06]) {
             for (const target of [0.002, 0.009, 0.02]) {
                 const law = { ...defaults(), outSens: out, fairSens: fair, quitTarget: target };
                 const h = run(law, { ...econDefaults(), fairAnchor: 'dependency' });

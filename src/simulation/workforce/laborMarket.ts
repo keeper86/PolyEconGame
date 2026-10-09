@@ -2,6 +2,7 @@ import {
     ACCEPT_BASE,
     MIN_EMPLOYABLE_AGE,
     QUIT_FAIRNESS_SENSITIVITY,
+    QUIT_JOB_FINDING_FLOOR,
     QUIT_OUTSIDE_SENSITIVITY,
     QUIT_OUTSIDE_WAGE_BIAS,
     SEARCH_HORIZON_TICKS,
@@ -43,7 +44,7 @@ export const jobFindingProbability = (tightness: number): number =>
     1 - Math.pow(1 - Math.min(1, tightness), SEARCH_HORIZON_TICKS);
 
 export const outsideIncome = (tightness: number, vacancyWage: number): number =>
-    jobFindingProbability(tightness) * vacancyWage;
+    (QUIT_JOB_FINDING_FLOOR + (1 - QUIT_JOB_FINDING_FLOOR) * jobFindingProbability(tightness)) * vacancyWage;
 
 export const acceptProbability = (wage: number, threshold: number): number =>
     ACCEPT_BASE / (1 + Math.exp(-(wage - threshold) / WAGE_ACCEPT_SCALE));

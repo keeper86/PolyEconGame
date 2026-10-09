@@ -137,9 +137,16 @@ export const FIRE_RATE_LIMIT_PER_MONTH = 0.05;
 export const SEARCH_HORIZON_TICKS = TICKS_PER_MONTH / 2;
 
 export const QUIT_OUTSIDE_SENSITIVITY = 0.005;
-export const QUIT_FAIRNESS_SENSITIVITY = 0.0033;
+// Fairness carries the same weight as the outside option. With the outside chance
+// floored (QUIT_JOB_FINDING_FLOOR) the two channels have comparable magnitude, which
+// is what lets a genuine wage grievance register as quits at all.
+export const QUIT_FAIRNESS_SENSITIVITY = QUIT_OUTSIDE_SENSITIVITY;
 export const QUIT_OUTSIDE_WAGE_BIAS = 0.975;
 export const QUIT_TARGET_RATE = 0.009;
+// High unemployment must not zero the outside chance. It can halve the chance at
+// most, so the exit gap bottoms near -0.5 against comparable outside pay and only
+// reaches -1 when outside wages are genuinely far below the worker's own.
+export const QUIT_JOB_FINDING_FLOOR = 0.8;
 
 export const ACCEPT_BASE = 0.05;
 
