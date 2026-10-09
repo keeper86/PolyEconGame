@@ -92,11 +92,10 @@ describe('labor market helpers', () => {
         expect(outsideIncome(0.01, 100)).toBeCloseTo(floored * 100, 6);
     });
 
-    it('caps the unemployment drag at half, but still reaches -1 when outside pay is far below the own wage', () => {
-        const fairGapLarge = 1000;
-        expect(quitPropensity(100, 0, 100, fairGapLarge)).toBeGreaterThan(0);
-        expect(quitPropensity(100, 0, 10, fairGapLarge)).toBe(0);
+    it('caps the unemployment drag at half, so a comparable outside market is not a dead end', () => {
         expect(quitPropensity(100, 0, 100, 100)).toBe(0);
+        expect(quitPropensity(100, 0, 100, 1000)).toBeGreaterThan(0);
+        expect(quitPropensity(100, 0, 10, 1000)).toBeGreaterThan(0);
     });
 
     it('acceptProbability rises with wage and saturates at ACCEPT_BASE', () => {
@@ -107,7 +106,7 @@ describe('labor market helpers', () => {
 
     it('quitPropensity quits only when a better offer outweighs the current pay, tilted by unfairness', () => {
         expect(quitPropensity(100, 0, 0, 100)).toBe(0);
-        expect(quitPropensity(100, 0, 0, 250)).toBe(0);
+        expect(quitPropensity(100, 0, 0, 250)).toBeGreaterThan(0);
         expect(quitPropensity(100, 1, 50, 100)).toBe(0);
         expect(quitPropensity(100, 1, 95, 100)).toBe(0);
         expect(quitPropensity(100, 1, 200, 100)).toBeGreaterThan(0);
@@ -123,13 +122,13 @@ describe('labor market helpers', () => {
         expect(quitPropensity(100, 1, 130, 100)).toBeGreaterThan(0);
     });
 
-    it('with equal weights a spark needs the outside market to be alive, not just present', () => {
-        const deadOutsideMarket = quitPropensity(100, 0, 0, 1e9);
-        const liveOutsideMarket = quitPropensity(100, 1, 130, 1e9);
+    it('fairness outweighs the outside option, so a grievance still sparks when the outside market is dead', () => {
+        const deadOutsideMarket = quitPropensity(100, 0, 0, 300);
+        const liveOutsideMarket = quitPropensity(100, 1, 130, 300);
 
-        expect(QUIT_FAIRNESS_SENSITIVITY).toBe(QUIT_OUTSIDE_SENSITIVITY);
-        expect(deadOutsideMarket).toBe(0);
-        expect(liveOutsideMarket).toBeGreaterThan(0);
+        expect(QUIT_FAIRNESS_SENSITIVITY).toBeGreaterThan(QUIT_OUTSIDE_SENSITIVITY);
+        expect(deadOutsideMarket).toBeGreaterThan(0);
+        expect(liveOutsideMarket).toBeGreaterThan(deadOutsideMarket);
     });
 
     it('reservationWage anchors to the going tier rate and does NOT depend on cost of living', () => {

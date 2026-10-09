@@ -3,7 +3,6 @@ import {
     MIN_WAGE,
     QUIT_TARGET_RATE,
     WAGE_ADJUSTMENT_RATE,
-    WAGE_CEILING_SPRING_GAIN,
     WAGE_CEILING_SMOOTHING,
     WAGE_CHURN_GAIN,
 } from '../constants';
@@ -49,8 +48,8 @@ export const setPinWagesToMinimum = (value: boolean): void => {
     pinWagesToMinimum = value;
 };
 
-const ceilingSpringPressure = (wage: number, ceiling: number): number =>
-    ceiling > 0 ? -WAGE_CEILING_SPRING_GAIN * Math.max(0, (wage - ceiling) / ceiling) : 0;
+const ceilingHeadroom = (wage: number, ceiling: number): number =>
+    ceiling > 0 ? Math.max(0, Math.min(1, (ceiling - wage) / ceiling)) : 1;
 
 export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
@@ -93,7 +92,9 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             const quitRate = active > 0 ? monthlyQuits[edu] / active : 0;
             const churnPressure = WAGE_CHURN_GAIN * (quitRate - QUIT_TARGET_RATE);
 
-            const pressure = shortagePressure + churnPressure + ceilingSpringPressure(current, ceiling);
+            const combinedPressure = shortagePressure + churnPressure;
+            const pressure =
+                combinedPressure > 0 ? combinedPressure * ceilingHeadroom(current, ceiling) : combinedPressure;
             wageStepDebug[edu] = { shortagePressure, churnPressure, quitRate, ceiling };
 
             const maxStep = WAGE_ADJUSTMENT_RATE * current;

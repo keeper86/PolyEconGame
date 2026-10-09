@@ -227,6 +227,26 @@ describe('automaticWageAdjustment', () => {
         expect(agent.assets.p.wagePerEdu.tertiary).toBeGreaterThanOrEqual(ceiling);
     });
 
+    it('never lets an upward push carry the wage past the zero-profit ceiling', () => {
+        const { planet } = makePlanetWithPopulation({});
+        const agent = makeAgent();
+        agent.assets.p.wagePerEdu = { none: 5, primary: 5, secondary: 5, tertiary: 5 };
+        agent.assets.p.totalSlotCapacity.tertiary = 1000;
+        agent.assets.p.workforceDemography[30].tertiary.active = 1000;
+        agent.assets.p._monthlyVoluntaryQuits = { none: 0, primary: 0, secondary: 0, tertiary: 1000 };
+        agent.assets.p.lastMonthAcc.revenue = 1000;
+        agent.assets.p.lastMonthAcc.purchases = 0;
+        agent.assets.p.lastMonthAcc.claimPayments = 0;
+        agent.assets.p.lastMonthAcc.totalWorkersTicks = 100;
+
+        for (let month = 0; month < 200; month++) {
+            automaticWageAdjustment(agentMap(agent), planet);
+        }
+
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeGreaterThan(5);
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeLessThanOrEqual(10 * 1.001);
+    });
+
     it('raises the wage when the quit rate exceeds the target', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
