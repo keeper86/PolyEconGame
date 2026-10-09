@@ -9,7 +9,7 @@ import {
     SPRING_NORMALIZATION,
     TARGET_FILL_RATE,
 } from '../constants';
-import { updateAgentShellCompartments } from '../planet/automaticProductionScale/shellCompartments';
+import { authorShellCompartments } from '../planet/automaticProductionScale/shellCompartments';
 import {
     getAvailableStorageCapacity,
     putIntoStorageFacility,
@@ -40,7 +40,7 @@ function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
     agent.assets[planetId].productionFacilities = [ironSmelter(planetId, 'steel-fac-1')];
     // Author the shell compartments that a real production tick would derive from the iron smelter's
     // coal input and steel output, so stored goods always have explicit physical room.
-    updateAgentShellCompartments(agent.assets[planetId]);
+    authorShellCompartments(agent.assets[planetId]);
     return agent;
 }
 

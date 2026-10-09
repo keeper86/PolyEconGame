@@ -15,7 +15,7 @@ import {
     type ProductionFacility,
     type Storage,
 } from '../planet/facility';
-import { updateAgentShellCompartments } from '../planet/automaticProductionScale/shellCompartments';
+import { authorShellCompartments } from '../planet/automaticProductionScale/shellCompartments';
 import {
     createEmptyAccumulator,
     createEmptyDemographicEventCounters,
@@ -182,7 +182,7 @@ export function presizeAgentShellForFacilities(gameState: { agents: Map<string, 
     for (const agent of gameState.agents.values()) {
         for (const [, rawAssets] of Object.entries(agent.assets)) {
             const assets = rawAssets as AgentPlanetAssets;
-            const sizing = updateAgentShellCompartments(assets);
+            const sizing = authorShellCompartments(assets);
             for (const form of storageFormKeys()) {
                 const required = sizing[form]?.requiredScale;
                 if (!required) {
@@ -193,7 +193,7 @@ export function presizeAgentShellForFacilities(gameState: { agents: Map<string, 
                 shell.scale = target;
                 shell.maxScale = target;
             }
-            updateAgentShellCompartments(assets);
+            authorShellCompartments(assets);
         }
     }
 }

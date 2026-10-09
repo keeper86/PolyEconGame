@@ -25,6 +25,7 @@ import {
     findMaxScaleForLandboundResources,
     updateAgentProductionScale,
 } from './automaticProductionScale';
+import { updateAgentShellCompartments } from './automaticProductionScale/agentStorage';
 import {
     DYNAMIC_EXPANSION_CAP_FRACTION,
     EXPANSION_AT_CAPACITY_FRACTION,
@@ -2456,7 +2457,7 @@ function assetsDeposits(agents: Map<string, Agent>, planet: Planet, amount: numb
     }
 }
 
-describe('updateAgentProductionScale shell compartments for non-automated agents', () => {
+describe('updateAgentShellCompartments shell compartments for non-automated agents', () => {
     it('authors shell compartments without starting any shell construction', () => {
         const planet = makePlanet();
         const assets = makeAgentPlanetAssets(planet.id, {
@@ -2474,7 +2475,7 @@ describe('updateAgentProductionScale shell compartments for non-automated agents
 
         expect(shell.compartments[RESOURCE_NAME]).toBeUndefined();
 
-        updateAgentProductionScale(gameState, planet);
+        updateAgentShellCompartments(gameState, planet);
 
         expect(shell.compartments[RESOURCE_NAME]).toBeGreaterThan(0);
         expect(shell.construction).toBeNull();

@@ -25,7 +25,7 @@ import { createWorkforceEventAccumulator } from './workforce/workforceDemographi
 import { produceResourceType } from './planet/resources';
 import type { ProductionFacility } from './planet/facility';
 import { putIntoStorageFacility, queryStorageFacility } from './planet/facility';
-import { updateAgentShellCompartments } from './planet/automaticProductionScale/shellCompartments';
+import { authorShellCompartments } from './planet/automaticProductionScale/shellCompartments';
 import { facilityRestorationCapacityPerTick } from './planet/facilityMaintenance';
 import { constructionServiceResourceType } from './planet/services';
 import type { Resource } from './planet/claims';
@@ -104,7 +104,7 @@ describe('engine basic behavior', () => {
         );
 
         agent.assets[planet.id].productionFacilities.push(prod);
-        updateAgentShellCompartments(agent.assets[planet.id]);
+        authorShellCompartments(agent.assets[planet.id]);
 
         productionTick(makeGameState([planet], [agent]), planet);
 
@@ -139,7 +139,7 @@ describe('engine basic behavior', () => {
         );
 
         agent.assets[planet.id].productionFacilities.push(prod);
-        updateAgentShellCompartments(agent.assets[planet.id]);
+        authorShellCompartments(agent.assets[planet.id]);
 
         const storage = agent.assets[planet.id].storage;
         putIntoStorageFacility(storage, neededResource, neededResourceQuantity);
@@ -180,7 +180,7 @@ describe('engine basic behavior', () => {
             },
         );
         agent.assets[planet.id].productionFacilities.push(prod);
-        updateAgentShellCompartments(agent.assets[planet.id]);
+        authorShellCompartments(agent.assets[planet.id]);
 
         const storage = agent.assets[planet.id].storage;
         putIntoStorageFacility(storage, neededResource, neededResourceQuantity / 10);
@@ -210,7 +210,7 @@ describe('engine basic behavior', () => {
             },
         );
         agent.assets[planet.id].productionFacilities.push(prod);
-        updateAgentShellCompartments(agent.assets[planet.id]);
+        authorShellCompartments(agent.assets[planet.id]);
 
         const storage = agent.assets[planet.id].storage;
 

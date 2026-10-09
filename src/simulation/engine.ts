@@ -17,6 +17,7 @@ import { intergenerationalTransfersForPlanet } from './market/intergenerationalT
 import { marketTick } from './market/market';
 import { updateAgentClaims } from './planet/automaticClaimManagement';
 import { updateAgentProductionScale } from './planet/automaticProductionScale';
+import { updateAgentShellCompartments } from './planet/automaticProductionScale/agentStorage';
 import { claimBillingTick } from './planet/claimBilling';
 import { environmentTick } from './planet/environment';
 import type { GameState } from './planet/planet';
@@ -176,6 +177,7 @@ export function advanceTick(gameState: GameState) {
             constructionTick(gameState, planet);
             storageLogisticsTick(gameState.agents, planet);
             updateAgentProductionScale(gameState, planet);
+            updateAgentShellCompartments(gameState, planet);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('production', 'production + construction', t);
             }

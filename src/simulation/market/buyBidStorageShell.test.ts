@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { getAvailableStorageCapacity } from '../planet/facility';
 import { coalResourceType, copperResourceType } from '../planet/resources';
 import { ironSmelter } from '../planet/productionFacilities';
-import { updateAgentProductionScale } from '../planet/automaticProductionScale';
+import { updateAgentShellCompartments } from '../planet/automaticProductionScale/agentStorage';
 import { makeAgent, makeGameState, makePlanet, makeStorageFacility } from '../utils/testHelper';
 import { collectAgentBids } from './orderCollection';
 
@@ -42,7 +42,7 @@ describe('non-automated agent buys a production input', () => {
         const planet = makePlanet({ id: planetId });
         const gameState = makeGameState(planet, [agent]);
 
-        updateAgentProductionScale(gameState, planet);
+        updateAgentShellCompartments(gameState, planet);
 
         expect(agent.assets[planetId].storage.shells.solid.compartments[COAL]).toBeGreaterThan(0);
         expect(getAvailableStorageCapacity(agent.assets[planetId].storage, coalResourceType)).toBeGreaterThan(0);
@@ -56,7 +56,7 @@ describe('non-automated agent buys a production input', () => {
         const planet = makePlanet({ id: planetId });
         const gameState = makeGameState(planet, [agent]);
 
-        updateAgentProductionScale(gameState, planet);
+        updateAgentShellCompartments(gameState, planet);
 
         expect(agent.assets[planetId].storage.shells.solid.compartments[COPPER]).toBeUndefined();
         expect(getAvailableStorageCapacity(agent.assets[planetId].storage, copperResourceType)).toBe(0);

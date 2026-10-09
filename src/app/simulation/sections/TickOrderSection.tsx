@@ -89,6 +89,10 @@ export function TickOrderSection() {
                     <code>updateAgentProductionScale</code> — signal-based facility scale and construction decisions
                 </li>
                 <li>
+                    <code>updateAgentShellCompartments</code> — author storage shell cells (facility footprint first,
+                    free-buy floors second) and grow/shrink shells to the required scale
+                </li>
+                <li>
                     <em>(end of month)</em> <code>postProductionLaborMarketTick</code> — advance notice pipelines;
                     release workers to population
                 </li>

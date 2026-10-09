@@ -3,7 +3,7 @@ import { HR_BUFFER_CAPACITY_MULTIPLIER, TICKS_PER_MONTH } from '../constants';
 import { humanResourcesOfficeFacilityType, PRODUCED_HR_QUANTITY } from '../planet/specialFacilities';
 import { makeAgent, makeProductionFacility } from '../utils/testHelper';
 import { makeAgentPlanetAssets, makeStorage, presizeAgentShellForFacilities } from './helpers';
-import { updateAgentShellCompartments } from '../planet/automaticProductionScale/shellCompartments';
+import { authorShellCompartments } from '../planet/automaticProductionScale/shellCompartments';
 import { STORAGE_CAPACITY_MONTHS } from '../planet/automaticProductionScale/constants';
 import { STORAGE_SHELL_CAPACITY } from '../planet/facility';
 import type { Resource } from '../planet/claims';
@@ -62,15 +62,13 @@ describe('presizeAgentShellForFacilities', () => {
         const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });
         const gameState = { agents: new Map([[agent.id, agent]]) };
 
-        const before = updateAgentShellCompartments(assets);
+        const before = authorShellCompartments(assets);
         expect(before.solid!.requiredScale).toBeGreaterThan(storage.shells.solid.maxScale);
         expect(storage.shells.solid.compartments.dominant).toBeGreaterThan(storage.shells.solid.compartments.minor);
 
         presizeAgentShellForFacilities(gameState);
 
         expect(storage.shells.solid.maxScale).toBeGreaterThanOrEqual(before.solid!.requiredScale);
-        expect(updateAgentShellCompartments(assets).solid!.requiredScale).toBeLessThanOrEqual(
-            storage.shells.solid.maxScale,
-        );
+        expect(authorShellCompartments(assets).solid!.requiredScale).toBeLessThanOrEqual(storage.shells.solid.maxScale);
     });
 });

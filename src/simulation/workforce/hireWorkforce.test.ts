@@ -46,7 +46,12 @@ import {
     reservationWage,
 } from './laborMarket';
 import { workforceDemographicTick } from './workforceDemographicTick';
-import { QUIT_FAIRNESS_SENSITIVITY, QUIT_JOB_FINDING_FLOOR, QUIT_OUTSIDE_SENSITIVITY, QUIT_OUTSIDE_WAGE_BIAS } from '../constants';
+import {
+    QUIT_FAIRNESS_SENSITIVITY,
+    QUIT_JOB_FINDING_FLOOR,
+    QUIT_OUTSIDE_SENSITIVITY,
+    QUIT_OUTSIDE_WAGE_BIAS,
+} from '../constants';
 
 const BIASED_PARITY_WAGE = 100 / QUIT_OUTSIDE_WAGE_BIAS;
 
@@ -82,7 +87,8 @@ describe('labor market helpers', () => {
         expect(jobFindingProbability(0)).toBe(0);
         expect(outsideIncome(0, 100)).toBeCloseTo(QUIT_JOB_FINDING_FLOOR * 100, 10);
         expect(outsideIncome(1, 100)).toBe(100);
-        const floored = QUIT_JOB_FINDING_FLOOR + (1 - QUIT_JOB_FINDING_FLOOR) * (1 - Math.pow(0.99, SEARCH_HORIZON_TICKS));
+        const floored =
+            QUIT_JOB_FINDING_FLOOR + (1 - QUIT_JOB_FINDING_FLOOR) * (1 - Math.pow(0.99, SEARCH_HORIZON_TICKS));
         expect(outsideIncome(0.01, 100)).toBeCloseTo(floored * 100, 6);
     });
 
