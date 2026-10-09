@@ -124,6 +124,11 @@ export const WAGE_SHARE = 0.6;
 export const WAGE_CHURN_GAIN = 3;
 export const WAGE_CEILING_SMOOTHING = 0.1;
 
+// Restoring pressure pulling the wage back toward the affordable ceiling when it
+// exceeds it. Replaces the former hard clamp, which made the ceiling a wall the
+// wage could never cross, even though the ceiling itself moves with the wage.
+export const WAGE_CEILING_SPRING_GAIN = 1.0;
+
 export const HIRE_RAMP_MONTHS = 3;
 export const HIRE_HR_SERVICE_PER_WORKER = 1;
 export const MIN_HIRES_PER_TICK = 5;

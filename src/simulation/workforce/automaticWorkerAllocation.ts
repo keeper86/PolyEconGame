@@ -3,6 +3,7 @@ import {
     MIN_WAGE,
     QUIT_TARGET_RATE,
     WAGE_ADJUSTMENT_RATE,
+    WAGE_CEILING_SPRING_GAIN,
     WAGE_CEILING_SMOOTHING,
     WAGE_CHURN_GAIN,
 } from '../constants';
@@ -48,8 +49,8 @@ export const setPinWagesToMinimum = (value: boolean): void => {
     pinWagesToMinimum = value;
 };
 
-const capAtAffordability = (wage: number, ceiling: number): number =>
-    ceiling >= MIN_WAGE ? Math.min(wage, ceiling) : wage;
+const ceilingSpringPressure = (wage: number, ceiling: number): number =>
+    ceiling > 0 ? -WAGE_CEILING_SPRING_GAIN * Math.max(0, (wage - ceiling) / ceiling) : 0;
 
 export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
@@ -92,13 +93,12 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             const quitRate = active > 0 ? monthlyQuits[edu] / active : 0;
             const churnPressure = WAGE_CHURN_GAIN * (quitRate - QUIT_TARGET_RATE);
 
-            const pressure = shortagePressure + churnPressure;
+            const pressure = shortagePressure + churnPressure + ceilingSpringPressure(current, ceiling);
             wageStepDebug[edu] = { shortagePressure, churnPressure, quitRate, ceiling };
 
             const maxStep = WAGE_ADJUSTMENT_RATE * current;
             const step = pinWagesToMinimum ? 0 : Math.max(-maxStep, Math.min(maxStep, current * pressure));
-            const raised = capAtAffordability(current + step, ceiling);
-            assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, raised));
+            assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, current + step));
         }
 
         for (let i = educationLevelKeys.length - 2; i >= 0; i--) {
