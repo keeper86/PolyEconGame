@@ -106,7 +106,7 @@ describe('labor market helpers', () => {
 
     it('quitPropensity quits only when a better offer outweighs the current pay, tilted by unfairness', () => {
         expect(quitPropensity(100, 0, 0, 100)).toBe(0);
-        expect(quitPropensity(100, 0, 0, 250)).toBeGreaterThan(0);
+        expect(quitPropensity(100, 0, 0, 250)).toBe(0);
         expect(quitPropensity(100, 1, 50, 100)).toBe(0);
         expect(quitPropensity(100, 1, 95, 100)).toBe(0);
         expect(quitPropensity(100, 1, 200, 100)).toBeGreaterThan(0);
@@ -122,13 +122,15 @@ describe('labor market helpers', () => {
         expect(quitPropensity(100, 1, 130, 100)).toBeGreaterThan(0);
     });
 
-    it('fairness outweighs the outside option, so a grievance still sparks when the outside market is dead', () => {
-        const deadOutsideMarket = quitPropensity(100, 0, 0, 300);
+    it('fairness outweighs the outside option, but only once the outside market has its floored chance', () => {
+        const deadOutsideMarket = quitPropensity(100, 0, 0, 200);
+        const flooredOutsideMarket = quitPropensity(100, 0, 100, 300);
         const liveOutsideMarket = quitPropensity(100, 1, 130, 300);
 
         expect(QUIT_FAIRNESS_SENSITIVITY).toBeGreaterThan(QUIT_OUTSIDE_SENSITIVITY);
-        expect(deadOutsideMarket).toBeGreaterThan(0);
-        expect(liveOutsideMarket).toBeGreaterThan(deadOutsideMarket);
+        expect(deadOutsideMarket).toBe(0);
+        expect(flooredOutsideMarket).toBeGreaterThan(0);
+        expect(liveOutsideMarket).toBeGreaterThan(flooredOutsideMarket);
     });
 
     it('reservationWage anchors to the going tier rate and does NOT depend on cost of living', () => {

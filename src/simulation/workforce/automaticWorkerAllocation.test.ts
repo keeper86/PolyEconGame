@@ -3,7 +3,7 @@ import { beforeEach, describe, it, expect } from 'vitest';
 import { automaticWageAdjustment, automaticWorkerAllocation } from './automaticWorkerAllocation';
 import { setFireRateLimitPerMonth, setHireFlowMultiplier } from './hireWorkforce';
 import { makeAgent, makePlanetWithPopulation, makeProductionFacility, agentMap } from '../utils/testHelper';
-import { MAX_WAGE, MIN_WAGE, NOTICE_PERIOD_MONTHS, WAGE_ADJUSTMENT_RATE } from '../constants';
+import { MAX_WAGE, MIN_WAGE, NOTICE_PERIOD_MONTHS } from '../constants';
 
 beforeEach(() => {
     setHireFlowMultiplier(Number.POSITIVE_INFINITY);
@@ -202,7 +202,7 @@ describe('automaticWageAdjustment', () => {
         expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
     });
 
-    it('pulls an unaffordable wage back toward the ceiling with a spring, not a clamp', () => {
+    it('freezes an over-ceiling wage instead of raising it, because the upward push is damped to zero', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
@@ -212,19 +212,11 @@ describe('automaticWageAdjustment', () => {
         agent.assets.p.lastMonthAcc.claimPayments = 0;
         agent.assets.p.lastMonthAcc.totalWorkersTicks = 100;
 
-        automaticWageAdjustment(agentMap(agent), planet);
-
-        const ceiling = 10;
-        expect(agent.assets.p.wagePerEdu.tertiary).toBeLessThan(100);
-        expect(agent.assets.p.wagePerEdu.tertiary).toBeGreaterThan(ceiling);
-        expect(agent.assets.p.wagePerEdu.tertiary).toBeCloseTo(100 * (1 - WAGE_ADJUSTMENT_RATE), 6);
-
-        for (let month = 0; month < 400; month++) {
+        for (let month = 0; month < 200; month++) {
             automaticWageAdjustment(agentMap(agent), planet);
         }
 
-        expect(agent.assets.p.wagePerEdu.tertiary).toBeLessThan(3 * ceiling);
-        expect(agent.assets.p.wagePerEdu.tertiary).toBeGreaterThanOrEqual(ceiling);
+        expect(agent.assets.p.wagePerEdu.tertiary).toBe(100);
     });
 
     it('never lets an upward push carry the wage past the zero-profit ceiling', () => {
