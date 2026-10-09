@@ -743,7 +743,6 @@
         },
         "sendingRequest": "Anfrage wird gesendet…",
         "awaitingNextDay": "Warten auf den nächsten Tag…",
-        "takeInitialLoan": "Startkredit aufnehmen {amount}",
         "cashBalance": "Saldo",
         "netPosition": "Konzernwert",
         "income": "Gewinn",
@@ -899,8 +898,8 @@
                     "title": "🌍 Willkommen bei Enterprise Engine!"
                 },
                 "1": {
-                    "content": "Klicken Sie oben auf den Button, um Ihren Startkredit aufzunehmen. Er liefert Startkapital, um die Infrastruktur Ihres Unternehmens aufzubauen und Personal einzustellen. Der Kredit wird gutgeschrieben, sobald der aktuelle Tag abgeschlossen ist.",
-                    "title": "🏦 Nehmen Sie Ihren Startkredit auf"
+                    "content": "Klicken Sie oben auf einen der Buttons, um einen Kredit aufzunehmen. Er liefert Kapital, um die Infrastruktur Ihres Unternehmens aufzubauen und Personal einzustellen. Der Kredit wird gutgeschrieben, sobald der aktuelle Tag abgeschlossen ist.",
+                    "title": "🏦 Nehmen Sie Ihren ersten Kredit auf"
                 },
                 "2": {
                     "content": "Ihre Kreditanfrage wurde in die Warteschlange gestellt! Sie wird gutgeschrieben, sobald der aktuelle Tag abgeschlossen ist. Beachten Sie das \"Pending\"-Overlay — Aktionen werden in die Warteschlange gestellt und am nächsten Tag verarbeitet. So funktioniert die Simulation: Sie stellen Aktionen ein, sie werden aufgelöst, wenn die Zeit voranschreitet.",

@@ -41,7 +41,6 @@ export function createRecyclerAgent(planetId: string, planetName: string): Agent
         automateWorkerAllocation: false,
         logo: 'ai_company',
         foundedTick: 0,
-        starterLoanTaken: true,
         associatedPlanetId: planetId,
         ships: [],
         assets: { [planetId]: assets },

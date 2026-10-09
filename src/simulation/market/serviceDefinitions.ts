@@ -10,10 +10,10 @@ import {
     HOUSING_LIFETIME_MONTHS,
     HOUSING_WEALTH_THRESHOLD_MONTHS,
     LOGISTICS_WEALTH_SATURATION_MONTHS,
-    MIN_WAGE,
     RETAIL_WEALTH_SATURATION_MONTHS,
     TICKS_PER_MONTH,
     TICKS_PER_YEAR,
+    WAGE_START,
 } from '../constants';
 import type { Resource } from '../planet/claims';
 import type { Planet } from '../planet/planet';
@@ -70,8 +70,8 @@ export const referenceMonthlyIncome = (planet: Planet): number => {
             count += 1;
         }
     }
-    const avgWage = count > 0 ? sum / count : MIN_WAGE;
-    return Math.max(MIN_WAGE, avgWage) * TICKS_PER_MONTH;
+    const avgWage = count > 0 ? sum / count : WAGE_START;
+    return Math.max(WAGE_START, avgWage) * TICKS_PER_MONTH;
 };
 
 let servicePriceResponseEnabled = true;

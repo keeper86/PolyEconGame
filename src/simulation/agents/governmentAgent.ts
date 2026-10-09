@@ -1,22 +1,23 @@
 import {
     GOVERNMENT_OPERATING_BUFFER,
-    MIN_WAGE,
     POPULATION_WEALTH_TAX_ALLOWANCE_MONTHS,
     POPULATION_WEALTH_TAX_MONTHLY_RATE,
+    PRICE_LEVEL_REFERENCE,
     TICKS_PER_MONTH,
     UNEMPLOYMENT_INSURANCE_RATE_EDUCATION,
     UNEMPLOYMENT_INSURANCE_RATE_UNABLE,
     UNEMPLOYMENT_INSURANCE_RATE_UNOCCUPIED,
+    WAGE_START,
     WEALTH_TAX_ALLOWANCE,
     WEALTH_TAX_MONTHLY_RATE,
 } from '../constants';
 import { computeFacilitiesValue, computeShipsValue, constructionValuationPrice } from '../financial/assetValuation';
 import { repayLoansOldestFirst, totalOutstandingLoans } from '../financial/loanTypes';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
-import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
+import { generalPriceLevel } from '../market/priceLevel';
 import { forEachPopulationCohort, type EducationLevelType, type Occupation } from '../population/population';
 import type { Agent, GameState, Planet } from '../planet/planet';
-import { constructionServiceResourceType, groceryServiceResourceType } from '../planet/services';
+import { groceryServiceResourceType } from '../planet/services';
 import type { ShipCapitalMarket } from '../ships/ships';
 
 const INSURANCE_RATES: Partial<Record<Occupation, number>> = {
@@ -55,9 +56,7 @@ export function setWealthTaxAllowance(allowance: number): void {
 
 export const wealthTaxAllowance = (planet: Planet): number => {
     const base = wealthTaxAllowanceOverride ?? WEALTH_TAX_ALLOWANCE;
-    const csMarketPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
-    const initialCsPrice = initialMarketPrices[constructionServiceResourceType.name] ?? 1;
-    const inflationFactor = csMarketPrice > 0 ? Math.max(1, csMarketPrice / initialCsPrice) : 1;
+    const inflationFactor = Math.max(1, generalPriceLevel(planet) / PRICE_LEVEL_REFERENCE);
     return base * inflationFactor;
 };
 
@@ -129,7 +128,7 @@ export const collectPopulationWealthTax = (gameState: GameState, planet: Planet)
                 return;
             }
             const allowance =
-                (planet.wagePerEdu[edu] ?? MIN_WAGE) * TICKS_PER_MONTH * POPULATION_WEALTH_TAX_ALLOWANCE_MONTHS;
+                (planet.wagePerEdu[edu] ?? WAGE_START) * TICKS_PER_MONTH * POPULATION_WEALTH_TAX_ALLOWANCE_MONTHS;
             if (cat.wealth.mean <= allowance) {
                 return;
             }
@@ -180,7 +179,7 @@ export const governmentSupportTick = (gameState: GameState, planet: Planet): num
     if (!assets || assets.deposits <= 0) {
         return 0;
     }
-    const base = Math.max(planet.wagePerEdu.none ?? 0, MIN_WAGE);
+    const base = Math.max(planet.wagePerEdu.none ?? 0, WAGE_START);
     if (base <= 0) {
         return 0;
     }

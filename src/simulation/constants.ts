@@ -88,7 +88,9 @@ export const HOUSING_BASE_RATE_PER_MONTH = 0.1;
 export const HOUSING_WEALTH_THRESHOLD_MONTHS = 12;
 export const HOUSING_ENGEL_GAIN = 0.05;
 
-export const STARTER_LOAN_AMOUNT = 1_000_000;
+export const PRICE_LEVEL_REFERENCE = 10;
+
+export const BASE_LOAN_PER_PRICE_LEVEL = 100_000;
 
 export const LOAN_INTEREST_RATE_PER_YEAR = 0.01;
 
@@ -120,10 +122,14 @@ export const UNEMPLOYMENT_INSURANCE_RATE_UNABLE = 0.5;
 
 export const CONSTRUCTION_VALUATION_PRICE_CAP = 2;
 
-export const MIN_WAGE = 1.0;
+// Floor on the wage. Can be lowered (e.g. to 0) to study an economy with no wage
+// floor; WAGE_START is the separate seed/reference value, so nothing that needs a
+// positive nominal anchor degenerates when the floor is removed.
+export const WAGE_START = 1.0;
+export const MIN_WAGE = envNumber('MIN_WAGE', 1.0);
 export const MAX_WAGE = 1000.0;
 
-export const DEFAULT_REFERENCE_MONTHLY_INCOME = MIN_WAGE * TICKS_PER_MONTH;
+export const DEFAULT_REFERENCE_MONTHLY_INCOME = WAGE_START * TICKS_PER_MONTH;
 
 export const WAGE_ADJUSTMENT_RATE = 0.05;
 

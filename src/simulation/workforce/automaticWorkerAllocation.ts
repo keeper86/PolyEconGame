@@ -7,6 +7,7 @@ import {
     WAGE_CEILING_SMOOTHING,
     WAGE_CHURN_GAIN,
     WAGE_SHARE,
+    WAGE_START,
 } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
@@ -96,7 +97,7 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             { shortagePressure: number; churnPressure: number; quitRate: number; ceiling: number }
         > = {};
         for (const edu of educationLevelKeys) {
-            const current = pinWagesToMinimum ? MIN_WAGE : (assets.wagePerEdu[edu] ?? MIN_WAGE);
+            const current = pinWagesToMinimum ? MIN_WAGE : (assets.wagePerEdu[edu] ?? WAGE_START);
 
             const capacity = assets.totalSlotCapacity?.[edu] ?? 0;
             const shortage = Math.max(0, capacity - slotsFilled[edu]) / Math.max(1, capacity);

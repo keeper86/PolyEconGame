@@ -743,7 +743,6 @@
         },
         "sendingRequest": "Sending request…",
         "awaitingNextDay": "Awaiting next day…",
-        "takeInitialLoan": "Take initial loan {amount}",
         "cashBalance": "Cash Balance",
         "netPosition": "Net Position",
         "income": "Income",
@@ -899,8 +898,8 @@
                     "title": "🌍 Welcome to Enterprise Engine!"
                 },
                 "1": {
-                    "content": "Click the button above to take your starter loan. It provides initial capital to build your company infrastructure and hire workers. The loan is credited after the current day completes.",
-                    "title": "🏦 Take your starter loan"
+                    "content": "Click one of the buttons above to take a loan. It provides capital to build your company infrastructure and hire workers. The loan is credited after the current day completes.",
+                    "title": "🏦 Take your first loan"
                 },
                 "2": {
                     "content": "Your loan request has been queued! It will be credited after the current day completes. Notice the \"Pending\" overlay — actions are queued and processed on the next day. This is how the simulation works: you queue actions, they resolve when time advances.",

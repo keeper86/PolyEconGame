@@ -1,9 +1,10 @@
 import {
     BANKRUPTCY_TRIGGER_MULTIPLE,
+    BASE_LOAN_PER_PRICE_LEVEL,
     LOAN_CASH_FLOW_MONTHS,
     LOAN_COLLATERAL_FACTOR,
-    STARTER_LOAN_AMOUNT,
 } from '../constants';
+import { generalPriceLevel } from '../market/priceLevel';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import { grantLoan, hasOutstandingEmergencyLoan, totalOutstandingLoans, type Loan, type LoanType } from './loanTypes';
 import type { LoanConditions } from '../../server/controller/simulation';
@@ -33,8 +34,6 @@ export function computeLoanConditions(
 
     const monthlyNetCashFlow = lastMonthlyRevenue - lastMonthlyExpenses;
 
-    const isNewAgent = !agent.starterLoanTaken;
-
     let storageCollateral = 0;
     if (assets?.storage) {
         for (const [, entry] of getWholeStorage(assets.storage)) {
@@ -52,7 +51,8 @@ export function computeLoanConditions(
         : 0;
 
     const cashFlowCapacity = monthlyNetCashFlow > 0 ? LOAN_CASH_FLOW_MONTHS * monthlyNetCashFlow : 0;
-    const lendingCapacity = STARTER_LOAN_AMOUNT + facilitiesCollateral + shipsCollateral + cashFlowCapacity;
+    const baseLoan = BASE_LOAN_PER_PRICE_LEVEL * generalPriceLevel(planet);
+    const lendingCapacity = baseLoan + facilitiesCollateral + shipsCollateral + cashFlowCapacity;
     const bankruptcyTrigger = Math.floor(BANKRUPTCY_TRIGGER_MULTIPLE * lendingCapacity);
 
     let maxLoanAmount = Math.max(0, lendingCapacity - existingLoans);
@@ -75,7 +75,6 @@ export function computeLoanConditions(
         storageCollateral,
         facilitiesCollateral: Math.floor(facilitiesCollateral),
         shipsCollateral: Math.floor(shipsCollateral),
-        isNewAgent,
     };
 }
 

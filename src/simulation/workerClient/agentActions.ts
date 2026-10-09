@@ -18,7 +18,6 @@ export function handleCreateAgent(
         name: agentName,
         logo: logo ?? 'ai_company',
         foundedTick: state.tick,
-        starterLoanTaken: false,
         associatedPlanetId: planetId,
         ships: [],
         automated: false,

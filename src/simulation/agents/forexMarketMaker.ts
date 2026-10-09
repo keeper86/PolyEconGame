@@ -17,7 +17,6 @@ export function seedForexMarketMakers(gameState: GameState): void {
                 automateWorkerAllocation: false,
                 logo: 'ai_company',
                 foundedTick: 0,
-                starterLoanTaken: true,
                 associatedPlanetId: homePlanet.id,
                 ships: [],
                 assets: {},

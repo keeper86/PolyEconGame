@@ -1,4 +1,4 @@
-import { EMERGENCY_LOAN_WAGE_MONTHS, MIN_WAGE, TICKS_PER_MONTH, TICKS_PER_YEAR } from '../constants';
+import { EMERGENCY_LOAN_WAGE_MONTHS, TICKS_PER_MONTH, TICKS_PER_YEAR, WAGE_START } from '../constants';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
@@ -10,7 +10,7 @@ import { isCurrencyResource } from '../market/currencyResources';
 import { validateAndPrepareBuyBid } from '../market/validation';
 import { queryStorageFacility } from '../planet/facility';
 
-export const DEFAULT_WAGE_PER_EDU = MIN_WAGE;
+export const DEFAULT_WAGE_PER_EDU = WAGE_START;
 
 export function estimateWorkingCapitalCost(assets: AgentPlanetAssets): number {
     let cost = 0;

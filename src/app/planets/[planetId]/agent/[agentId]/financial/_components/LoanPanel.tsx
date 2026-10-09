@@ -239,7 +239,7 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                     queryKey: trpc.simulation.getLoanConditions.queryKey({ agentId, planetId }),
                 });
 
-                if (isTourActive && conditions?.isNewAgent) {
+                if (isTourActive) {
                     markActionCompleted('starter-loan');
                 }
             },
@@ -275,77 +275,43 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                     </span>
                 </p>
             )}
-            {conditions && (conditions.maxLoanAmount > 0 || conditions.isNewAgent) && (
-                <div className='space-y-2 relative'>
-                    {conditions.isNewAgent ? (
-                        <>
-                            <span data-tour='starter-loan'>
+            {conditions && conditions.maxLoanAmount > 0 && (
+                <div className='space-y-2 relative' data-tour='starter-loan'>
+                    <p className='text-xs text-muted-foreground '>
+                        {tf('maturity', { date: mapTickToDate(currentTick + LOAN_TERM_TICKS.discretionary) })}
+                    </p>
+                    <div className='flex justify-between gap-2'>
+                        {(
+                            [
+                                { label: '25 %', fraction: 0.25 },
+                                { label: '50 %', fraction: 0.5 },
+                                { label: '100 %', fraction: 1 },
+                            ] as const
+                        ).map(({ label, fraction }) => {
+                            const amount = Math.floor(conditions.maxLoanAmount * fraction);
+                            const isFull = fraction === 1;
+                            return (
                                 <CreditButton
-                                    variant='starter'
-                                    planetId={planetId}
-                                    isFull={true}
-                                    label={tf('takeInitialLoan', {
-                                        amount: formatNumberWithUnit(
-                                            conditions.maxLoanAmount,
-                                            'units',
-                                            planetId,
-                                            locale,
-                                        ),
-                                    })}
+                                    key={label}
+                                    label={label}
+                                    amount={formatNumberWithUnit(amount, 'units', planetId, locale)}
+                                    isFull={isFull}
                                     isPending={requestLoanMutation.isPending}
                                     disabled={conditions.maxLoanAmount === 0}
+                                    planetId={planetId}
                                     onClick={() => {
-                                        requestLoanMutation.mutate({
-                                            agentId,
-                                            planetId,
-                                            amount: conditions.maxLoanAmount,
-                                        });
+                                        requestLoanMutation.mutate({ agentId, planetId, amount });
                                     }}
                                 />
-                            </span>
-                            <p className='text-xs text-muted-foreground'>
-                                {tf('maturity', { date: mapTickToDate(currentTick + LOAN_TERM_TICKS.starter) })}
-                            </p>
-                        </>
-                    ) : (
-                        <>
-                            <p className='text-xs text-muted-foreground '>
-                                {tf('maturity', { date: mapTickToDate(currentTick + LOAN_TERM_TICKS.discretionary) })}
-                            </p>
-                            <div className='flex justify-between gap-2'>
-                                {(
-                                    [
-                                        { label: '25 %', fraction: 0.25 },
-                                        { label: '50 %', fraction: 0.5 },
-                                        { label: '100 %', fraction: 1 },
-                                    ] as const
-                                ).map(({ label, fraction }) => {
-                                    const amount = Math.floor(conditions.maxLoanAmount * fraction);
-                                    const isFull = fraction === 1;
-                                    return (
-                                        <CreditButton
-                                            key={label}
-                                            label={label}
-                                            amount={formatNumberWithUnit(amount, 'units', planetId, locale)}
-                                            isFull={isFull}
-                                            isPending={requestLoanMutation.isPending}
-                                            disabled={conditions.maxLoanAmount === 0}
-                                            planetId={planetId}
-                                            onClick={() => {
-                                                requestLoanMutation.mutate({ agentId, planetId, amount });
-                                            }}
-                                        />
-                                    );
-                                })}
-                            </div>
-                        </>
-                    )}
+                            );
+                        })}
+                    </div>
 
                     {loanOverlayMsg && <PendingOverlay message={loanOverlayMsg} />}
                 </div>
             )}
 
-            {conditions && conditions.maxLoanAmount === 0 && !conditions.isNewAgent ? (
+            {conditions && conditions.maxLoanAmount === 0 ? (
                 <div className='flex flex-col gap-2'>
                     <Button
                         variant='outline'

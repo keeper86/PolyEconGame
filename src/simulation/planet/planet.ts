@@ -435,7 +435,6 @@ export type Agent = {
     name: string;
     logo: string;
     foundedTick: number;
-    starterLoanTaken: boolean;
     associatedPlanetId: string;
     agentRole?: 'shipbuilder' | 'arbitrage_trader' | 'buffer_trader';
     ships: Ship[];

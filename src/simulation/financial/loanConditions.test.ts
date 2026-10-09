@@ -2,13 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import {
     BANKRUPTCY_TRIGGER_MULTIPLE,
+    BASE_LOAN_PER_PRICE_LEVEL,
     LOAN_CASH_FLOW_MONTHS,
     LOAN_COLLATERAL_FACTOR,
     RECYCLER_BASE_RECOVERY_EFFICIENCY,
-    STARTER_LOAN_AMOUNT,
 } from '../constants';
+import { generalPriceLevel } from '../market/priceLevel';
 import { calculateCostsForConstruction } from '../planet/facility';
 import { createEmptyAccumulator, type Agent, type Planet } from '../planet/planet';
+import { TRADABLE_RESOURCES } from '../planet/resourceCatalog';
 import { constructionServiceResourceType } from '../planet/services';
 import { computeFacilitiesValue, constructionValuationPrice } from './assetValuation';
 import {
@@ -33,7 +35,7 @@ function makeEstablishedAgent(
         existingLoans?: number;
     },
 ): Agent {
-    const a = makeAgent('a1', planet.id, 'Player', { automated: false, starterLoanTaken: true });
+    const a = makeAgent('a1', planet.id, 'Player', { automated: false });
     const assets = a.assets[planet.id]!;
     assets.storage.department = null;
     if (overrides?.existingLoans && overrides.existingLoans > 0) {
@@ -61,31 +63,37 @@ function establishedStorageFacilitiesCollateral(planet: Planet): number {
     return computeFacilitiesValue(empty, constructionValuationPrice(planet)) * LOAN_COLLATERAL_FACTOR;
 }
 
+function baseLoan(planet: Planet): number {
+    return BASE_LOAN_PER_PRICE_LEVEL * generalPriceLevel(planet);
+}
+
 describe('computeLoanConditions', () => {
-    it('grants STARTER_LOAN_AMOUNT to a brand-new agent (starterLoanTaken=false)', () => {
+    it('grants the price-level-scaled base loan to a fresh agent', () => {
         const planet = makePlanet();
         const agent = makeAgent('a1', planet.id, 'Player', { automated: false });
         agent.assets[planet.id]!.storage.department = null;
         const result = computeLoanConditions(agent, planet);
-        expect(result.isNewAgent).toBe(true);
         expect(result.maxLoanAmount).toBe(
-            Math.floor(STARTER_LOAN_AMOUNT + establishedStorageFacilitiesCollateral(planet)),
+            Math.floor(baseLoan(planet) + establishedStorageFacilitiesCollateral(planet)),
         );
     });
 
-    it('does NOT use starter path when starterLoanTaken=true', () => {
+    it('scales the base loan with the general price level', () => {
         const planet = makePlanet();
-        const agent = makeAgent('a1', planet.id, 'Player', { automated: false, starterLoanTaken: true });
-        const result = computeLoanConditions(agent, planet);
-        expect(result.isNewAgent).toBe(false);
-    });
+        const agent = makeAgent('a1', planet.id, 'Player', { automated: false });
+        agent.assets[planet.id]!.storage.department = null;
+        const reference = computeLoanConditions(agent, planet).maxLoanAmount;
 
-    it('still uses starter path when agent has loans but starterLoanTaken=false', () => {
-        const planet = makePlanet();
-        const agent = makeEstablishedAgent(planet, { existingLoans: 1 });
-        agent.starterLoanTaken = false;
-        const result = computeLoanConditions(agent, planet);
-        expect(result.isNewAgent).toBe(true);
+        const doubled = makePlanet();
+        for (const resource of TRADABLE_RESOURCES) {
+            doubled.marketPrices[resource.name] *= 2;
+        }
+        const doubledAgent = makeAgent('a1', doubled.id, 'Player', { automated: false });
+        doubledAgent.assets[doubled.id]!.storage.department = null;
+        const scaled = computeLoanConditions(doubledAgent, doubled).maxLoanAmount;
+
+        expect(scaled).toBeGreaterThan(reference);
+        expect(scaled).toBeCloseTo(reference * 2, -1);
     });
 
     it('at tick % TICKS_PER_MONTH === 0 (progress 0) uses 100% last month', () => {
@@ -105,16 +113,16 @@ describe('computeLoanConditions', () => {
         });
         const result = computeLoanConditions(agent, planet);
         expect(result.maxLoanAmount).toBe(0);
-        const cap = STARTER_LOAN_AMOUNT + establishedStorageFacilitiesCollateral(planet) + 6 * 100;
+        const cap = baseLoan(planet) + establishedStorageFacilitiesCollateral(planet) + 6 * 100;
         expect(result.bankruptcyTrigger).toBe(Math.floor(BANKRUPTCY_TRIGGER_MULTIPLE * cap));
     });
 
-    it('keeps the starter loan as a floor for maxLoanAmount when negative cash flow leaves headroom', () => {
+    it('keeps the base loan as a floor for maxLoanAmount when negative cash flow leaves headroom', () => {
         const planet = makePlanet();
         const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 0, lastMonthWages: 100, existingLoans: 1 });
         const result = computeLoanConditions(agent, planet);
         expect(result.maxLoanAmount).toBe(
-            Math.floor(STARTER_LOAN_AMOUNT + establishedStorageFacilitiesCollateral(planet) - 1),
+            Math.floor(baseLoan(planet) + establishedStorageFacilitiesCollateral(planet) - 1),
         );
     });
 
@@ -139,7 +147,7 @@ describe('computeLoanConditions', () => {
         const expectedCollateral = 100 * 10 * LOAN_COLLATERAL_FACTOR;
         expect(result.storageCollateral).toBeCloseTo(expectedCollateral);
         expect(result.maxLoanAmount).toBe(
-            Math.floor(STARTER_LOAN_AMOUNT + establishedStorageFacilitiesCollateral(planet) - 1),
+            Math.floor(baseLoan(planet) + establishedStorageFacilitiesCollateral(planet) - 1),
         );
     });
 
@@ -211,8 +219,7 @@ describe('computeLoanConditions', () => {
             existingLoans: 12345,
         });
         const result = computeLoanConditions(agent, planet);
-        const capacity =
-            STARTER_LOAN_AMOUNT + establishedStorageFacilitiesCollateral(planet) + LOAN_CASH_FLOW_MONTHS * 50;
+        const capacity = baseLoan(planet) + establishedStorageFacilitiesCollateral(planet) + LOAN_CASH_FLOW_MONTHS * 50;
         expect(result.bankruptcyTrigger).toBe(Math.floor(BANKRUPTCY_TRIGGER_MULTIPLE * capacity));
     });
 
@@ -225,7 +232,7 @@ describe('computeLoanConditions', () => {
         );
         expect(computeLoanConditions(heavyDebt, planet).bankruptcyTrigger).toBe(
             Math.floor(
-                BANKRUPTCY_TRIGGER_MULTIPLE * (STARTER_LOAN_AMOUNT + establishedStorageFacilitiesCollateral(planet)),
+                BANKRUPTCY_TRIGGER_MULTIPLE * (baseLoan(planet) + establishedStorageFacilitiesCollateral(planet)),
             ),
         );
     });

@@ -4,13 +4,16 @@ import {
     GOVERNMENT_OPERATING_BUFFER,
     POPULATION_WEALTH_TAX_ALLOWANCE_MONTHS,
     POPULATION_WEALTH_TAX_MONTHLY_RATE,
+    PRICE_LEVEL_REFERENCE,
     RECYCLER_BASE_RECOVERY_EFFICIENCY,
     TICKS_PER_MONTH,
     WEALTH_TAX_ALLOWANCE,
     WEALTH_TAX_MONTHLY_RATE,
 } from '../constants';
+import { generalPriceLevel } from '../market/priceLevel';
 import { calculateCostsForConstruction } from '../planet/facility';
 import { constructionServiceResourceType, groceryServiceResourceType } from '../planet/services';
+import { TRADABLE_RESOURCES } from '../planet/resourceCatalog';
 import { computeFacilitiesValue, constructionValuationPrice } from '../financial/assetValuation';
 import type { Planet } from '../planet/planet';
 import { makeLoan, totalOutstandingLoans } from '../financial/loanTypes';
@@ -73,28 +76,38 @@ function storageShellCapital(planet: Planet): number {
 }
 
 describe('wealthTaxAllowance', () => {
-    it('returns the base allowance at the initial construction price', () => {
+    it('returns the base allowance while the general price level is at or below the reference', () => {
         const { planet } = setupWorld();
         expect(wealthTaxAllowance(planet)).toBe(WEALTH_TAX_ALLOWANCE);
     });
 
-    it('scales with construction service inflation and never shrinks below the base', () => {
+    it('scales with the general price level and never shrinks below the base', () => {
         const { planet } = setupWorld();
-        planet.marketPrices[constructionServiceResourceType.name] = 21;
-        expect(wealthTaxAllowance(planet)).toBe(2 * WEALTH_TAX_ALLOWANCE);
+        const reference = generalPriceLevel(planet);
+        for (const resource of TRADABLE_RESOURCES) {
+            planet.marketPrices[resource.name] *= 2;
+        }
+        expect(wealthTaxAllowance(planet)).toBeCloseTo(
+            WEALTH_TAX_ALLOWANCE * ((2 * reference) / PRICE_LEVEL_REFERENCE),
+        );
 
-        planet.marketPrices[constructionServiceResourceType.name] = 0.5;
+        for (const resource of TRADABLE_RESOURCES) {
+            planet.marketPrices[resource.name] *= 0.01;
+        }
         expect(wealthTaxAllowance(planet)).toBe(WEALTH_TAX_ALLOWANCE);
     });
 
-    it('respects an override allowance, still scaling with construction inflation', () => {
+    it('respects an override allowance, still scaling with the general price level', () => {
         setWealthTaxAllowance(100_000_000);
         try {
             const { planet } = setupWorld();
             expect(wealthTaxAllowance(planet)).toBe(100_000_000);
 
-            planet.marketPrices[constructionServiceResourceType.name] = 21;
-            expect(wealthTaxAllowance(planet)).toBe(200_000_000);
+            const reference = generalPriceLevel(planet);
+            for (const resource of TRADABLE_RESOURCES) {
+                planet.marketPrices[resource.name] *= 2;
+            }
+            expect(wealthTaxAllowance(planet)).toBeCloseTo(100_000_000 * ((2 * reference) / PRICE_LEVEL_REFERENCE));
         } finally {
             setWealthTaxAllowance(WEALTH_TAX_ALLOWANCE);
         }

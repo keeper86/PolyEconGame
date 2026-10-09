@@ -41,10 +41,7 @@ function handleRequestLoan(
         });
         return;
     }
-    grantLoan(assets, planet.bank, amount, conditions.isNewAgent ? 'starter' : 'discretionary', state.tick);
-    if (conditions.isNewAgent) {
-        agent.starterLoanTaken = true;
-    }
+    grantLoan(assets, planet.bank, amount, 'discretionary', state.tick);
     console.log(`[worker] Loan of ${amount} granted to agent '${agentId}' on planet '${planetId}'`);
     safePostMessage({ type: 'loanGranted', requestId, agentId, amount, processedAtTick: state.tick });
 }
