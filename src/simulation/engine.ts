@@ -41,7 +41,7 @@ import { facilityMaintenanceTick } from './planet/facilityMaintenance';
 
 export { seedRng };
 
-const MAX_TICKER_EVENTS = 200;
+const MAX_TICKER_EVENTS = 1000;
 
 const REPORT_INTERVAL = 17;
 
