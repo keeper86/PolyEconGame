@@ -51,6 +51,9 @@ export const setPinWagesToMinimum = (value: boolean): void => {
 const ceilingHeadroom = (wage: number, ceiling: number): number =>
     ceiling > 0 ? Math.max(0, Math.min(1, (ceiling - wage) / ceiling)) : 1;
 
+const dampedByHeadroom = (pressure: number, headroom: number): number =>
+    pressure > 0 ? pressure * headroom : pressure;
+
 export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
         if (!agent.automated && !agent.automateWorkerAllocation) {
@@ -92,9 +95,9 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             const quitRate = active > 0 ? monthlyQuits[edu] / active : 0;
             const churnPressure = WAGE_CHURN_GAIN * (quitRate - QUIT_TARGET_RATE);
 
-            const combinedPressure = shortagePressure + churnPressure;
+            const headroom = ceilingHeadroom(current, ceiling);
             const pressure =
-                combinedPressure > 0 ? combinedPressure * ceilingHeadroom(current, ceiling) : combinedPressure;
+                dampedByHeadroom(shortagePressure, headroom) + dampedByHeadroom(churnPressure, headroom);
             wageStepDebug[edu] = { shortagePressure, churnPressure, quitRate, ceiling };
 
             const maxStep = WAGE_ADJUSTMENT_RATE * current;

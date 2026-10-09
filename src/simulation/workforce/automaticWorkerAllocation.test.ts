@@ -202,7 +202,7 @@ describe('automaticWageAdjustment', () => {
         expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
     });
 
-    it('freezes an over-ceiling wage instead of raising it, because the upward push is damped to zero', () => {
+    it('pulls an over-ceiling wage down even when a large shortage push is present', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
@@ -216,7 +216,8 @@ describe('automaticWageAdjustment', () => {
             automaticWageAdjustment(agentMap(agent), planet);
         }
 
-        expect(agent.assets.p.wagePerEdu.tertiary).toBe(100);
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeLessThan(100);
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeGreaterThanOrEqual(10);
     });
 
     it('never lets an upward push carry the wage past the zero-profit ceiling', () => {
