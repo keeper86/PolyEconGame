@@ -4,9 +4,6 @@ import {
     POPULATION_WEALTH_TAX_MONTHLY_RATE,
     PRICE_LEVEL_REFERENCE,
     TICKS_PER_MONTH,
-    UNEMPLOYMENT_INSURANCE_RATE_EDUCATION,
-    UNEMPLOYMENT_INSURANCE_RATE_UNABLE,
-    UNEMPLOYMENT_INSURANCE_RATE_UNOCCUPIED,
     WAGE_START,
     WEALTH_TAX_ALLOWANCE,
     WEALTH_TAX_MONTHLY_RATE,
@@ -15,39 +12,21 @@ import { computeFacilitiesValue, computeShipsValue, constructionValuationPrice }
 import { repayLoansOldestFirst, totalOutstandingLoans } from '../financial/loanTypes';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
 import { generalPriceLevel } from '../market/priceLevel';
+import { SERVICE_DEFINITIONS, referenceMonthlyIncome, serviceDemandFactor } from '../market/serviceDefinitions';
 import { forEachPopulationCohort, type EducationLevelType, type Occupation } from '../population/population';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import { groceryServiceResourceType } from '../planet/services';
 import type { ShipCapitalMarket } from '../ships/ships';
 
-const INSURANCE_RATES: Partial<Record<Occupation, number>> = {
-    education: UNEMPLOYMENT_INSURANCE_RATE_EDUCATION,
-    unoccupied: UNEMPLOYMENT_INSURANCE_RATE_UNOCCUPIED,
-    unableToWork: UNEMPLOYMENT_INSURANCE_RATE_UNABLE,
-};
+export const SUPPORT_STARVATION_TRIGGER = 0.1;
+export const SUPPORT_FOOD_DAYS_PER_TICK = 0.9;
+export const SUPPORT_WEALTH_CAP_FOOD_DAYS = 1;
 
-export const INSURANCE_WEALTH_CAP_DAYS = 2;
 let wealthTaxAllowanceOverride: number | undefined = undefined;
-
-let supportEmployedOverride: boolean | undefined = undefined;
-let supportWealthCapDaysOverride: number | undefined = undefined;
-let supportFoodAffordabilityOverride: number | undefined = undefined;
 let governmentSupportEnabled = true;
 
 export function setGovernmentSupportEnabled(enabled: boolean): void {
     governmentSupportEnabled = enabled;
-}
-
-export function setSupportEmployed(enabled: boolean): void {
-    supportEmployedOverride = enabled;
-}
-
-export function setSupportWealthCapDays(days: number): void {
-    supportWealthCapDaysOverride = days;
-}
-
-export function setSupportFoodAffordabilityMultiplier(multiplier: number): void {
-    supportFoodAffordabilityOverride = multiplier;
 }
 
 export function setWealthTaxAllowance(allowance: number): void {
@@ -179,14 +158,13 @@ export const governmentSupportTick = (gameState: GameState, planet: Planet): num
     if (!assets || assets.deposits <= 0) {
         return 0;
     }
-    const base = Math.max(planet.wagePerEdu.none ?? 0, WAGE_START);
-    if (base <= 0) {
+    const foodPrice = planet.marketPrices[groceryServiceResourceType.name] ?? 0;
+    if (foodPrice <= 0) {
         return 0;
     }
-    const supportEmployed = supportEmployedOverride ?? false;
-    const wealthCapDays = supportWealthCapDaysOverride ?? INSURANCE_WEALTH_CAP_DAYS;
-    const affordabilityMultiplier = supportFoodAffordabilityOverride ?? 0;
-    const foodPrice = planet.marketPrices[groceryServiceResourceType.name] ?? 0;
+    const grocery = SERVICE_DEFINITIONS.grocery;
+    const demandFactor = serviceDemandFactor(planet, grocery);
+    const referenceIncome = referenceMonthlyIncome(planet);
 
     const claims: Array<{ age: number; occ: Occupation; edu: EducationLevelType; payment: number }> = [];
     let claimed = 0;
@@ -195,20 +173,16 @@ export const governmentSupportTick = (gameState: GameState, planet: Planet): num
             if (category.total <= 0) {
                 return;
             }
-            const rate = INSURANCE_RATES[occ];
-            const employed = occ === 'employed';
-            const effectiveRate = rate ?? (supportEmployed && employed ? UNEMPLOYMENT_INSURANCE_RATE_UNOCCUPIED : 0);
-            if (effectiveRate <= 0 && affordabilityMultiplier <= 0) {
+            if (category.services.grocery.starvationLevel < SUPPORT_STARVATION_TRIGGER) {
                 return;
             }
-            const insuranceDaily = effectiveRate * base;
-            const affordabilityDaily = affordabilityMultiplier * foodPrice;
-            const dailyInsurance = Math.max(insuranceDaily, affordabilityDaily);
-            if (dailyInsurance <= 0) {
+            const dailyFoodCost =
+                grocery.fillRatePerPersonPerTick(age, occ, category.wealth, referenceIncome) * demandFactor * foodPrice;
+            if (dailyFoodCost <= 0) {
                 return;
             }
-            const wealthCap = wealthCapDays * dailyInsurance;
-            const payment = Math.min(dailyInsurance, wealthCap - category.wealth.mean);
+            const wealthCap = SUPPORT_WEALTH_CAP_FOOD_DAYS * dailyFoodCost;
+            const payment = Math.min(SUPPORT_FOOD_DAYS_PER_TICK * dailyFoodCost, wealthCap - category.wealth.mean);
             if (payment <= 0) {
                 return;
             }

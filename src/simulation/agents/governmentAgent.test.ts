@@ -11,6 +11,8 @@ import {
     WEALTH_TAX_MONTHLY_RATE,
 } from '../constants';
 import { generalPriceLevel } from '../market/priceLevel';
+import { SERVICE_DEFINITIONS, referenceMonthlyIncome, serviceDemandFactor } from '../market/serviceDefinitions';
+import type { Occupation } from '../population/population';
 import { calculateCostsForConstruction } from '../planet/facility';
 import { constructionServiceResourceType, groceryServiceResourceType } from '../planet/services';
 import { TRADABLE_RESOURCES } from '../planet/resourceCatalog';
@@ -28,18 +30,17 @@ import {
     makeProductionFacility,
 } from '../utils/testHelper';
 import {
+    SUPPORT_FOOD_DAYS_PER_TICK,
+    SUPPORT_STARVATION_TRIGGER,
+    SUPPORT_WEALTH_CAP_FOOD_DAYS,
     collectPopulationWealthTax,
     collectWealthTax,
     computeCompanyNetWorth,
     computeWealthTax,
     governmentSupportTick,
     governmentTick,
-    INSURANCE_WEALTH_CAP_DAYS,
     setGovernmentSupportEnabled,
     setPopulationWealthTaxEnabled,
-    setSupportEmployed,
-    setSupportFoodAffordabilityMultiplier,
-    setSupportWealthCapDays,
     setWealthTaxAllowance,
     wealthTaxAllowance,
 } from './governmentAgent';
@@ -215,19 +216,132 @@ describe('governmentTick', () => {
 });
 
 describe('governmentSupportTick', () => {
-    function makeUnemployedPlanet(gov: ReturnType<typeof makeGovernmentAgent>): ReturnType<typeof makePlanet> {
+    const FOOD_PRICE = 40;
+    const STARVING_AGE = 70;
+
+    function makeStarvingPlanet(
+        gov: ReturnType<typeof makeGovernmentAgent>,
+        options?: { total?: number; wealth?: number; starvation?: number; age?: number; occ?: Occupation },
+    ): ReturnType<typeof makePlanet> {
         const planet = makePlanet({ governmentId: gov.id });
-        const cat = planet.population.demography[70].unoccupied.none;
-        cat.total = 1000;
-        cat.wealth = { mean: 0, variance: 0 };
+        planet.marketPrices[groceryServiceResourceType.name] = FOOD_PRICE;
+        const category = planet.population.demography[options?.age ?? STARVING_AGE][options?.occ ?? 'unoccupied'].none;
+        category.total = options?.total ?? 1000;
+        category.wealth = { mean: options?.wealth ?? 0, variance: 0 };
+        category.services.grocery.starvationLevel = options?.starvation ?? 1;
         return planet;
     }
 
+    function dailyFoodCost(planet: ReturnType<typeof makePlanet>, age: number, occ: Occupation): number {
+        const grocery = SERVICE_DEFINITIONS.grocery;
+        return (
+            grocery.fillRatePerPersonPerTick(age, occ, { mean: 0, variance: 0 }, referenceMonthlyIncome(planet)) *
+            serviceDemandFactor(planet, grocery) *
+            FOOD_PRICE
+        );
+    }
+
+    it('pays only the categories that are starving', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
+        const planet = makeStarvingPlanet(gov, { starvation: 0 });
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+        const fed = planet.population.demography[STARVING_AGE].unoccupied.none;
+        fed.services.grocery.starvationLevel = SUPPORT_STARVATION_TRIGGER - 0.01;
+        const starving = planet.population.demography[40].unoccupied.none;
+        starving.total = 500;
+        starving.wealth = { mean: 0, variance: 0 };
+        starving.services.grocery.starvationLevel = 1;
+
+        const spent = governmentSupportTick(gameState, planet);
+
+        expect(fed.wealth.mean).toBe(0);
+        expect(starving.wealth.mean).toBeGreaterThan(0);
+        expect(spent).toBeCloseTo(500 * SUPPORT_FOOD_DAYS_PER_TICK * dailyFoodCost(planet, 40, 'unoccupied'));
+    });
+
+    it('pays nothing below the trigger and pays at the trigger', () => {
+        const below = makeGovernmentAgent('gov-1', PLANET_ID);
+        below.assets[PLANET_ID]!.deposits = 100_000_000_000;
+        const belowPlanet = makeStarvingPlanet(below, { starvation: SUPPORT_STARVATION_TRIGGER - 0.001 });
+        const belowState = makeGameState([belowPlanet], [below, belowPlanet.recycler]);
+
+        expect(governmentSupportTick(belowState, belowPlanet)).toBe(0);
+        expect(below.assets[PLANET_ID]!.deposits).toBe(100_000_000_000);
+
+        const at = makeGovernmentAgent('gov-1', PLANET_ID);
+        at.assets[PLANET_ID]!.deposits = 100_000_000_000;
+        const atPlanet = makeStarvingPlanet(at, { starvation: SUPPORT_STARVATION_TRIGGER });
+        const atState = makeGameState([atPlanet], [at, atPlanet.recycler]);
+
+        expect(governmentSupportTick(atState, atPlanet)).toBeGreaterThan(0);
+    });
+
+    it('pays every cohort regardless of occupation once starvation exceeds the trigger', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
+        const planet = makeStarvingPlanet(gov, {
+            occ: 'employed',
+            age: 40,
+            starvation: 2 * SUPPORT_STARVATION_TRIGGER,
+        });
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+
+        const spent = governmentSupportTick(gameState, planet);
+
+        expect(spent).toBeCloseTo(1000 * SUPPORT_FOOD_DAYS_PER_TICK * dailyFoodCost(planet, 40, 'employed'));
+    });
+
+    it('sizes the payment from the grocery price instead of the wage', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
+        const planet = makeStarvingPlanet(gov);
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+        planet.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+
+        const spent = governmentSupportTick(gameState, planet);
+
+        const food = dailyFoodCost(planet, STARVING_AGE, 'unoccupied');
+        expect(spent).toBeCloseTo(1000 * SUPPORT_FOOD_DAYS_PER_TICK * food);
+        expect(spent).toBeLessThan(1000 * 0.5 * 100);
+    });
+
+    it('tops a nearly-capped cohort up to the wealth cap instead of overshooting it', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
+        const planet = makeStarvingPlanet(gov);
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+        const category = planet.population.demography[STARVING_AGE].unoccupied.none;
+        const wealthCap = SUPPORT_WEALTH_CAP_FOOD_DAYS * dailyFoodCost(planet, STARVING_AGE, 'unoccupied');
+        category.wealth = { mean: wealthCap / 2, variance: 0 };
+        const wealthBefore = category.wealth.mean;
+
+        const spent = governmentSupportTick(gameState, planet);
+
+        expect(spent).toBeGreaterThan(0);
+        expect(category.wealth.mean - wealthBefore).toBeCloseTo(spent / category.total);
+        expect(category.wealth.mean).toBeLessThanOrEqual(wealthCap * 1.001);
+    });
+
+    it('pays nothing to cohorts already holding a day of food', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
+        const planet = makeStarvingPlanet(gov);
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+        const category = planet.population.demography[STARVING_AGE].unoccupied.none;
+        category.wealth = {
+            mean: 2 * SUPPORT_WEALTH_CAP_FOOD_DAYS * dailyFoodCost(planet, STARVING_AGE, 'unoccupied'),
+            variance: 0,
+        };
+
+        expect(governmentSupportTick(gameState, planet)).toBe(0);
+    });
+
     it('scales the support down to the available cash and never borrows', () => {
         const gov = makeGovernmentAgent('gov-1', PLANET_ID);
-        const planet = makeUnemployedPlanet(gov);
+        const planet = makeStarvingPlanet(gov);
         const gameState = makeGameState([planet], [gov, planet.recycler]);
-        const cat = planet.population.demography[70].unoccupied.none;
+        const cat = planet.population.demography[STARVING_AGE].unoccupied.none;
         const cash = 200;
         gov.assets[PLANET_ID]!.deposits = cash;
         planet.bank.deposits = cash;
@@ -239,7 +353,7 @@ describe('governmentSupportTick', () => {
 
         const spent = governmentSupportTick(gameState, planet);
 
-        const fullClaim = cat.total * 0.5 * (planet.wagePerEdu.none ?? 1);
+        const fullClaim = cat.total * SUPPORT_FOOD_DAYS_PER_TICK * dailyFoodCost(planet, STARVING_AGE, 'unoccupied');
         expect(fullClaim).toBeGreaterThan(cash);
         expect(spent).toBeCloseTo(cash);
         expect(cat.total * cat.wealth.mean).toBeCloseTo(wealthBefore + spent);
@@ -254,7 +368,7 @@ describe('governmentSupportTick', () => {
 
     it('pays nothing at all when government support is disabled', () => {
         const gov = makeGovernmentAgent('gov-1', PLANET_ID);
-        const planet = makeUnemployedPlanet(gov);
+        const planet = makeStarvingPlanet(gov);
         const gameState = makeGameState([planet], [gov, planet.recycler]);
         try {
             setGovernmentSupportEnabled(false);
@@ -269,7 +383,7 @@ describe('governmentSupportTick', () => {
 
     it('pays support from the budget without borrowing when funds are sufficient', () => {
         const gov = makeGovernmentAgent('gov-1', PLANET_ID);
-        const planet = makeUnemployedPlanet(gov);
+        const planet = makeStarvingPlanet(gov);
         gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
         const gameState = makeGameState([planet], [gov, planet.recycler]);
         const loansBefore = planet.bank.loans;
@@ -282,9 +396,39 @@ describe('governmentSupportTick', () => {
         expect(gov.assets[PLANET_ID]!.deposits).toBeCloseTo(100_000_000_000 - spent);
     });
 
+    it('keeps monetary conservation without creating any loan', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        const planet = makeStarvingPlanet(gov);
+        gov.assets[PLANET_ID]!.deposits = 100_000_000;
+        planet.bank.deposits = 100_000_000;
+        planet.bank.writeOffs = 100_000_000;
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+
+        const spent = governmentSupportTick(gameState, planet);
+
+        expect(spent).toBeGreaterThan(0);
+        expect(gov.assets[PLANET_ID]!.activeLoans).toHaveLength(0);
+        expect(planet.bank.loans).toBe(0);
+        const issues = checkMonetaryConservation(gameState.agents, new Map([[planet.id, planet]]));
+        expect(issues).toEqual([]);
+    });
+
+    it('does nothing when nobody is starving', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        const planet = makePlanet({ governmentId: gov.id });
+        planet.marketPrices[groceryServiceResourceType.name] = FOOD_PRICE;
+        gov.assets[PLANET_ID]!.deposits = 10_000_000;
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+
+        const spent = governmentSupportTick(gameState, planet);
+
+        expect(spent).toBe(0);
+        expect(gov.assets[PLANET_ID]!.deposits).toBe(10_000_000);
+    });
+
     it('repays support loans from the operating surplus above the buffer', () => {
         const gov = makeGovernmentAgent('gov-1', PLANET_ID);
-        const planet = makeUnemployedPlanet(gov);
+        const planet = makeStarvingPlanet(gov);
         gov.assets[PLANET_ID]!.deposits = GOVERNMENT_OPERATING_BUFFER + 20_000_000;
         gov.assets[PLANET_ID]!.activeLoans.push(makeLoan('governmentSupport', 50_000_000, 0, 1, 3600, true));
         planet.bank.loans = 50_000_000;
@@ -297,119 +441,6 @@ describe('governmentSupportTick', () => {
         expect(planet.bank.loans).toBe(30_000_000);
         expect(planet.bank.deposits).toBe(GOVERNMENT_OPERATING_BUFFER);
         expect(gov.assets[PLANET_ID]!.deposits).toBe(GOVERNMENT_OPERATING_BUFFER);
-    });
-
-    it('keeps monetary conservation without creating any loan', () => {
-        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
-        const planet = makeUnemployedPlanet(gov);
-        gov.assets[PLANET_ID]!.deposits = 100_000_000;
-        planet.bank.deposits = 100_000_000;
-        planet.bank.writeOffs = 100_000_000;
-        const gameState = makeGameState([planet], [gov, planet.recycler]);
-
-        governmentSupportTick(gameState, planet);
-
-        expect(gov.assets[PLANET_ID]!.activeLoans).toHaveLength(0);
-        expect(planet.bank.loans).toBe(0);
-        const issues = checkMonetaryConservation(gameState.agents, new Map([[planet.id, planet]]));
-        expect(issues).toEqual([]);
-    });
-
-    it('does nothing when nobody is unemployed', () => {
-        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
-        const planet = makePlanet({ governmentId: gov.id });
-        gov.assets[PLANET_ID]!.deposits = 10_000_000;
-        const gameState = makeGameState([planet], [gov, planet.recycler]);
-
-        const spent = governmentSupportTick(gameState, planet);
-
-        expect(spent).toBe(0);
-        expect(gov.assets[PLANET_ID]!.deposits).toBe(10_000_000);
-    });
-
-    it('tops a nearly-capped cohort up to the wealth cap instead of overshooting it', () => {
-        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
-        const planet = makeUnemployedPlanet(gov);
-        gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
-        const gameState = makeGameState([planet], [gov, planet.recycler]);
-
-        const dailyInsurance = 0.5 * (planet.wagePerEdu.none ?? 1);
-        const wealthCap = INSURANCE_WEALTH_CAP_DAYS * dailyInsurance;
-        const cat = planet.population.demography[70].unoccupied.none;
-        cat.wealth = { mean: wealthCap - dailyInsurance / 4, variance: 0 };
-
-        const spent = governmentSupportTick(gameState, planet);
-
-        expect(spent).toBeCloseTo((dailyInsurance / 4) * cat.total);
-        expect(cat.wealth.mean).toBeCloseTo(wealthCap);
-    });
-
-    function makeEmployedPlanet(gov: ReturnType<typeof makeGovernmentAgent>): ReturnType<typeof makePlanet> {
-        const planet = makePlanet({ governmentId: gov.id });
-        const cat = planet.population.demography[40].employed.none;
-        cat.total = 1000;
-        cat.wealth = { mean: 0, variance: 0 };
-        return planet;
-    }
-
-    afterEach(() => {
-        setSupportEmployed(false);
-        setSupportWealthCapDays(INSURANCE_WEALTH_CAP_DAYS);
-        setSupportFoodAffordabilityMultiplier(0);
-    });
-
-    it('pays nothing to employed cohorts by default', () => {
-        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
-        const planet = makeEmployedPlanet(gov);
-        gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
-        const gameState = makeGameState([planet], [gov, planet.recycler]);
-
-        expect(governmentSupportTick(gameState, planet)).toBe(0);
-    });
-
-    it('pays employed cohorts when support is extended to them', () => {
-        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
-        const planet = makeEmployedPlanet(gov);
-        gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
-        const gameState = makeGameState([planet], [gov, planet.recycler]);
-
-        setSupportEmployed(true);
-        const spent = governmentSupportTick(gameState, planet);
-
-        expect(spent).toBeGreaterThan(0);
-        expect(planet.population.demography[40].employed.none.wealth.mean).toBeGreaterThan(0);
-    });
-
-    it('raises every cohort to a food-affordability floor independent of wage rates', () => {
-        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
-        const planet = makeEmployedPlanet(gov);
-        gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
-        const gameState = makeGameState([planet], [gov, planet.recycler]);
-        planet.marketPrices[groceryServiceResourceType.name] = 40;
-
-        setSupportFoodAffordabilityMultiplier(0.1);
-        const spent = governmentSupportTick(gameState, planet);
-
-        const expectedDaily = 0.1 * 40;
-        expect(spent).toBeGreaterThan(0);
-        expect(planet.population.demography[40].employed.none.wealth.mean).toBeCloseTo(expectedDaily);
-    });
-
-    it('lets a larger wealth cap release cohorts the 5-day cap would have excluded', () => {
-        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
-        const planet = makeEmployedPlanet(gov);
-        gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
-        const gameState = makeGameState([planet], [gov, planet.recycler]);
-        const cat = planet.population.demography[40].employed.none;
-
-        setSupportEmployed(true);
-        const dailyInsurance = 0.5 * (planet.wagePerEdu.none ?? 1);
-        cat.wealth = { mean: 6 * dailyInsurance, variance: 0 };
-
-        expect(governmentSupportTick(gameState, planet)).toBe(0);
-
-        setSupportWealthCapDays(30);
-        expect(governmentSupportTick(gameState, planet)).toBeGreaterThan(0);
     });
 });
 
