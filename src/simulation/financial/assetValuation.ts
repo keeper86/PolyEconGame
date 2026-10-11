@@ -1,4 +1,8 @@
-import { CONSTRUCTION_VALUATION_PRICE_CAP, RECYCLER_BASE_RECOVERY_EFFICIENCY } from '../constants';
+import {
+    CONSTRUCTION_VALUATION_EMA_ALPHA,
+    CONSTRUCTION_VALUATION_PRICE_CAP,
+    RECYCLER_BASE_RECOVERY_EFFICIENCY,
+} from '../constants';
 import type { Facility } from '../planet/facility';
 import { calculateCostsForConstruction, getFacilityType, getWholeStorage } from '../planet/facility';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
@@ -71,9 +75,26 @@ export function computeShipsValue(
     return total;
 }
 
+const smoothEma = (previous: number, value: number): number =>
+    previous > 0 ? CONSTRUCTION_VALUATION_EMA_ALPHA * value + (1 - CONSTRUCTION_VALUATION_EMA_ALPHA) * previous : value;
+
+export function updateConstructionValuationEma(planet: Planet): void {
+    const name = constructionServiceResourceType.name;
+    planet.constructionValuationPriceEMA = smoothEma(
+        planet.constructionValuationPriceEMA,
+        planet.marketPrices[name] ?? 0,
+    );
+    planet.constructionCostFloorEMA = smoothEma(
+        planet.constructionCostFloorEMA,
+        planet.lastProductionCostFloors[name] ?? 0,
+    );
+}
+
 export function constructionValuationPrice(planet: Planet): number {
-    const csMarketPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
-    const costFloor = planet.lastProductionCostFloors[constructionServiceResourceType.name];
+    const csMarketPrice =
+        planet.constructionValuationPriceEMA || planet.marketPrices[constructionServiceResourceType.name] || 0;
+    const costFloor =
+        planet.constructionCostFloorEMA || planet.lastProductionCostFloors[constructionServiceResourceType.name];
     if (costFloor === undefined || costFloor <= 0) {
         return csMarketPrice;
     }

@@ -9,6 +9,7 @@ import { demandShockTick } from './agents/demandShock';
 import { shipbuilderTick } from './agents/shipbuilderTick';
 import { isFirstTickInMonth, isMonthBoundary, isYearBoundary } from './constants';
 import { maturesLoans, preProductionFinancialTick } from './financial/financialTick';
+import { updateConstructionValuationEma } from './financial/assetValuation';
 import { updatePolicyRate } from './financial/policyRateController';
 import { checkMonetaryConservation, checkWealthBankConsistency } from './invariants';
 import { automaticPricing } from './market/automaticPricing';
@@ -154,6 +155,7 @@ export function advanceTick(gameState: GameState) {
             automaticPricing(gameState.agents, planet);
             marketTick(gameState.agents, planet);
             accumulatePlanetPrices(planet);
+            updateConstructionValuationEma(planet);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('market', 'updateCostFloor + pricing + marketTick', t);
             }

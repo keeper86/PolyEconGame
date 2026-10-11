@@ -38,7 +38,13 @@ import {
     LABOUR_PER_UNIT,
     OPTIONAL_LABOUR_FACTOR,
 } from '../../src/simulation/workforce/workerRequirements';
-import { MIN_WAGE, QUIT_FAIRNESS_SENSITIVITY, WAGE_SHARE } from '../../src/simulation/constants';
+import {
+    CONSTRUCTION_VALUATION_EMA_ALPHA,
+    CONSTRUCTION_VALUATION_EMA_HALFLIFE_YEARS,
+    MIN_WAGE,
+    QUIT_FAIRNESS_SENSITIVITY,
+    WAGE_SHARE,
+} from '../../src/simulation/constants';
 import { deserializeSnapshot, serializeGameState } from '../../src/simulation/snapshotCompression';
 import { getRngState, setRngState } from '../../src/simulation/utils/stochasticRound';
 import type { GameState } from '../../src/simulation/planet/planet';
@@ -463,6 +469,9 @@ async function main(): Promise<void> {
     console.log(`ESSENTIAL_GOODS=${[...ESSENTIAL_GOODS].join(',')}`);
     console.log(
         `MIN_WAGE=${MIN_WAGE} WAGE_SHARE=${WAGE_SHARE} QUIT_FAIRNESS_SENSITIVITY=${QUIT_FAIRNESS_SENSITIVITY}`,
+    );
+    console.log(
+        `CONSTRUCTION_VALUATION_EMA_HALFLIFE_YEARS=${CONSTRUCTION_VALUATION_EMA_HALFLIFE_YEARS} CONSTRUCTION_VALUATION_EMA_ALPHA=${CONSTRUCTION_VALUATION_EMA_ALPHA}`,
     );
 
     const scenarioName = arg('scenario') ?? 'baseline';

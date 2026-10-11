@@ -145,6 +145,10 @@ export type Planet = {
 
     constructionBalanceEMA: number;
 
+    constructionValuationPriceEMA: number;
+
+    constructionCostFloorEMA: number;
+
     productionCosts: Record<string, number>;
 
     lastProductionCostFloors: Record<string, number>;

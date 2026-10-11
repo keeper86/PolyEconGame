@@ -122,6 +122,13 @@ export const UNEMPLOYMENT_INSURANCE_RATE_UNABLE = 0.5;
 
 export const CONSTRUCTION_VALUATION_PRICE_CAP = 2;
 
+// Length of the smoothing filter on the construction valuation. The raw inputs are per-tick
+// market prices, so a single wild tick could otherwise move every facility's collateral and with
+// it the whole lending capacity of the economy. Set to 0 to disable the filter.
+export const CONSTRUCTION_VALUATION_EMA_HALFLIFE_YEARS = envNumber('CONSTRUCTION_VALUATION_EMA_HALFLIFE_YEARS', 2);
+export const CONSTRUCTION_VALUATION_EMA_ALPHA =
+    1 - Math.pow(0.5, 1 / (TICKS_PER_YEAR * CONSTRUCTION_VALUATION_EMA_HALFLIFE_YEARS));
+
 // Floor on the wage. Can be lowered (e.g. to 0) to study an economy with no wage
 // floor; WAGE_START is the separate seed/reference value, so nothing that needs a
 // positive nominal anchor degenerates when the floor is removed.
