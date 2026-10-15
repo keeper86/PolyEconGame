@@ -42,7 +42,6 @@
         "quantityBelowMinimum": "Quantity must be at least {minimum}",
         "quantityExceedsStorage": "Quantity exceeds available storage capacity ({available})",
         "insufficientDeposits": "Insufficient deposits (need {required}, have {available})",
-        "sellThroughAboveLimit": "Target sell-through must not exceed 100% for services",
         "fillRateAboveLimit": "Target fill rate must not exceed 100% for services",
         "noAccountOnIssuingPlanet": "No account on the issuing planet. Visit that planet first to open an account.",
         "planetNotFound": "Planet not found: {planetId}",

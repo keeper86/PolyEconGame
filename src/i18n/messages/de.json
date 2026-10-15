@@ -42,7 +42,6 @@
         "quantityBelowMinimum": "Die Menge muss mindestens {minimum} betragen",
         "quantityExceedsStorage": "Die Menge überschreitet die verfügbare Lagerkapazität ({available})",
         "insufficientDeposits": "Nicht genügend Guthaben (benötigt {required}, verfügbar {available})",
-        "sellThroughAboveLimit": "Die angestrebte Abverkaufsquote darf für Dienstleistungen 100 % nicht überschreiten",
         "fillRateAboveLimit": "Die angestrebte Erfüllungsquote darf für Dienstleistungen 100 % nicht überschreiten",
         "noAccountOnIssuingPlanet": "Kein Konto auf dem ausgebenden Planeten. Besuchen Sie diesen Planeten zuerst, um ein Konto zu eröffnen.",
         "planetNotFound": "Planet nicht gefunden: {planetId}",

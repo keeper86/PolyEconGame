@@ -218,7 +218,6 @@ export const PRICING_SELL_PRESETS: Record<Exclude<SellPricingPresetType, 'custom
     },
 };
 
-// Services: need higher sell-through to prevent decay waste
 const PRICING_SELL_PRESETS_SERVICES: Record<Exclude<SellPricingPresetType, 'custom'>, PricingSellValues> = {
     'liquidation': {
         priceAdjustMaxUp: f2(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96)),

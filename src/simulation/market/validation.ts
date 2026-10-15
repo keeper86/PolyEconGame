@@ -19,7 +19,6 @@ export type ValidationErrorCode =
     | 'quantityBelowMinimum'
     | 'quantityExceedsStorage'
     | 'insufficientDeposits'
-    | 'sellThroughAboveLimit'
     | 'fillRateAboveLimit';
 
 export type ValidationResult =
@@ -212,10 +211,6 @@ export function validateAutoConfigTargets(
 ): ValidationResult {
     if (!autoConfig || resource.form !== 'services') {
         return { isValid: true };
-    }
-
-    if (autoConfig.targetSellThrough !== undefined && autoConfig.targetSellThrough > 1) {
-        return { isValid: false, code: 'sellThroughAboveLimit', params: {} };
     }
 
     if (autoConfig.targetFillRate !== undefined && autoConfig.targetFillRate > 1) {

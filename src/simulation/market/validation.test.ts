@@ -180,15 +180,14 @@ describe('market validation', () => {
             expect(result.isValid).toBe(true);
         });
 
-        it('allows service targets at or below 100%', () => {
-            const result = validateAutoConfigTargets({ targetSellThrough: 1, targetFillRate: 1 }, serviceResource);
+        it('allows service targetSellThrough above 100%', () => {
+            const result = validateAutoConfigTargets({ targetSellThrough: 1.5 }, serviceResource);
             expect(result.isValid).toBe(true);
         });
 
-        it('rejects service targetSellThrough above 100%', () => {
-            const result = validateAutoConfigTargets({ targetSellThrough: 1.5 }, serviceResource);
-            expect(result.isValid).toBe(false);
-            expect(invalid(result).code).toBe('sellThroughAboveLimit');
+        it('allows service targetFillRate at 100%', () => {
+            const result = validateAutoConfigTargets({ targetFillRate: 1 }, serviceResource);
+            expect(result.isValid).toBe(true);
         });
 
         it('rejects service targetFillRate above 100%', () => {

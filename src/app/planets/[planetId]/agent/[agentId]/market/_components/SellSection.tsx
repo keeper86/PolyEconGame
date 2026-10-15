@@ -609,7 +609,7 @@ export default function SellSection({
                                             )}
                                             committed={committedVal(committedConfig, 'targetSellThrough')}
                                             min={0.1}
-                                            max={isService ? 1 : 2}
+                                            max={2}
                                             step={0.01}
                                             isPercent
                                             onChange={(v) => handleSliderChange({ targetSellThrough: String(v) })}

@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_COST_SPRING_STRENGTH } from '@/simulation/constants';
+import { DEFAULT_COST_SPRING_STRENGTH, TARGET_SELL_THROUGH_SERVICES } from '@/simulation/constants';
 import type { AutoConfigLocalState } from './marketTypes';
 import {
     detectPricingBuyPreset,
     detectPricingSellPreset,
     detectVolumeBuyPreset,
     detectVolumeSellPreset,
+    getPricingSellPreset,
     PRICING_BUY_PRESETS,
     PRICING_SELL_PRESETS,
     VOLUME_BUY_PRESETS,
     VOLUME_SELL_PRESETS,
+    type SellPricingPresetType,
 } from './StrategyPresets';
 
 function emptyLocal(): AutoConfigLocalState {
@@ -200,5 +202,21 @@ describe('detectPricingSellPreset', () => {
     it('returns custom when only the cost spring deviates from a preset', () => {
         const local = localWith({ ...PRICING_SELL_PRESETS['market-rate'], costSpringStrength: '0.12' });
         expect(detectPricingSellPreset(local, false)).toBe('custom');
+    });
+});
+
+describe('service sell pricing presets', () => {
+    const serviceTarget = (preset: Exclude<SellPricingPresetType, 'custom'>): number =>
+        Number(getPricingSellPreset(preset, true).targetSellThrough);
+
+    it('keeps every service target below a full production tick', () => {
+        for (const preset of ['liquidation', 'market-rate', 'premium'] as const) {
+            expect(serviceTarget(preset)).toBeGreaterThan(0);
+            expect(serviceTarget(preset)).toBeLessThan(1);
+        }
+    });
+
+    it('market-rate service preset follows the service default', () => {
+        expect(serviceTarget('market-rate')).toBeCloseTo(TARGET_SELL_THROUGH_SERVICES, 5);
     });
 });
