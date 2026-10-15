@@ -319,6 +319,8 @@ export type MonthAccumulator = {
     interestPaid: number;
     wealthTaxPaid: number;
     totalWorkersTicks: number;
+    hireDemand: Record<EducationLevelType, number>;
+    hireFilled: Record<EducationLevelType, number>;
     forexRevenue: number;
     forexPurchases: number;
     profitShareBonuses: number;
@@ -496,6 +498,8 @@ export function createEmptyAccumulator(): MonthAccumulator {
         interestPaid: 0,
         wealthTaxPaid: 0,
         totalWorkersTicks: 0,
+        hireDemand: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
+        hireFilled: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
         forexRevenue: 0,
         forexPurchases: 0,
         profitShareBonuses: 0,
@@ -524,6 +528,8 @@ export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): v
             interestPaid: assets.monthAcc.interestPaid,
             wealthTaxPaid: assets.monthAcc.wealthTaxPaid,
             totalWorkersTicks: assets.monthAcc.totalWorkersTicks,
+            hireDemand: { ...assets.monthAcc.hireDemand },
+            hireFilled: { ...assets.monthAcc.hireFilled },
             forexRevenue: assets.monthAcc.forexRevenue,
             forexPurchases: assets.monthAcc.forexPurchases,
             profitShareBonuses: assets.monthAcc.profitShareBonuses,

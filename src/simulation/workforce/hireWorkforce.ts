@@ -150,8 +150,12 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
                 const maxByHrPoints = hrDepartment
                     ? Math.max(MIN_HIRES_PER_TICK, Math.floor(hrDepartment.hrBuffer / HIRE_HR_SERVICE_PER_WORKER))
                     : Number.POSITIVE_INFINITY;
-                const toHire = Math.floor(Math.min(shortfall, totalWilling, maxHires, maxByHrPoints));
+                const demand = Math.floor(Math.min(shortfall, maxHires, maxByHrPoints));
+                const toHire = Math.floor(Math.min(demand, totalWilling));
                 assertBackfillProgress(edu, edu, shortfall, totalWilling, toHire);
+
+                assets.monthAcc.hireDemand[edu] += demand;
+                assets.monthAcc.hireFilled[edu] += toHire;
                 if (toHire > 0) {
                     const allocatedBuckets = distributeProportionally(
                         toHire,

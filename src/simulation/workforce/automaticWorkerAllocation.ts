@@ -55,12 +55,15 @@ const fairWageReference = (ceiling: number): number => WAGE_SHARE * ceiling;
 
 const ceilingHeadroom = (wage: number, ceiling: number): number => {
     const reference = fairWageReference(ceiling);
-    return reference > 0 ? Math.max(0, Math.min(1, (reference - wage) / reference)) : 1;
+    return reference > 0 ? Math.max(0, Math.min(1, (reference - wage) / reference)) : 0;
 };
 
 const ceilingSpringPressure = (wage: number, ceiling: number): number => {
     const reference = fairWageReference(ceiling);
-    return reference > 0 ? -WAGE_CEILING_SPRING_GAIN * Math.max(0, (wage - reference) / reference) : 0;
+    if (reference <= 0) {
+        return -WAGE_CEILING_SPRING_GAIN;
+    }
+    return -WAGE_CEILING_SPRING_GAIN * Math.max(0, (wage - reference) / reference);
 };
 
 const dampedByHeadroom = (pressure: number, headroom: number): number =>
@@ -80,8 +83,6 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             continue;
         }
 
-        const slotsFilled = sumSlotFillByEdu(assets);
-
         const lastMonth = assets.lastMonthAcc;
         const affordable = lastMonth.revenue - lastMonth.purchases - lastMonth.claimPayments;
         const rawCeiling = lastMonth.totalWorkersTicks > 0 ? affordable / lastMonth.totalWorkersTicks : 0;
@@ -99,8 +100,9 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
         for (const edu of educationLevelKeys) {
             const current = pinWagesToMinimum ? MIN_WAGE : (assets.wagePerEdu[edu] ?? WAGE_START);
 
-            const capacity = assets.totalSlotCapacity?.[edu] ?? 0;
-            const shortage = Math.max(0, capacity - slotsFilled[edu]) / Math.max(1, capacity);
+            const demanded = assets.monthAcc.hireDemand[edu];
+            const filled = assets.monthAcc.hireFilled[edu];
+            const shortage = demanded > 0 ? Math.max(0, demanded - filled) / demanded : 0;
             const shortagePressure = shortage * shortage;
 
             const active = totalActiveForEdu(workforce, edu);
