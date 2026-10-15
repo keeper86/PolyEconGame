@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { coalResourceType } from './resources';
-import { ALL_PRODUCTION_FACILITY_ENTRIES } from './productionFacilities';
+import { makeAgent, makeAgentPlanetAssets, makeGameState, makeProductionFacility } from '../utils/testHelper';
 import type { ProductionFacility } from './facility';
 import { backfillRecipes, recipeTemplatesByName } from './recipeBackfill';
-import { makeAgent, makeAgentPlanetAssets, makeGameState, makeProductionFacility } from '../utils/testHelper';
+import { coalResourceType } from './resources';
 
 const coalTemplate = [...recipeTemplatesByName().values()].find((template) =>
     template.produces.some((output) => output.resource.name === coalResourceType.name),
