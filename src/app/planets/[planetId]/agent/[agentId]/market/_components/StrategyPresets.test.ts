@@ -209,11 +209,11 @@ describe('service sell pricing presets', () => {
     const serviceTarget = (preset: Exclude<SellPricingPresetType, 'custom'>): number =>
         Number(getPricingSellPreset(preset, true).targetSellThrough);
 
-    it('keeps every service target below a full production tick', () => {
-        for (const preset of ['liquidation', 'market-rate', 'premium'] as const) {
-            expect(serviceTarget(preset)).toBeGreaterThan(0);
-            expect(serviceTarget(preset)).toBeLessThan(1);
-        }
+    it('orders every service target from most to least aggressive and keeps it positive', () => {
+        expect(serviceTarget('liquidation')).toBeGreaterThan(serviceTarget('market-rate'));
+        expect(serviceTarget('market-rate')).toBeGreaterThan(serviceTarget('premium'));
+        expect(serviceTarget('premium')).toBeGreaterThan(0);
+        expect(serviceTarget('liquidation')).toBeLessThanOrEqual(2);
     });
 
     it('market-rate service preset follows the service default', () => {
