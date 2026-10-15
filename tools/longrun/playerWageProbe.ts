@@ -45,6 +45,7 @@ type InjectOptions = {
     targetScale: number;
     autoOn: boolean;
     hrOn: boolean;
+    automated: boolean;
     claimsOn: boolean;
     underConstruction: boolean;
     deposits: number;
@@ -121,7 +122,7 @@ function injectPlayer(gs: GameState, planet: Planet, planetId: string, opts: Inj
         foundedTick: gs.tick,
         associatedPlanetId: planetId,
         ships: [],
-        automated: false,
+        automated: opts.automated,
         automateWorkerAllocation: opts.autoOn,
         assets: { [planetId]: assets },
     };
@@ -299,6 +300,7 @@ function main(): void {
     const facilityKey = arg('facility') ?? 'coalMine';
     const targetScale = Number(arg('targetScale') ?? 1);
     const autoOn = (arg('auto') ?? 'on') !== 'off';
+    const automated = (arg('automated') ?? 'off') === 'on';
     const hrOn = (arg('hr') ?? 'off') === 'on';
     const claimsOn = (arg('claims') ?? 'on') !== 'off';
     const underConstruction = (arg('construction') ?? 'off') === 'on';
@@ -329,6 +331,7 @@ function main(): void {
         underConstruction,
         deposits,
         horizonTicks: months * TICKS_PER_MONTH,
+        automated,
     });
     const assets = player.assets[planetId]!;
     console.log(

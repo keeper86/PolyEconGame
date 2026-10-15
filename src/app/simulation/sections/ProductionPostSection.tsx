@@ -9,7 +9,8 @@ export function ProductionPostSection() {
                 <p>
                     Each agent&apos;s production facilities are evaluated every tick. The worker allocation problem is
                     solved by a <strong>water-fill (communicating vessels) algorithm</strong> that maximises the minimum
-                    fill ratio across all worker slots, with upward cascading for overqualified workers.
+                    effective-labour fill ratio across all worker slots, with upward cascading for overqualified
+                    workers.
                 </p>
                 <p>
                     Services are handled differently from goods at the output stage: service quantities are{' '}
@@ -37,17 +38,22 @@ export function ProductionPostSection() {
                 <h3 className='text-xl font-semibold mt-6 mb-2'>9.2 Water-Fill Worker Allocation</h3>
                 <p>
                     Workers are distributed across job-education slots by a water-fill algorithm. Each worker tier
-                    (lowest education first) raises all reachable under-filled slots to a common equilibrium fill ratio
-                    before moving to the next tier. Higher-education workers can fill lower slots (overqualification):
+                    (lowest education first) raises all reachable slots whose effective labour falls short of their
+                    demand to a common equilibrium fill ratio before moving to the next tier. A slot counts as full once
+                    the effective labour of the workers filling it covers the slot demand, so a less productive tier
+                    (young or low-experience workers) fills more bodies and a more productive tier fewer.
+                    Higher-education workers can fill lower slots (overqualification):
                 </p>
                 <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                     {`For each workerEdu in [none, primary, secondary, tertiary]:
-  reachable = slots where jobEduIdx ≤ workerEduIdx AND slot not full
+  reachable = slots where jobEduIdx ≤ workerEduIdx AND effectiveAssigned < slot demand
+  width[slot] = slot demand / (ageProd × xpProd × hrMultiplier) → bodies to raise ratio 0 → 1
   sort reachable by current fill ratio ascending
   find equilibrium ratio that exhausts supply or fills all reachable slots
   assign workers to raise each slot to the equilibrium ratio
 
-workerEfficiency[slot] = effectiveAssigned / (requirement × scale)`}
+workerEfficiency[slot] = effectiveAssigned / (requirement × scale)
+effectiveAssigned[slot] = Σ assigned bodies × ageProd × xpProd × hrMultiplier`}
                 </pre>
 
                 <h3 className='text-xl font-semibold mt-6 mb-2'>9.3 Resource Efficiency &amp; Output</h3>
