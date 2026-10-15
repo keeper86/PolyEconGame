@@ -686,7 +686,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
 
         const allSlots: WorkerSlot[] = [];
         const hrSlots: WorkerSlot[] = [];
-        const effectiveDemandBySlot = new Map<WorkerSlot, number>();
+        const efficiencyDemandBySlot = new Map<WorkerSlot, number>();
         const totalSlotCapacity: Record<EducationLevelType, number> = {
             none: 0,
             primary: 0,
@@ -727,7 +727,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                     facilityType: facility.type,
                     jobEdu,
                     jobEduIdx,
-                    capacity: Math.max(1, bodies),
+                    demand: allocatorFullTarget,
                     assigned: 0,
                     effectiveAssigned: 0,
                     assignedByEdu: {},
@@ -739,8 +739,8 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                 } else {
                     allSlots.push(slot);
                 }
-                totalSlotCapacity[jobEdu] = (totalSlotCapacity[jobEdu] ?? 0) + slot.capacity;
-                effectiveDemandBySlot.set(slot, req * facility.scale);
+                totalSlotCapacity[jobEdu] = (totalSlotCapacity[jobEdu] ?? 0) + Math.max(1, bodies);
+                efficiencyDemandBySlot.set(slot, req * facility.scale);
             }
         }
 
@@ -751,13 +751,13 @@ export function productionTick(gameState: GameState, planet: Planet): void {
         let used: number;
 
         if (hrSlots.length > 0) {
-            const hrResult = waterFill(hrSlots, workerPool, ageProd, xpProdByEdu, effectiveDemandBySlot);
-            const otherResult = waterFill(allSlots, hrResult.remaining, ageProd, xpProdByEdu, effectiveDemandBySlot);
+            const hrResult = waterFill(hrSlots, workerPool, ageProd, xpProdByEdu, efficiencyDemandBySlot);
+            const otherResult = waterFill(allSlots, hrResult.remaining, ageProd, xpProdByEdu, efficiencyDemandBySlot);
             byFacility = new Map([...hrResult.byFacility, ...otherResult.byFacility]);
             remaining = otherResult.remaining;
             used = hrResult.used + otherResult.used;
         } else {
-            const result = waterFill(allSlots, workerPool, ageProd, xpProdByEdu, effectiveDemandBySlot);
+            const result = waterFill(allSlots, workerPool, ageProd, xpProdByEdu, efficiencyDemandBySlot);
             remaining = result.remaining;
             byFacility = result.byFacility;
             used = result.used;

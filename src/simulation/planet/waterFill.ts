@@ -8,7 +8,7 @@ export type WorkerSlot = {
     facilityType: FacilityCategory;
     jobEdu: EducationLevelType;
     jobEduIdx: number;
-    capacity: number;
+    demand: number;
     assigned: number;
     effectiveAssigned: number;
     assignedByEdu: Partial<Record<EducationLevelType, number>>;
@@ -40,13 +40,16 @@ export function waterFill(
     ageProdByEdu: Record<EducationLevelType, number>,
     xpProdByEdu: Record<EducationLevelType, number>,
 
-    effectiveDemandBySlot: Map<WorkerSlot, number>,
+    efficiencyDemandBySlot: Map<WorkerSlot, number>,
 ): WaterFillResult {
     const remaining = {} as Record<EducationLevelType, number>;
     let used = 0;
     for (const edu of educationLevelKeys) {
         remaining[edu] = supplyByEdu[edu];
     }
+
+    const ratioOf = (slot: WorkerSlot): number =>
+        slot.demand > 0 ? Math.min(slot.effectiveAssigned / slot.demand, 1) : 1;
 
     for (let wi = 0; wi < educationLevelKeys.length; wi++) {
         const workerEdu = educationLevelKeys[wi];
@@ -56,31 +59,36 @@ export function waterFill(
             continue;
         }
 
-        const reachable = slots.filter((s) => s.jobEduIdx <= wi && s.assigned < s.capacity);
+        const prodPerBody = ageProdByEdu[workerEdu] * xpProdByEdu[workerEdu];
+        if (prodPerBody <= 0) {
+            continue;
+        }
+
+        const reachable = slots.filter((s) => s.jobEduIdx <= wi && s.effectiveAssigned < s.demand);
         if (reachable.length === 0) {
             continue;
         }
 
-        reachable.sort((a, b) => a.assigned / a.capacity - b.assigned / b.capacity);
+        const widthOf = (slot: WorkerSlot): number => slot.demand / (prodPerBody * slot.hrMultiplier);
 
-        const equilibrium = findEquilibrium(reachable, supply);
+        reachable.sort((a, b) => ratioOf(a) - ratioOf(b));
+
+        const equilibrium = findEquilibrium(reachable, supply, ratioOf, widthOf);
         let remainingSupply = supply;
 
         for (const slot of reachable) {
-            const currentRatio = slot.assigned / slot.capacity;
+            const currentRatio = ratioOf(slot);
             if (currentRatio >= equilibrium) {
                 continue;
             }
 
-            const ageProd = ageProdByEdu[workerEdu];
-            const xpProd = xpProdByEdu[workerEdu];
-            const take = Math.min(Math.ceil((equilibrium - currentRatio) * slot.capacity), remainingSupply);
+            const take = Math.min(Math.ceil((equilibrium - currentRatio) * widthOf(slot)), remainingSupply);
             if (take <= 0) {
                 continue;
             }
 
             slot.assigned += take;
-            slot.effectiveAssigned += take * ageProd * xpProd * slot.hrMultiplier;
+            slot.effectiveAssigned += take * prodPerBody * slot.hrMultiplier;
             slot.assignedByEdu[workerEdu] = (slot.assignedByEdu[workerEdu] ?? 0) + take;
             if (wi > slot.jobEduIdx) {
                 slot.overqualifiedCount += take;
@@ -101,7 +109,7 @@ export function waterFill(
         const workerEfficiency: { [edu in EducationLevelType]?: number } = {};
         let workerEfficiencyOverall = 1;
         for (const slot of facilitySlots) {
-            const demand = effectiveDemandBySlot.get(slot) ?? 0;
+            const demand = efficiencyDemandBySlot.get(slot) ?? 0;
             const slotEfficiency = demand > 0 ? Math.min(1, slot.effectiveAssigned / demand) : 1;
             workerEfficiency[slot.jobEdu] = slotEfficiency;
             workerEfficiencyOverall = Math.min(workerEfficiencyOverall, slotEfficiency);
@@ -156,16 +164,21 @@ export function waterFill(
     return { remaining, used, byFacility };
 }
 
-function findEquilibrium(sortedSlots: WorkerSlot[], supply: number): number {
+function findEquilibrium(
+    sortedSlots: WorkerSlot[],
+    supply: number,
+    ratioOf: (slot: WorkerSlot) => number,
+    widthOf: (slot: WorkerSlot) => number,
+): number {
     let supplyLeft = supply;
     let totalWidth = 0;
 
     for (let i = 0; i < sortedSlots.length; i++) {
         const slot = sortedSlots[i];
-        totalWidth += slot.capacity;
+        totalWidth += widthOf(slot);
 
-        const currentRatio = slot.assigned / slot.capacity;
-        const nextRatio = i + 1 < sortedSlots.length ? sortedSlots[i + 1].assigned / sortedSlots[i + 1].capacity : 1;
+        const currentRatio = ratioOf(slot);
+        const nextRatio = i + 1 < sortedSlots.length ? ratioOf(sortedSlots[i + 1]) : 1;
 
         const stepTop = Math.max(currentRatio, nextRatio);
         const stepHeight = Math.max(0, stepTop - currentRatio);
@@ -175,7 +188,7 @@ function findEquilibrium(sortedSlots: WorkerSlot[], supply: number): number {
 
         const needed = stepHeight * totalWidth;
         if (supplyLeft <= needed) {
-            return currentRatio + supplyLeft / totalWidth;
+            return totalWidth > 0 ? currentRatio + supplyLeft / totalWidth : currentRatio;
         }
         supplyLeft -= needed;
     }
