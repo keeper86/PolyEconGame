@@ -23,6 +23,7 @@ interface ClaimSizeFormProps {
     onCancel?: () => void;
     submitLabel: string;
     errorMessage?: string | null;
+    dataTour?: string;
 }
 
 export function ClaimSizeForm({
@@ -37,6 +38,7 @@ export function ClaimSizeForm({
     onCancel,
     submitLabel,
     errorMessage,
+    dataTour,
 }: ClaimSizeFormProps): React.ReactElement {
     const locale = useLocale();
     const t = useTranslations('Claims');
@@ -159,6 +161,7 @@ export function ClaimSizeForm({
             <div className={onCancel ? 'flex gap-2' : ''}>
                 <Button
                     size='sm'
+                    data-tour={dataTour}
                     disabled={isDisabled}
                     onClick={() => onSubmit(quantity)}
                     className={onCancel ? '' : 'w-full'}

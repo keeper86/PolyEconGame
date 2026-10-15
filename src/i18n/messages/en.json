@@ -891,6 +891,9 @@
         "open": "Open the dialog",
         "skip": "Skip tour",
         "of": "of",
+        "blockingTitle": "Action required",
+        "blockingHint": "Click the highlighted button to continue. This step advances automatically once you have done it.",
+        "blockingWaiting": "Waiting for your click…",
         "steps": {
             "financial": {
                 "0": {
@@ -898,8 +901,8 @@
                     "title": "🌍 Welcome to Enterprise Engine!"
                 },
                 "1": {
-                    "content": "Click one of the buttons above to take a loan. It provides capital to build your company infrastructure and hire workers. The loan is credited after the current day completes.",
-                    "title": "🏦 Take your first loan"
+                    "content": "Click the highlighted button to take your starter loan. It provides initial capital to build your company infrastructure and hire workers. This step is required: the tour waits here until you have requested the loan.",
+                    "title": "🏦 Take your starter loan"
                 },
                 "2": {
                     "content": "Your loan request has been queued! It will be credited after the current day completes. Notice the \"Pending\" overlay — actions are queued and processed on the next day. This is how the simulation works: you queue actions, they resolve when time advances.",
@@ -944,7 +947,7 @@
                     "title": "🏫 Education Levels"
                 },
                 "2": {
-                    "content": "Expand the Automation Controls panel and toggle on \"Automatic worker allocation\". The AI will then compute optimal headcount targets each day based on your facility requirements. This is the recommended approach — manual allocation is tedious!",
+                    "content": "Toggle on \"Automatic worker allocation\". The AI will then compute optimal headcount targets each day based on your facility requirements. This is the recommended approach — manual allocation is tedious! This step is required: the tour waits here until you enable it.",
                     "title": "🤖 Enable automation"
                 },
                 "3": {

@@ -70,7 +70,7 @@ export default function AutomationPanel({
     };
 
     return (
-        <Card data-tour='workforce-automation'>
+        <Card>
             <CardHeader className='p-3 pb-2'>
                 <div className='flex justify-between items-center gap-3'>
                     <span className='flex items-center gap-2'>
@@ -81,6 +81,7 @@ export default function AutomationPanel({
                     </span>
                     <Switch
                         id='worker-auto-toggle'
+                        data-tour='workforce-automation'
                         checked={workerAuto}
                         disabled={setAutomationMutation.isPending}
                         onCheckedChange={(v) => handleToggle(v)}

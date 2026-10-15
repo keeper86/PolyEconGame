@@ -891,6 +891,9 @@
         "open": "Dialog öffnen",
         "skip": "Tour überspringen",
         "of": "von",
+        "blockingTitle": "Aktion erforderlich",
+        "blockingHint": "Klicken Sie auf die hervorgehobene Schaltfläche, um fortzufahren. Dieser Schritt geht automatisch weiter, sobald Sie die Aktion ausgeführt haben.",
+        "blockingWaiting": "Ihre Aktion wird erwartet …",
         "steps": {
             "financial": {
                 "0": {
@@ -898,8 +901,8 @@
                     "title": "🌍 Willkommen bei Enterprise Engine!"
                 },
                 "1": {
-                    "content": "Klicken Sie oben auf einen der Buttons, um einen Kredit aufzunehmen. Er liefert Kapital, um die Infrastruktur Ihres Unternehmens aufzubauen und Personal einzustellen. Der Kredit wird gutgeschrieben, sobald der aktuelle Tag abgeschlossen ist.",
-                    "title": "🏦 Nehmen Sie Ihren ersten Kredit auf"
+                    "content": "Klicken Sie auf die hervorgehobene Schaltfläche, um Ihren Startkredit aufzunehmen. Er liefert Startkapital, um die Infrastruktur Ihres Unternehmens aufzubauen und Personal einzustellen. Dieser Schritt ist erforderlich: Der Rundgang wartet hier, bis Sie den Kredit angefragt haben.",
+                    "title": "🏦 Nehmen Sie Ihren Startkredit auf"
                 },
                 "2": {
                     "content": "Ihre Kreditanfrage wurde in die Warteschlange gestellt! Sie wird gutgeschrieben, sobald der aktuelle Tag abgeschlossen ist. Beachten Sie das \"Pending\"-Overlay — Aktionen werden in die Warteschlange gestellt und am nächsten Tag verarbeitet. So funktioniert die Simulation: Sie stellen Aktionen ein, sie werden aufgelöst, wenn die Zeit voranschreitet.",
@@ -944,7 +947,7 @@
                     "title": "🏫 Bildungsstufen"
                 },
                 "2": {
-                    "content": "Klappen Sie das Panel für die Automatisierungssteuerung auf und aktivieren Sie \"Automatische Personalplanung\". Die KI berechnet dann jeden Tag optimale Personalziele auf Basis Ihrer Anlagenanforderungen. Das ist der empfohlene Weg — manuelle Planung ist mühsam!",
+                    "content": "Aktivieren Sie \"Automatische Personalplanung\". Die KI berechnet dann jeden Tag optimale Personalziele auf Basis Ihrer Anlagenanforderungen. Das ist der empfohlene Weg — manuelle Planung ist mühsam! Dieser Schritt ist erforderlich: Der Rundgang wartet hier, bis Sie die Automatisierung aktiviert haben.",
                     "title": "🤖 Automatisierung aktivieren"
                 },
                 "3": {
