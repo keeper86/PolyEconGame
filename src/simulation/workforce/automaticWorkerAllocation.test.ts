@@ -182,6 +182,33 @@ describe('automaticWageAdjustment', () => {
         expect(agent.assets.p.wagePerEdu.tertiary).toBeLessThan(100);
     });
 
+    it('seeds the ceiling from the planet theoretical wage ceilings while there is no revenue yet', () => {
+        const { planet } = makePlanetWithPopulation({}, { theoreticalWageCeilings: { 'Test Facility': 100 } });
+        const agent = makeAgent();
+        agent.assets.p.wagePerEdu = { none: 1, primary: 1, secondary: 1, tertiary: 1 };
+        agent.assets.p.productionFacilities = [makeProductionFacility({ tertiary: 100 }, { scale: 10 })];
+        agent.assets.p.monthAcc.hireDemand = { none: 0, primary: 0, secondary: 0, tertiary: 200 };
+        agent.assets.p.monthAcc.hireFilled = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+
+        automaticWageAdjustment(agentMap(agent), planet);
+
+        expect(agent.assets.p._smoothedWageCeiling).toBeGreaterThan(0);
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeGreaterThan(1);
+    });
+
+    it('deflates when the theoretical wage ceiling is itself negative', () => {
+        const { planet } = makePlanetWithPopulation({}, { theoreticalWageCeilings: { 'Test Facility': -100 } });
+        const agent = makeAgent();
+        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+        agent.assets.p.productionFacilities = [makeProductionFacility({ tertiary: 100 }, { scale: 10 })];
+        agent.assets.p.monthAcc.hireDemand = { none: 0, primary: 0, secondary: 0, tertiary: 200 };
+        agent.assets.p.monthAcc.hireFilled = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+
+        automaticWageAdjustment(agentMap(agent), planet);
+
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeLessThan(100);
+    });
+
     it('does not raise the wage while every requested hire is filled', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();

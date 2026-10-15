@@ -257,6 +257,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         constructionCostFloorEMA: 0,
         productionCosts: {},
         lastProductionCostFloors: {},
+        theoreticalWageCeilings: {},
         landBoundCostPerUnit: {},
         resources: {
             [arableLandResourceType.name]: {

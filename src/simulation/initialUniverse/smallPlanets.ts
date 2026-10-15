@@ -178,6 +178,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         constructionCostFloorEMA: 0,
         productionCosts: {},
         lastProductionCostFloors: {},
+        theoreticalWageCeilings: {},
         landBoundCostPerUnit: {},
         resources,
         infrastructure: spec.infrastructure,

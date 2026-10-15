@@ -20,6 +20,9 @@ type Params = {
     hireCapPerTick: number;
     marketWillingPerTick: number;
     affordableCeiling: number;
+    preRevenueCeiling: number;
+    revenueArrivalMonth: number;
+    deflationFloor: number;
     marketTightness: number;
     months: number;
     shortageSource: ShortageSource;
@@ -31,6 +34,9 @@ const defaults = (): Params => ({
     hireCapPerTick: 2,
     marketWillingPerTick: 50,
     affordableCeiling: 5.0,
+    preRevenueCeiling: 5.0,
+    revenueArrivalMonth: 0,
+    deflationFloor: MIN_WAGE,
     marketTightness: 0.001,
     months: 48,
     shortageSource: 'ownSlots',
@@ -69,7 +75,7 @@ const springOf = (wage: number, ceiling: number, mode: CeilingMode): number => {
 
 export function run(p: Params): Month[] {
     let workers = 0;
-    let wage = MIN_WAGE;
+    let wage = Math.max(MIN_WAGE, p.deflationFloor);
     let ceiling = 0;
     const history: Month[] = [];
 
@@ -84,7 +90,8 @@ export function run(p: Params): Month[] {
             achieved += got;
             workers += got;
         }
-        ceiling = WAGE_CEILING_SMOOTHING * p.affordableCeiling + (1 - WAGE_CEILING_SMOOTHING) * ceiling;
+        const ceilingTarget = month < p.revenueArrivalMonth ? p.preRevenueCeiling : p.affordableCeiling;
+        ceiling = WAGE_CEILING_SMOOTHING * ceilingTarget + (1 - WAGE_CEILING_SMOOTHING) * ceiling;
         const ceilingForControl = effectiveCeiling(ceiling, p.ceilingMode);
 
         const ownShortage = Math.max(0, p.capacity - workers) / Math.max(1, p.capacity);
@@ -101,7 +108,7 @@ export function run(p: Params): Month[] {
         const damped = shortagePressure > 0 ? shortagePressure * headroom : shortagePressure;
         const pressure = damped + springOf(wage, ceilingForControl, p.ceilingMode);
         const step = clamp(wage * pressure, -WAGE_ADJUSTMENT_RATE * wage, WAGE_ADJUSTMENT_RATE * wage);
-        wage = clamp(wage + step, MIN_WAGE, MAX_WAGE);
+        wage = clamp(wage + step, Math.max(MIN_WAGE, p.deflationFloor), MAX_WAGE);
 
         history.push({ month, workers, shortage, hiringFailure, pressure, headroom, ceiling, wage });
     }
@@ -117,27 +124,35 @@ const monthsToFill = (h: Month[], capacity: number): string => {
 };
 
 function hireCapSweep(): void {
-    console.log('HIRE-CAP SWEEP  (own-slot shortage, market tightness=0.001 = deep slack, capacity=2000, ceiling=5 -> target wage=3.0)');
+    console.log('HIRE-CAP SWEEP  (own-slot shortage, tightness=0.001 = deep slack, capacity=2000, ceiling=5 -> target wage=3.0)');
     console.log('  ' + line(['cap/tick', 'monthsToFill', 'peakWage', 'endWage'], [10, 13, 10, 10]));
     for (const cap of [1, 2, 5, 10, 50, 1000]) {
         const p = defaults();
         p.hireCapPerTick = cap;
         const h = run(p);
         console.log(
-            '  ' + line([String(cap), monthsToFill(h, p.capacity), peakWage(h).toFixed(3), h[h.length - 1].wage.toFixed(3)], [10, 13, 10, 10]),
+            '  ' +
+                line(
+                    [String(cap), monthsToFill(h, p.capacity), peakWage(h).toFixed(3), h[h.length - 1].wage.toFixed(3)],
+                    [10, 13, 10, 10],
+                ),
         );
     }
 }
 
 function capacitySweep(): void {
-    console.log('\nCAPACITY SWEEP  (own-slot shortage, cap/tick=2, market tightness=0.001, ceiling=5 -> target wage=3.0)');
+    console.log('\nCAPACITY SWEEP  (own-slot shortage, cap/tick=2, tightness=0.001, ceiling=5 -> target wage=3.0)');
     console.log('  ' + line(['capacity', 'monthsToFill', 'peakWage', 'endWage'], [10, 13, 10, 10]));
     for (const capacity of [100, 500, 2000, 20000]) {
         const p = defaults();
         p.capacity = capacity;
         const h = run(p);
         console.log(
-            '  ' + line([String(capacity), monthsToFill(h, capacity), peakWage(h).toFixed(3), h[h.length - 1].wage.toFixed(3)], [10, 13, 10, 10]),
+            '  ' +
+                line(
+                    [String(capacity), monthsToFill(h, capacity), peakWage(h).toFixed(3), h[h.length - 1].wage.toFixed(3)],
+                    [10, 13, 10, 10],
+                ),
         );
     }
 }
@@ -151,21 +166,20 @@ function tightnessSweep(): void {
         const market = defaults();
         market.marketTightness = tightness;
         market.shortageSource = 'reachableTightness';
-        const ownPeak = peakWage(run(own));
-        const marketPeak = peakWage(run(market));
         const comment = tightness <= 0.05 ? 'slack market: no real labour shortage' : 'genuinely tight market';
         console.log(
             '  ' +
                 line(
-                    [tightness.toFixed(3), ownPeak.toFixed(3), marketPeak.toFixed(3), comment],
+                    [tightness.toFixed(3), peakWage(run(own)).toFixed(3), peakWage(run(market)).toFixed(3), comment],
                     [10, 14, 15, 30],
                 ),
         );
     }
 }
 
+
 function hiringSweep(): void {
-    console.log('\nHIRING-SUCCESS vs OWN-SLOTS  (capacity=2000, cap/tick=2, ceiling=5, adjacent slack tightness=0.001)');
+    console.log('\nHIRING-SUCCESS vs OWN-SLOTS  (capacity=2000, cap/tick=2, ceiling=5, adjacent tightness=0.001)');
     console.log('  ' + line(['shortageSource', 'marketWilling', 'monthsToFill', 'peakWage', 'endWage'], [17, 14, 13, 10, 10]));
     for (const source of ['ownSlots', 'hiringFailure'] as ShortageSource[]) {
         for (const willing of [50, 0.5]) {
@@ -176,7 +190,13 @@ function hiringSweep(): void {
             console.log(
                 '  ' +
                     line(
-                        [source, willing.toFixed(2), monthsToFill(h, p.capacity), peakWage(h).toFixed(3), h[h.length - 1].wage.toFixed(3)],
+                        [
+                            source,
+                            willing.toFixed(2),
+                            monthsToFill(h, p.capacity),
+                            peakWage(h).toFixed(3),
+                            h[h.length - 1].wage.toFixed(3),
+                        ],
                         [17, 14, 13, 10, 10],
                     ),
             );
@@ -196,7 +216,13 @@ function ceilingSweep(): void {
         console.log(
             '  ' +
                 line(
-                    [mode, mid.shortage.toFixed(3), mid.headroom.toFixed(3), peakWage(h).toFixed(3), h[h.length - 1].wage.toFixed(3)],
+                    [
+                        mode,
+                        mid.shortage.toFixed(3),
+                        mid.headroom.toFixed(3),
+                        peakWage(h).toFixed(3),
+                        h[h.length - 1].wage.toFixed(3),
+                    ],
                     [13, 10, 10, 10, 10],
                 ),
         );
@@ -221,11 +247,45 @@ function fixCompare(): void {
     }
 }
 
+function startupCompare(): void {
+    console.log(
+        '\nSTARTUP CHICKEN-AND-EGG  (capacity=2000, cap/tick=2, willing=50, no revenue until m12 (ceiling=-1), then ceiling=5 -> target 3.0)',
+    );
+    console.log('  ' + line(['variant', 'wage@m6', 'wage@m11', 'wage@m24', 'peakWage', 'endWage'], [40, 9, 9, 9, 10, 10]));
+    const variants: Array<[string, Partial<Params>]> = [
+        ['no gate (reference<=0 -> headroom 1)', { ceilingMode: 'asIs' }],
+        ['affordability gate, floor MIN_WAGE', { ceilingMode: 'nonNegative', deflationFloor: MIN_WAGE }],
+        ['gate + floor = inherited seed 1.5', { ceilingMode: 'nonNegative', deflationFloor: 1.5 }],
+        ['gate + theoretical pre-revenue ceiling', { ceilingMode: 'nonNegative', preRevenueCeiling: 5 }],
+        ['gate + optimistic pre-revenue ceiling', { ceilingMode: 'nonNegative', preRevenueCeiling: 8 }],
+    ];
+    for (const [label, over] of variants) {
+        const p: Params = { ...defaults(), revenueArrivalMonth: 12, preRevenueCeiling: -1, ...over };
+        const h = run(p);
+        const at = (m: number): number => h[Math.min(m, h.length) - 1].wage;
+        console.log(
+            '  ' +
+                line(
+                    [
+                        label,
+                        at(6).toFixed(3),
+                        at(11).toFixed(3),
+                        at(24).toFixed(3),
+                        peakWage(h).toFixed(3),
+                        h[h.length - 1].wage.toFixed(3),
+                    ],
+                    [40, 9, 9, 9, 10, 10],
+                ),
+        );
+    }
+}
 
 function trace(): void {
     const p = defaults();
     const h = run(p);
-    console.log(`\nTRACE  (own-slot shortage, capacity=${p.capacity}, cap/tick=${p.hireCapPerTick}, ceiling=${p.affordableCeiling} -> target wage=${(WAGE_SHARE * p.affordableCeiling).toFixed(2)})`);
+    console.log(
+        `\nTRACE  (own-slot shortage, capacity=${p.capacity}, cap/tick=${p.hireCapPerTick}, ceiling=${p.affordableCeiling} -> target wage=${(WAGE_SHARE * p.affordableCeiling).toFixed(2)})`,
+    );
     console.log(
         '  ' +
             line(
@@ -257,6 +317,7 @@ function trace(): void {
     console.log(`  mean wage after fill = ${mean(h.slice(-6).map((m) => m.wage)).toFixed(3)}  (market wage = 1.000)`);
 }
 
+
 function main(): void {
     const arg = process.argv[2] ?? '--all';
     if (arg === '--all') {
@@ -266,6 +327,7 @@ function main(): void {
         hiringSweep();
         ceilingSweep();
         fixCompare();
+        startupCompare();
         trace();
         return;
     }
@@ -293,11 +355,17 @@ function main(): void {
         fixCompare();
         return;
     }
+    if (arg === '--startup') {
+        startupCompare();
+        return;
+    }
     if (arg === '--trace') {
         trace();
         return;
     }
-    console.log('usage: shortageToy.ts [--all | --hireCap | --capacity | --tightness | --hiring | --ceiling | --fix | --trace]');
+    console.log(
+        'usage: shortageToy.ts [--all | --hireCap | --capacity | --tightness | --hiring | --ceiling | --fix | --startup | --trace]',
+    );
 }
 
 main();

@@ -150,8 +150,8 @@ export type Planet = {
     constructionCostFloorEMA: number;
 
     productionCosts: Record<string, number>;
-
     lastProductionCostFloors: Record<string, number>;
+    theoreticalWageCeilings: Record<string, number>;
 
     landBoundCostPerUnit: Record<string, number>;
 

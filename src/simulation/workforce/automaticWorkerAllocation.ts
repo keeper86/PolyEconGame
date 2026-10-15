@@ -9,7 +9,7 @@ import {
     WAGE_SHARE,
     WAGE_START,
 } from '../constants';
-import type { Agent, Planet } from '../planet/planet';
+import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { ACCEPTABLE_IDLE_FRACTION } from './laborMarket';
@@ -69,6 +69,22 @@ const ceilingSpringPressure = (wage: number, ceiling: number): number => {
 const dampedByHeadroom = (pressure: number, headroom: number): number =>
     pressure > 0 ? pressure * headroom : pressure;
 
+// TODO: Check if averaging over edu level is problematic here.
+export function theoreticalCeilingPerWorkerTick(planet: Planet, assets: AgentPlanetAssets): number {
+    let weightedCeiling = 0;
+    let workers = 0;
+    for (const facility of assets.productionFacilities) {
+        const scale = facility.scale > 0 ? facility.scale : facility.maxScale;
+        if (scale <= 0) {
+            continue;
+        }
+        const facilityWorkers = scale * Object.values(facility.workerRequirement).reduce((sum, n) => sum + n, 0);
+        weightedCeiling += facilityWorkers * (planet.theoreticalWageCeilings[facility.name] ?? 0);
+        workers += facilityWorkers;
+    }
+    return workers > 0 ? weightedCeiling / workers : 0;
+}
+
 export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
         if (!agent.automated && !agent.automateWorkerAllocation) {
@@ -85,7 +101,8 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
 
         const lastMonth = assets.lastMonthAcc;
         const affordable = lastMonth.revenue - lastMonth.purchases - lastMonth.claimPayments;
-        const rawCeiling = lastMonth.totalWorkersTicks > 0 ? affordable / lastMonth.totalWorkersTicks : 0;
+        const realisedCeiling = lastMonth.totalWorkersTicks > 0 ? affordable / lastMonth.totalWorkersTicks : 0;
+        const rawCeiling = realisedCeiling > 0 ? realisedCeiling : theoreticalCeilingPerWorkerTick(planet, assets);
         const prevCeiling = assets._smoothedWageCeiling ?? rawCeiling;
         assets._smoothedWageCeiling = WAGE_CEILING_SMOOTHING * rawCeiling + (1 - WAGE_CEILING_SMOOTHING) * prevCeiling;
         const ceiling = assets._smoothedWageCeiling;

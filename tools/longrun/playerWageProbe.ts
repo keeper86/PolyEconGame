@@ -21,7 +21,7 @@ import {
 import { applyStorageSizingForFacilities } from '../../src/simulation/planet/automaticProductionScale/shellCompartments';
 import { computeLeaseClaimUpfrontCost, leaseClaim, type ResourceQuantity } from '../../src/simulation/planet/claims';
 import { calculateCostsForConstruction, getFacilityType } from '../../src/simulation/planet/facility';
-import type { Agent, GameState, Planet } from '../../src/simulation/planet/planet';
+import type { Agent, AgentPlanetAssets, GameState, Planet } from '../../src/simulation/planet/planet';
 import { ALL_PRODUCTION_FACILITY_ENTRIES, type FacilityType } from '../../src/simulation/planet/productionFacilities';
 import { constructionServiceResourceType } from '../../src/simulation/planet/services';
 import { humanResourcesOfficeFacilityType } from '../../src/simulation/planet/specialFacilities';
@@ -237,8 +237,21 @@ const HEADER = [
     'willingPrimary',
     'willingSecondary',
     'willingTertiary',
+    'theoreticalCeiling',
     'bankrupt',
 ];
+
+function theoreticalCeiling(planet: Planet, assets: AgentPlanetAssets): number {
+    let weightedCeiling = 0;
+    let workers = 0;
+    for (const facility of assets.productionFacilities) {
+        const scale = facility.scale > 0 ? facility.scale : facility.maxScale;
+        const facilityWorkers = scale * Object.values(facility.workerRequirement).reduce((sum, n) => sum + n, 0);
+        weightedCeiling += facilityWorkers * (planet.theoreticalWageCeilings[facility.name] ?? 0);
+        workers += facilityWorkers;
+    }
+    return workers > 0 ? weightedCeiling / workers : 0;
+}
 
 function thresholdByEdu(gs: GameState, planetId: string): Record<string, { threshold: number; smoothed: number; tightness: number }> {
     const planet = gs.planets.get(planetId)!;
@@ -349,13 +362,15 @@ function main(): void {
         const primaryWage = wage.primary ?? 0;
         const planetPrimary = planet.wagePerEdu.primary ?? 0;
         const willing = willingByEdu(gs, planetId, wage);
+        const thCeiling = theoreticalCeiling(planet, assets);
         if (k % TICKS_PER_MONTH === 0) {
             const t = thresholdByEdu(gs, planetId);
             console.log(
                 `  [m${k / TICKS_PER_MONTH}] wageN=${wage.none.toFixed(2)} thrN=${t.none.threshold.toFixed(3)} ` +
                     `smN=${t.none.smoothed.toFixed(3)} tightN=${t.none.tightness.toFixed(5)} | ` +
                     `wageP=${primaryWage.toFixed(2)} thrP=${t.primary.threshold.toFixed(3)} ` +
-                    `smP=${t.primary.smoothed.toFixed(3)} tightP=${t.primary.tightness.toFixed(5)}`,
+                    `smP=${t.primary.smoothed.toFixed(3)} tightP=${t.primary.tightness.toFixed(5)} | ` +
+                    `realisedCeiling=${(assets._smoothedWageCeiling ?? 0).toFixed(3)} theoreticalCeiling=${thCeiling.toFixed(3)}`,
             );
         }
         if (primaryWage > peakWage) {
@@ -420,6 +435,7 @@ function main(): void {
                 willing.primary.toFixed(2),
                 willing.secondary.toFixed(2),
                 willing.tertiary.toFixed(2),
+                thCeiling.toFixed(5),
                 bankrupt ? '1' : '0',
             ].join(','),
         );
