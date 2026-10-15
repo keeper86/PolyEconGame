@@ -37,6 +37,7 @@ export function FacilityConstructionPanel({
     onCancel,
     onConfirm,
     onScaleChange,
+    dataTour,
 }: {
     facilityType: FacilityType;
 
@@ -52,6 +53,7 @@ export function FacilityConstructionPanel({
     onCancel?: () => void;
     onConfirm: (targetScale: number) => void;
     onScaleChange?: (targetScale: number) => void;
+    dataTour?: string;
 }): React.ReactElement {
     const locale = useLocale();
     const tp = useTranslations('Production');
@@ -209,7 +211,13 @@ export function FacilityConstructionPanel({
                 >
                     {tCommon('cancel')}
                 </Button>
-                <Button size='sm' className={`flex-1`} disabled={isPending} onClick={handleConfirmClick}>
+                <Button
+                    size='sm'
+                    className={`flex-1`}
+                    data-tour={dataTour}
+                    disabled={isPending}
+                    onClick={handleConfirmClick}
+                >
                     <span className={`font-bold text-[14px] dark:text-[12px] ${colorClassCosts}`}>
                         {isPending ? pendingLabel : confirmLabel}
                     </span>

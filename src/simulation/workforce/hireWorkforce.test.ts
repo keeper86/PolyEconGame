@@ -366,6 +366,28 @@ describe('hireWorkforce', () => {
         expect(workforce[30].none.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBe(0);
     });
 
+    it('records the month hiring demand as filled when the market supplies the workers', () => {
+        const { planet: p } = makePlanetWithPopulation({ primary: 100_000 });
+        agent.assets.p.allocatedWorkers.primary = 500;
+        agent.assets.p.wagePerEdu.primary = 1e9;
+
+        hireWorkforce(agentMap(agent), p);
+
+        const demand = agent.assets.p.monthAcc.hireDemand?.primary ?? 0;
+        expect(demand).toBeGreaterThan(0);
+        expect(agent.assets.p.monthAcc.hireFilled?.primary ?? 0).toBe(demand);
+    });
+
+    it('records unmet hiring demand when the market cannot supply the workers', () => {
+        agent.assets.p.allocatedWorkers.primary = 500;
+        agent.assets.p.wagePerEdu.primary = 1e9;
+
+        hireWorkforce(agentMap(agent), planet);
+
+        expect(agent.assets.p.monthAcc.hireDemand?.primary ?? 0).toBeGreaterThan(0);
+        expect(agent.assets.p.monthAcc.hireFilled?.primary ?? 0).toBe(0);
+    });
+
     it('hires workers from unoccupied pool when under target', () => {
         const { planet: p } = makePlanetWithPopulation({ primary: 100_000 });
         agent.assets.p.allocatedWorkers.primary = 500;

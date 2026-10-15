@@ -594,13 +594,14 @@ describe('wage adjustment cadence', () => {
             seedRng(42);
 
             const { gameState, planet, agents } = makeWorld({
-                populationByEdu: { none: 5000, primary: 3000, secondary: 1500, tertiary: 500 },
+                populationByEdu: { none: 5000, primary: 3000, secondary: 1500, tertiary: 0 },
                 companyIds: ['company-1'],
             });
             const company = agents[1];
             company.assets[planet.id].productionFacilities.push(
                 makeProductionFacility({ none: 0, primary: 0, secondary: 0, tertiary: 5000 }, { planetId: planet.id }),
             );
+            company.assets[planet.id].allocatedWorkers.tertiary = 5000;
 
             const wage = () => company.assets[planet.id].wagePerEdu.tertiary;
 
@@ -608,6 +609,11 @@ describe('wage adjustment cadence', () => {
             advanceTick(gameState);
             const start = wage();
             expect(start).toBeGreaterThan(0);
+
+            company.assets[planet.id].lastMonthAcc.revenue = 100000;
+            company.assets[planet.id].lastMonthAcc.purchases = 0;
+            company.assets[planet.id].lastMonthAcc.claimPayments = 0;
+            company.assets[planet.id].lastMonthAcc.totalWorkersTicks = 100;
 
             for (let tick = 2; tick < TICKS_PER_MONTH; tick++) {
                 gameState.tick = tick;

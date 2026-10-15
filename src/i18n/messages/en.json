@@ -743,7 +743,6 @@
         },
         "sendingRequest": "Sending request…",
         "awaitingNextDay": "Awaiting next day…",
-        "takeInitialLoan": "Take initial loan {amount}",
         "cashBalance": "Cash Balance",
         "netPosition": "Net Position",
         "income": "Income",
@@ -892,6 +891,9 @@
         "open": "Open the dialog",
         "skip": "Skip tour",
         "of": "of",
+        "blockingTitle": "Action required",
+        "blockingHint": "Click the highlighted button to continue. This step advances automatically once you have done it.",
+        "blockingWaiting": "Waiting for your click…",
         "steps": {
             "financial": {
                 "0": {
@@ -899,7 +901,7 @@
                     "title": "🌍 Welcome to Enterprise Engine!"
                 },
                 "1": {
-                    "content": "Click the button above to take your starter loan. It provides initial capital to build your company infrastructure and hire workers. The loan is credited after the current day completes.",
+                    "content": "Click the highlighted button to take your starter loan. It provides initial capital to build your company infrastructure and hire workers. This step is required: the tour waits here until you have requested the loan.",
                     "title": "🏦 Take your starter loan"
                 },
                 "2": {
@@ -945,7 +947,7 @@
                     "title": "🏫 Education Levels"
                 },
                 "2": {
-                    "content": "Expand the Automation Controls panel and toggle on \"Automatic worker allocation\". The AI will then compute optimal headcount targets each day based on your facility requirements. This is the recommended approach — manual allocation is tedious!",
+                    "content": "Toggle on \"Automatic worker allocation\". The AI will then compute optimal headcount targets each day based on your facility requirements. This is the recommended approach — manual allocation is tedious! This step is required: the tour waits here until you enable it.",
                     "title": "🤖 Enable automation"
                 },
                 "3": {

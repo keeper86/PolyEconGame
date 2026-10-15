@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { MousePointerClick } from 'lucide-react';
 import type { TooltipRenderProps } from 'react-joyride';
 import { useTranslations } from 'next-intl';
 
@@ -41,6 +42,18 @@ export function TourTooltip({
 
             <CardContent>
                 <div className='text-sm text-muted-foreground leading-relaxed'>{content}</div>
+
+                {isBlocking && (
+                    <div className='mt-3 flex items-start gap-2 rounded-md border border-amber-400 bg-amber-50 p-2.5 dark:border-amber-500/60 dark:bg-amber-950/40'>
+                        <MousePointerClick className='mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400' />
+                        <div className='space-y-0.5'>
+                            <p className='text-xs font-semibold text-amber-700 dark:text-amber-300'>
+                                {t('blockingTitle')}
+                            </p>
+                            <p className='text-xs text-amber-700/90 dark:text-amber-200/90'>{t('blockingHint')}</p>
+                        </div>
+                    </div>
+                )}
             </CardContent>
 
             <CardFooter className='flex items-center justify-between gap-2 pt-2'>
@@ -68,6 +81,19 @@ export function TourTooltip({
                             className='text-xs h-8'
                         >
                             {isLastStep ? t('finish') : t('next')}
+                        </Button>
+                    )}
+
+                    {continuous && isBlocking && (
+                        <Button
+                            disabled
+                            data-action='blocked'
+                            variant='outline'
+                            size='sm'
+                            className='text-xs h-8 gap-1.5 border-amber-400 text-amber-700 dark:border-amber-500/60 dark:text-amber-300'
+                        >
+                            <MousePointerClick className='h-3.5 w-3.5' />
+                            {t('blockingWaiting')}
                         </Button>
                     )}
                 </div>

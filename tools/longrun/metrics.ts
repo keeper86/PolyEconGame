@@ -167,6 +167,12 @@ type FacilityStat = {
     essentialLossCaughtBlend: number;
     recyclableCS: number;
     landInputCosts: number;
+    workerEff: number;
+    inputEff: number;
+    overallEff: number;
+    labourDemand: number;
+    labourUsed: number;
+    output: number;
 };
 
 function emptyFacilityStat(): FacilityStat {
@@ -192,6 +198,12 @@ function emptyFacilityStat(): FacilityStat {
         essentialLossCaughtBlend: 0,
         recyclableCS: 0,
         landInputCosts: 0,
+        workerEff: 0,
+        inputEff: 0,
+        overallEff: 0,
+        labourDemand: 0,
+        labourUsed: 0,
+        output: 0,
     };
 }
 
@@ -864,6 +876,17 @@ export function sampleMetrics(gameState: GameState): MetricMap {
 
             const pid = facility.pidState;
             const facilityResults = facility.lastTickResults;
+            const facilityWorkerEff = facilityResults?.workerEfficiencyOverall ?? 1;
+            const facilityInputEff = minValue(facilityResults?.resourceEfficiency);
+            const facilityOverallEff = facilityResults?.overallEfficiency ?? 1;
+            let facilityLabourDemand = 0;
+            for (const requirement of Object.values(facility.workerRequirement)) {
+                facilityLabourDemand += (requirement ?? 0) * facility.scale;
+            }
+            let facilityLabourUsed = 0;
+            for (const used of Object.values(facilityResults?.totalUsedByEdu ?? {})) {
+                facilityLabourUsed += used ?? 0;
+            }
             const facilityRevenue = facilityResults?.revenue ?? 0;
             const facilityWageCosts = facilityResults?.wageCosts ?? 0;
             const facilityInputCosts = facilityResults?.inputCosts ?? 0;
@@ -946,6 +969,12 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                     stat.signalCandidate += signalCandidate;
                     stat.contractionIntegral += contractionIntegral;
                     stat.landInputCosts += landInputCosts;
+                    stat.workerEff += facilityWorkerEff;
+                    stat.inputEff += facilityInputEff;
+                    stat.overallEff += facilityOverallEff;
+                    stat.labourDemand += facilityLabourDemand;
+                    stat.labourUsed += facilityLabourUsed;
+                    stat.output += primaryOutput ? (facilityResults?.lastProduced?.[primaryOutput.resource.name] ?? 0) : 0;
                     facilityProfitSum += facilityProfit;
                     facilityLandInputCostSum += landInputCosts;
                     facilityWagesTickTotal += facilityWageCosts;
@@ -1389,6 +1418,13 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         facilityTypeMetrics[`facilityScale_${key}`] = s.scale;
         facilityTypeMetrics[`facilityMaxScale_${key}`] = s.maxScale;
         facilityTypeMetrics[`facilityScaleFrac_${key}`] = s.maxScale > 0 ? s.scale / s.maxScale : 0;
+        facilityTypeMetrics[`facilityWorkerEff_${key}`] = s.workerEff / s.count;
+        facilityTypeMetrics[`facilityInputEff_${key}`] = s.inputEff / s.count;
+        facilityTypeMetrics[`facilityOverallEff_${key}`] = s.overallEff / s.count;
+        facilityTypeMetrics[`facilityLabourDemand_${key}`] = s.labourDemand / s.count;
+        facilityTypeMetrics[`facilityLabourUsed_${key}`] = s.labourUsed / s.count;
+        facilityTypeMetrics[`facilityLabourFrac_${key}`] = s.labourDemand > 0 ? s.labourUsed / s.labourDemand : 1;
+        facilityTypeMetrics[`facilityOutput_${key}`] = s.output / s.count;
         facilityTypeMetrics[`facilityLandInputCosts_${key}`] = s.landInputCosts / s.count;
         facilityTypeMetrics[`facilityLossCaughtActual_${key}`] =
             s.lossCount > 0 ? s.lossCaughtActual / s.lossCount : 0;
@@ -2015,6 +2051,13 @@ export const METRIC_KEYS: string[] = [
         `facilityScale_${key}`,
         `facilityMaxScale_${key}`,
         `facilityScaleFrac_${key}`,
+        `facilityWorkerEff_${key}`,
+        `facilityInputEff_${key}`,
+        `facilityOverallEff_${key}`,
+        `facilityLabourDemand_${key}`,
+        `facilityLabourUsed_${key}`,
+        `facilityLabourFrac_${key}`,
+        `facilityOutput_${key}`,
         `facilityLandInputCosts_${key}`,
         `facilityLossCaughtActual_${key}`,
         `facilityLossCaughtBlend_${key}`,

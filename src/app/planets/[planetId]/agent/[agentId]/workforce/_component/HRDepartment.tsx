@@ -159,7 +159,7 @@ function HRBuildCard({
                 </div>
             </div>
             <HRBuildRow scale={previewScale} />
-            <div className='relative mt-auto space-y-2' data-tour='build-hr'>
+            <div className='relative mt-auto space-y-2'>
                 <FacilityConstructionPanel
                     facilityType={facilityType}
                     fromScale={0}
@@ -171,6 +171,7 @@ function HRBuildCard({
                     pendingLabel={ts('sendingBuild')}
                     isPending={sending}
                     financials={financials}
+                    dataTour='build-hr'
                     onCancel={undefined}
                     onConfirm={(targetScale) => {
                         buildMutation.mutate({ agentId, planetId, facilityKey: entry.name, targetScale });

@@ -93,7 +93,6 @@ const loanConditionsSchema = z.object({
     storageCollateral: z.number(),
     facilitiesCollateral: z.number(),
     shipsCollateral: z.number(),
-    isNewAgent: z.boolean(),
 });
 
 export type LoanConditions = z.infer<typeof loanConditionsSchema>;

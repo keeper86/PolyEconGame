@@ -58,11 +58,7 @@ export function LeaseClaimCard({
     );
 
     return (
-        <Card
-            id={resourceNameToSlug(summary.resourceName)}
-            className='flex flex-col'
-            data-tour={isOil ? 'claims-oil' : 'claims-lease'}
-        >
+        <Card id={resourceNameToSlug(summary.resourceName)} className='flex flex-col'>
             <ClaimCardHeader resourceName={summary.resourceName} renewable={summary.renewable} />
             <CardContent className='flex flex-col gap-3 flex-1'>
                 <p className='text-xs text-muted-foreground'>
@@ -85,6 +81,7 @@ export function LeaseClaimCard({
                         }
                         submitLabel={t('lease')}
                         errorMessage={leaseMutation.error ? showError(leaseMutation.error) : undefined}
+                        dataTour={isOil ? 'claims-oil' : undefined}
                     />
                 </div>
             </CardContent>

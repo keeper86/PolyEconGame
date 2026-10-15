@@ -45,6 +45,8 @@ export const AUTOMATED_COST_FLOOR_BUFFER = 1.25;
 
 export const THEORETICAL_PRODUCTION_COST_FACTOR = 1.0;
 
+export const THEORETICAL_WAGE_CEILING_MARGIN = 0.85;
+
 export const PRICE_NO_TRADE_CONVERGENCE_RATE = 1 / TICKS_PER_MONTH;
 
 export const SERVICE_DEPRECIATION_RATE_PER_TICK = 0.1;
@@ -88,7 +90,9 @@ export const HOUSING_BASE_RATE_PER_MONTH = 0.1;
 export const HOUSING_WEALTH_THRESHOLD_MONTHS = 12;
 export const HOUSING_ENGEL_GAIN = 0.05;
 
-export const STARTER_LOAN_AMOUNT = 1_000_000;
+export const PRICE_LEVEL_REFERENCE = 10;
+
+export const BASE_LOAN_PER_PRICE_LEVEL = 100_000;
 
 export const LOAN_INTEREST_RATE_PER_YEAR = 0.01;
 
@@ -114,16 +118,24 @@ export const GOVERNMENT_OPERATING_BUFFER = 1_000_000_000;
 const POPULATION_WEALTH_TAX_ANNUAL_RATE = 0.02;
 export const POPULATION_WEALTH_TAX_MONTHLY_RATE = POPULATION_WEALTH_TAX_ANNUAL_RATE / MONTHS_PER_YEAR;
 export const POPULATION_WEALTH_TAX_ALLOWANCE_MONTHS = 36;
-export const UNEMPLOYMENT_INSURANCE_RATE_EDUCATION = 0.5;
-export const UNEMPLOYMENT_INSURANCE_RATE_UNOCCUPIED = 0.5;
-export const UNEMPLOYMENT_INSURANCE_RATE_UNABLE = 0.5;
 
 export const CONSTRUCTION_VALUATION_PRICE_CAP = 2;
 
-export const MIN_WAGE = 1.0;
+// Length of the smoothing filter on the construction valuation. The raw inputs are per-tick
+// market prices, so a single wild tick could otherwise move every facility's collateral and with
+// it the whole lending capacity of the economy. Set to 0 to disable the filter.
+export const CONSTRUCTION_VALUATION_EMA_HALFLIFE_YEARS = envNumber('CONSTRUCTION_VALUATION_EMA_HALFLIFE_YEARS', 2);
+export const CONSTRUCTION_VALUATION_EMA_ALPHA =
+    1 - Math.pow(0.5, 1 / (TICKS_PER_YEAR * CONSTRUCTION_VALUATION_EMA_HALFLIFE_YEARS));
+
+// Floor on the wage. Can be lowered (e.g. to 0) to study an economy with no wage
+// floor; WAGE_START is the separate seed/reference value, so nothing that needs a
+// positive nominal anchor degenerates when the floor is removed.
+export const WAGE_START = 1.0;
+export const MIN_WAGE = envNumber('MIN_WAGE', 1.0);
 export const MAX_WAGE = 1000.0;
 
-export const DEFAULT_REFERENCE_MONTHLY_INCOME = MIN_WAGE * TICKS_PER_MONTH;
+export const DEFAULT_REFERENCE_MONTHLY_INCOME = WAGE_START * TICKS_PER_MONTH;
 
 export const WAGE_ADJUSTMENT_RATE = 0.05;
 

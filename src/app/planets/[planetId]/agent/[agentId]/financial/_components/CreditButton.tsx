@@ -20,6 +20,8 @@ type CreditButtonProps = {
     variant?: 'loan' | 'payback' | 'starter';
 
     planetId: string;
+
+    dataTour?: string;
 };
 
 function currencyAssetKey(planetId: string): string {
@@ -36,6 +38,7 @@ export default function CreditButton({
     onClick,
     variant = 'loan',
     planetId,
+    dataTour,
 }: CreditButtonProps): React.ReactElement {
     const currencyKey = currencyAssetKey(planetId);
 
@@ -47,6 +50,7 @@ export default function CreditButton({
     return (
         <Button
             variant='outline'
+            data-tour={dataTour}
             className={cn(
                 'w-full flex flex-col gap-0.5 relative overflow-hidden text-outline-strong border',
                 isGreen

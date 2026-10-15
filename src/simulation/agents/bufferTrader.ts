@@ -35,7 +35,6 @@ export function seedBufferTraderAgents(gameState: GameState): void {
             automateWorkerAllocation: true,
             logo: 'ai_company',
             foundedTick: gameState.tick,
-            starterLoanTaken: true,
             associatedPlanetId: planet.id,
             agentRole: 'buffer_trader',
             ships: [],

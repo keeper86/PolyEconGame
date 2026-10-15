@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { PRICE_CEIL, PRICE_FLOOR, THEORETICAL_PRODUCTION_COST_FACTOR } from '../constants';
+import {
+    PRICE_CEIL,
+    PRICE_FLOOR,
+    THEORETICAL_PRODUCTION_COST_FACTOR,
+    THEORETICAL_WAGE_CEILING_MARGIN,
+} from '../constants';
 import { makePlanet } from '../utils/testHelper';
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from './productionFacilities';
 import type { EducationLevelType } from '../population/education';
@@ -38,6 +43,24 @@ describe('updateProductionCostFloors', () => {
         updateProductionCostFloors(planet);
 
         expect(floorFor(planet, coalResourceType.name)).toBeGreaterThan(coalWageCostPerUnit(planet));
+    });
+
+    it('derives the theoretical wage ceiling per worker-tick from the facility templates', () => {
+        const planet = makePlanet({ marketPrices: { [coalResourceType.name]: 1 } });
+        updateProductionCostFloors(planet);
+
+        const workersPerScale = Object.values(coalTemplate!.workerRequirement).reduce(
+            (sum, requirement) => sum + (requirement ?? 0),
+            0,
+        );
+        const outputPerScale = coalTemplate!.produces.find(
+            (output) => output.resource.name === coalResourceType.name,
+        )!.quantity;
+
+        expect(planet.theoreticalWageCeilings[coalTemplate!.name]).toBeCloseTo(
+            (outputPerScale / workersPerScale) * THEORETICAL_WAGE_CEILING_MARGIN,
+            6,
+        );
     });
 
     it('scales the theoretical production cost by the 1.3 factor', () => {

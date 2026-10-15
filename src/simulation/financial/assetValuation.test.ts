@@ -3,9 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { RECYCLER_BASE_RECOVERY_EFFICIENCY } from '../constants';
 import { calculateCostsForConstruction, putIntoStorageFacility, queryStorageFacility } from '../planet/facility';
 import type { AgentPlanetAssets } from '../planet/planet';
-import { groceryServiceResourceType } from '../planet/services';
+import { groceryServiceResourceType, constructionServiceResourceType } from '../planet/services';
 import { makeAgent, makeAgentPlanetAssets, makePlanet, makeProductionFacility } from '../utils/testHelper';
-import { computeAssetValueBreakdown, computeFacilitiesValue } from './assetValuation';
+import {
+    computeAssetValueBreakdown,
+    computeFacilitiesValue,
+    constructionValuationPrice,
+    updateConstructionValuationEma,
+} from './assetValuation';
 
 const CS_PRICE = 10;
 
@@ -36,6 +41,38 @@ function singleFacilityValue(
 ): number {
     return computeFacilitiesValue(makeAssets(overrides), price) - storageShellBaseline(price);
 }
+
+describe('constructionValuationPrice', () => {
+    it('uses the smoothed inputs and ignores a raw price spike', () => {
+        const planet = makePlanet();
+        planet.constructionValuationPriceEMA = 20;
+        planet.constructionCostFloorEMA = 10;
+        planet.marketPrices[constructionServiceResourceType.name] = 1000;
+        planet.lastProductionCostFloors[constructionServiceResourceType.name] = 40;
+        expect(constructionValuationPrice(planet)).toBe(20);
+    });
+
+    it('falls back to the raw price before the first EMA tick', () => {
+        const planet = makePlanet();
+        planet.marketPrices[constructionServiceResourceType.name] = 30;
+        planet.lastProductionCostFloors[constructionServiceResourceType.name] = 12;
+        expect(constructionValuationPrice(planet)).toBe(24);
+    });
+
+    it('moves a sustained collapse only by the smoothing constant per tick', () => {
+        const planet = makePlanet();
+        planet.marketPrices[constructionServiceResourceType.name] = 100;
+        planet.lastProductionCostFloors[constructionServiceResourceType.name] = 100;
+        updateConstructionValuationEma(planet);
+        expect(planet.constructionValuationPriceEMA).toBe(100);
+
+        planet.marketPrices[constructionServiceResourceType.name] = 1;
+        planet.lastProductionCostFloors[constructionServiceResourceType.name] = 1;
+        updateConstructionValuationEma(planet);
+        expect(planet.constructionValuationPriceEMA).toBeGreaterThan(99);
+        expect(planet.constructionCostFloorEMA).toBeGreaterThan(99);
+    });
+});
 
 describe('computeFacilitiesValue', () => {
     it('values a fully maintained facility at full construction cost', () => {

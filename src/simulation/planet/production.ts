@@ -5,6 +5,7 @@ import {
     PRICE_FLOOR,
     SERVICE_DEPRECIATION_COST_MULTIPLIER,
     THEORETICAL_PRODUCTION_COST_FACTOR,
+    THEORETICAL_WAGE_CEILING_MARGIN,
     TICKS_PER_YEAR,
 } from '../constants';
 import type { EducationLevelType } from '../population/education';
@@ -410,6 +411,20 @@ export function updateProductionCostFloors(planet: Planet): void {
             if (output.quantity > 0) {
                 outputAccum.set(output.resource.name, (outputAccum.get(output.resource.name) ?? 0) + output.quantity);
             }
+        }
+
+        let outputValue = 0;
+        for (const output of template.produces) {
+            outputValue += output.quantity * (planet.marketPrices[output.resource.name] ?? 0);
+        }
+        let workersPerScale = 0;
+        for (const required of Object.values(template.workerRequirement)) {
+            workersPerScale += required ?? 0;
+        }
+        if (workersPerScale > 0) {
+            planet.theoreticalWageCeilings[template.name] =
+                ((outputValue - facilityInputCostPerTick(template, planet)) / workersPerScale) *
+                THEORETICAL_WAGE_CEILING_MARGIN;
         }
     }
 

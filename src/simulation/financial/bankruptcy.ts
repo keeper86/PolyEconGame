@@ -158,7 +158,6 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
         id: newId,
         name: nextRefoundName(agent.name),
         foundedTick: tick,
-        starterLoanTaken: true,
     };
 
     repointAgentReferences(assets, oldId, newId);

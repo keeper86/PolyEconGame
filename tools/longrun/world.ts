@@ -384,6 +384,7 @@ export function buildBenchmarkWorld(
         constructionBalanceEMA: 0,
         productionCosts: {},
         lastProductionCostFloors: {},
+        theoreticalWageCeilings: {},
         landBoundCostPerUnit: {},
         resources: buildResources(config),
         infrastructure: {

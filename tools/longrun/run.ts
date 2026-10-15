@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
-import { setGovernmentSupportEnabled, setPopulationWealthTaxEnabled, setSupportEmployed, setSupportFoodAffordabilityMultiplier, setSupportWealthCapDays, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
+import { setGovernmentSupportEnabled, setPopulationWealthTaxEnabled, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
 import { setPolicyRateControllerEnabled, setPolicyRateMaxPerYear } from '../../src/simulation/financial/policyRateController';
 import {
     setContractionIntegralThreshold,
@@ -38,7 +38,13 @@ import {
     LABOUR_PER_UNIT,
     OPTIONAL_LABOUR_FACTOR,
 } from '../../src/simulation/workforce/workerRequirements';
-import { MIN_WAGE, QUIT_FAIRNESS_SENSITIVITY, WAGE_SHARE } from '../../src/simulation/constants';
+import {
+    CONSTRUCTION_VALUATION_EMA_ALPHA,
+    CONSTRUCTION_VALUATION_EMA_HALFLIFE_YEARS,
+    MIN_WAGE,
+    QUIT_FAIRNESS_SENSITIVITY,
+    WAGE_SHARE,
+} from '../../src/simulation/constants';
 import { deserializeSnapshot, serializeGameState } from '../../src/simulation/snapshotCompression';
 import { getRngState, setRngState } from '../../src/simulation/utils/stochasticRound';
 import type { GameState } from '../../src/simulation/planet/planet';
@@ -464,6 +470,9 @@ async function main(): Promise<void> {
     console.log(
         `MIN_WAGE=${MIN_WAGE} WAGE_SHARE=${WAGE_SHARE} QUIT_FAIRNESS_SENSITIVITY=${QUIT_FAIRNESS_SENSITIVITY}`,
     );
+    console.log(
+        `CONSTRUCTION_VALUATION_EMA_HALFLIFE_YEARS=${CONSTRUCTION_VALUATION_EMA_HALFLIFE_YEARS} CONSTRUCTION_VALUATION_EMA_ALPHA=${CONSTRUCTION_VALUATION_EMA_ALPHA}`,
+    );
 
     const scenarioName = arg('scenario') ?? 'baseline';
     const scenario = getScenario(scenarioName);
@@ -684,10 +693,6 @@ async function main(): Promise<void> {
     if (wealthTaxAllowanceArg !== undefined) {
         setWealthTaxAllowance(Number(wealthTaxAllowanceArg));
     }
-    if (process.argv.includes('--supportEmployed')) {
-        setSupportEmployed(true);
-        console.log('government support extended to employed cohorts');
-    }
     const demandShockPerCapitaArg = arg('demandShockPerCapita');
     if (demandShockPerCapitaArg !== undefined) {
         const startYear = Number(arg('demandShockStartYear') ?? 0);
@@ -700,16 +705,6 @@ async function main(): Promise<void> {
         console.log(
             `demand shock: ${demandShockPerCapitaArg}/person/tick for ${shockYears}y starting y${startYear}`,
         );
-    }
-    const supportWealthCapDaysArg = arg('supportWealthCapDays');
-    if (supportWealthCapDaysArg !== undefined) {
-        setSupportWealthCapDays(Number(supportWealthCapDaysArg));
-        console.log(`government support wealth cap overridden to ${supportWealthCapDaysArg} days`);
-    }
-    const supportFoodAffordabilityArg = arg('supportFoodAffordability');
-    if (supportFoodAffordabilityArg !== undefined) {
-        setSupportFoodAffordabilityMultiplier(Number(supportFoodAffordabilityArg));
-        console.log(`government support food affordability floor set to ${supportFoodAffordabilityArg} x food price/day`);
     }
     const governmentSupportArg = arg('governmentSupport');
     if (governmentSupportArg !== undefined) {
