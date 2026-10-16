@@ -16,14 +16,14 @@ function supply(overrides: Partial<Record<EducationLevelType, number>>): Record<
     return result;
 }
 
-function slot(jobEdu: EducationLevelType, capacity: number, facilityId = 'fac-0'): WorkerSlot {
+function slot(jobEdu: EducationLevelType, demand: number, facilityId = 'fac-0'): WorkerSlot {
     const jobEduIdx = ['none', 'primary', 'secondary', 'tertiary'].indexOf(jobEdu);
     return {
         facilityId,
         facilityType: 'production',
         jobEdu,
         jobEduIdx,
-        capacity,
+        demand,
         assigned: 0,
         effectiveAssigned: 0,
         hrMultiplier: 1,
@@ -108,6 +108,7 @@ describe('waterFill — equilibrium', () => {
         const a = slot('none', 10);
         const b = slot('none', 10, 'fac-1');
         b.assigned = 4;
+        b.effectiveAssigned = 4;
 
         waterFill([a, b], supply({ none: 6 }), FLAT_PROD, FLAT_PROD, NO_DEMAND);
         expect(a.assigned).toBe(5);
@@ -158,9 +159,10 @@ describe('waterFill — effectiveAssigned', () => {
     it('assigns extra bodies when ageProd < 1 to compensate', () => {
         const ageProd = { none: 0.5, primary: 1, secondary: 1, tertiary: 1 } as Record<EducationLevelType, number>;
         const slots = [slot('none', 20)];
-        waterFill(slots, supply({ none: 20 }), ageProd, FLAT_PROD, NO_DEMAND);
-        expect(slots[0].assigned).toBe(20);
-        expect(slots[0].effectiveAssigned).toBeCloseTo(10);
+        const { remaining } = waterFill(slots, supply({ none: 45 }), ageProd, FLAT_PROD, NO_DEMAND);
+        expect(slots[0].assigned).toBe(40);
+        expect(slots[0].effectiveAssigned).toBeCloseTo(20);
+        expect(remaining.none).toBe(5);
     });
 });
 
@@ -277,8 +279,68 @@ describe('waterFill — findEquilibrium edge cases', () => {
     it('handles a slot already at capacity (no reachable slots)', () => {
         const s = slot('none', 5);
         s.assigned = 5;
+        s.effectiveAssigned = 5;
         const { remaining } = waterFill([s], supply({ none: 3 }), FLAT_PROD, FLAT_PROD, NO_DEMAND);
         expect(s.assigned).toBe(5);
         expect(remaining.none).toBe(3);
+    });
+});
+
+describe('waterFill — productivity-aware filling', () => {
+    const YOUNG_PRIMARY = { none: 1, primary: 0.8, secondary: 1, tertiary: 1 } as Record<EducationLevelType, number>;
+    const EXPERIENCED_SECONDARY = { none: 1, primary: 1, secondary: 1.25, tertiary: 1 } as Record<
+        EducationLevelType,
+        number
+    >;
+
+    it('keeps filling past the nominal headcount when the filling tier is less productive', () => {
+        const slots = [slot('none', 10)];
+        const { remaining } = waterFill(slots, supply({ primary: 12 }), YOUNG_PRIMARY, FLAT_PROD, NO_DEMAND);
+
+        expect(slots[0].assigned).toBe(12);
+        expect(slots[0].effectiveAssigned).toBeCloseTo(9.6);
+        expect(remaining.primary).toBe(0);
+    });
+
+    it('reports full efficiency once the young backfill covers the demand', () => {
+        const slots = [slot('none', 10)];
+        const efficiencyDemand = new Map<WorkerSlot, number>();
+        efficiencyDemand.set(slots[0], 10);
+
+        const result = waterFill(slots, supply({ primary: 13 }), YOUNG_PRIMARY, FLAT_PROD, efficiencyDemand);
+
+        expect(result.byFacility.get('fac-0')!.workerEfficiency.none).toBe(1);
+    });
+
+    it('reports idle workers as surplus only once the slot demand is covered', () => {
+        const slots = [slot('none', 10)];
+        const { remaining } = waterFill(slots, supply({ primary: 40 }), YOUNG_PRIMARY, FLAT_PROD, NO_DEMAND);
+
+        expect(slots[0].effectiveAssigned).toBeGreaterThanOrEqual(10);
+        expect(remaining.primary).toBe(27);
+    });
+
+    it('needs fewer bodies when the filling tier is more productive', () => {
+        const slots = [slot('none', 10)];
+        const { remaining } = waterFill(slots, supply({ secondary: 10 }), EXPERIENCED_SECONDARY, FLAT_PROD, NO_DEMAND);
+
+        expect(slots[0].assigned).toBe(8);
+        expect(slots[0].effectiveAssigned).toBeCloseTo(10);
+        expect(remaining.secondary).toBe(2);
+    });
+
+    it('leaves an unmet low-productivity slot reachable for a later tier', () => {
+        const slots = [slot('none', 20)];
+        const { remaining } = waterFill(
+            slots,
+            supply({ primary: 10, tertiary: 30 }),
+            YOUNG_PRIMARY,
+            FLAT_PROD,
+            NO_DEMAND,
+        );
+
+        expect(slots[0].effectiveAssigned).toBeCloseTo(20);
+        expect(remaining.primary).toBe(0);
+        expect(remaining.tertiary).toBe(18);
     });
 });

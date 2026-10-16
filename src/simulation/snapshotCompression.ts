@@ -2,6 +2,7 @@ import { gzipSync, gunzipSync } from 'node:zlib';
 import { encode, decode } from '@msgpack/msgpack';
 
 import type { Planet, Agent, GameState, BankruptcyRecord } from './planet/planet';
+import { backfillRecipes } from './planet/recipeBackfill';
 import type { ShipCapitalMarket } from './ships/ships';
 
 export interface WireGameState {
@@ -106,5 +107,7 @@ export function serializeGameState(gs: GameState): Buffer {
 export function deserializeSnapshot(data: Buffer): GameState {
     const decompressed = gunzipSync(data);
     const wire = decode(decompressed) as WireGameState;
-    return wireToGameState(wire);
+    const state = wireToGameState(wire);
+    backfillRecipes(state);
+    return state;
 }

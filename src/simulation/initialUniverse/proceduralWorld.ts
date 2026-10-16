@@ -13,7 +13,7 @@ import {
     stoneDepositResourceType,
     waterSourceResourceType,
 } from '../planet/landBoundResources';
-import type { Agent, AutomatedPricingConfig, Planet } from '../planet/planet';
+import type { Agent, Planet } from '../planet/planet';
 import {
     ALL_PRODUCTION_FACILITY_ENTRIES,
     neededWorkersByFacility,
@@ -173,23 +173,11 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
 
             for (const { resource } of fac.produces) {
                 if (!assets.market.sell[resource.name]) {
-                    if (resource.form === 'services') {
-                        const serviceStrategy: AutomatedPricingConfig = {
-                            ...personality.sellAutoConfig,
-                            targetSellThrough: 0.9,
-                        };
-                        assets.market.sell[resource.name] = {
-                            resource,
-                            automated: true,
-                            autoConfig: serviceStrategy,
-                        };
-                    } else {
-                        assets.market.sell[resource.name] = {
-                            resource,
-                            automated: true,
-                            autoConfig: buildSellAutoConfigForResource(personality.sellAutoConfig, resource),
-                        };
-                    }
+                    assets.market.sell[resource.name] = {
+                        resource,
+                        automated: true,
+                        autoConfig: buildSellAutoConfigForResource(personality.sellAutoConfig, resource),
+                    };
                 }
             }
 

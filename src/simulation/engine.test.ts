@@ -30,11 +30,16 @@ import { facilityRestorationCapacityPerTick } from './planet/facilityMaintenance
 import { constructionServiceResourceType } from './planet/services';
 import type { Resource } from './planet/claims';
 
-function setActualWorkers(agent: Agent, planetId: string, workers: Partial<Record<EducationLevelType, number>>) {
+function setActualWorkers(
+    agent: Agent,
+    planetId: string,
+    workers: Partial<Record<EducationLevelType, number>>,
+    age = 30,
+) {
     const wf = agent.assets[planetId].workforceDemography;
     for (const [edu, count] of Object.entries(workers)) {
         if (count !== undefined && count > 0) {
-            wf[30][edu as EducationLevelType].active = count;
+            wf[age][edu as EducationLevelType].active = count;
         }
     }
 
@@ -354,6 +359,35 @@ describe('productionTick worker education fallback', () => {
         expect(facility.lastTickResults?.overqualifiedWorkers).toEqual({
             none: { primary: 3, secondary: 2, tertiary: 3 },
         });
+    });
+
+    it('fills a lower-education requirement from a young higher tier instead of leaving workers idle', () => {
+        const agent = makeAgent('agent-1', planet.id);
+
+        setActualWorkers(agent, planet.id, { primary: 13 }, 18);
+        agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { none: 10 }));
+
+        productionTick(makeGameState([planet], [agent]), planet);
+
+        const facility = agent.assets[planet.id].productionFacilities[0];
+        expect(facility.lastTickResults?.workerEfficiency).toEqual({ none: 1 });
+        expect(facility.lastTickResults?.overallEfficiency).toBe(1);
+        expect(facility.lastTickResults?.overqualifiedWorkers).toEqual({ none: { primary: 13 } });
+        expect(agent.assets[planet.id].unusedWorkers.primary).toBe(0);
+    });
+
+    it('reports young same-tier workers as idle only once the requirement is covered', () => {
+        const agent = makeAgent('agent-1', planet.id);
+
+        setActualWorkers(agent, planet.id, { none: 40 }, 18);
+        agent.assets[planet.id].productionFacilities.push(makeFacilityWithWorkerReq(planet.id, { none: 10 }));
+
+        productionTick(makeGameState([planet], [agent]), planet);
+
+        const facility = agent.assets[planet.id].productionFacilities[0];
+        expect(facility.lastTickResults?.workerEfficiency).toEqual({ none: 1 });
+        expect(facility.lastTickResults?.overallEfficiency).toBe(1);
+        expect(agent.assets[planet.id].unusedWorkers.none).toBe(27);
     });
 });
 

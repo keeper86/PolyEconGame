@@ -40,7 +40,6 @@ export const DOMAIN_ERROR_CODES = [
     'quantityBelowMinimum',
     'quantityExceedsStorage',
     'insufficientDeposits',
-    'sellThroughAboveLimit',
     'fillRateAboveLimit',
     'noAccountOnIssuingPlanet',
     'planetNotFound',

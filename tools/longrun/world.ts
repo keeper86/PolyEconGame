@@ -285,25 +285,15 @@ export function buildBenchmarkWorld(
                 if (assets.market.sell[resource.name]) {
                     continue;
                 }
-                if (resource.form === 'services') {
-                    // Match initialUniverse/proceduralWorld: services clear harder than goods
-                    // (targetSellThrough 0.9 merged over the agent's own sell config).
-                    assets.market.sell[resource.name] = {
-                        resource,
-                        automated: true,
-                        autoConfig: { ...personality.sellAutoConfig, targetSellThrough: 0.9 },
-                    };
-                } else {
-                    assets.market.sell[resource.name] = {
-                        resource,
-                        automated: true,
-                        autoConfig: applyRefinerySellOverride(
-                            buildSellAutoConfigForResource(personality.sellAutoConfig, resource),
-                            facilityType,
-                            config,
-                        ),
-                    };
-                }
+                assets.market.sell[resource.name] = {
+                    resource,
+                    automated: true,
+                    autoConfig: applyRefinerySellOverride(
+                        buildSellAutoConfigForResource(personality.sellAutoConfig, resource),
+                        facilityType,
+                        config,
+                    ),
+                };
             }
 
             for (const { resource } of fac.needs) {

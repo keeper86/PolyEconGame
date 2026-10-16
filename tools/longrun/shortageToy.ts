@@ -280,6 +280,54 @@ function startupCompare(): void {
     }
 }
 
+function ignitionSweep(): void {
+    const threshold = MIN_WAGE / WAGE_SHARE;
+    console.log(
+        `\nIGNITION THRESHOLD  (capacity=2000, cap/tick=2, slack market). Pin releases when WAGE_SHARE*ceiling > MIN_WAGE, i.e. ceiling > ${threshold.toFixed(3)}`,
+    );
+    console.log('  ' + line(['ceiling', 'target=WS*c', 'headroom@1', 'peakWage', 'endWage'], [10, 12, 12, 10, 10]));
+    for (const ceiling of [1.0, 1.4, 1.6, threshold, 1.8, 2.0, 2.5, 3.0]) {
+        const p = defaults();
+        p.affordableCeiling = ceiling;
+        const h = run(p);
+        const headroom = headroomOf(MIN_WAGE, effectiveCeiling(ceiling, p.ceilingMode), p.ceilingMode);
+        console.log(
+            '  ' +
+                line(
+                    [
+                        ceiling.toFixed(3),
+                        (WAGE_SHARE * ceiling).toFixed(3),
+                        headroom.toFixed(3),
+                        peakWage(h).toFixed(3),
+                        h[h.length - 1].wage.toFixed(3),
+                    ],
+                    [10, 12, 12, 10, 10],
+                ),
+        );
+    }
+
+    console.log('\nIGNITION vs OPERATING MARGIN  (ceiling = MIN_WAGE*(1+margin); target=WS*ceiling)');
+    console.log('  ' + line(['margin', 'target', 'vs MIN_WAGE', 'endWage'], [10, 10, 14, 10]));
+    for (const margin of [-0.5, 0.0, 0.25, 0.5, 0.6667, 1.0, 2.0]) {
+        const p = defaults();
+        p.affordableCeiling = MIN_WAGE * (1 + margin);
+        const h = run(p);
+        const target = WAGE_SHARE * p.affordableCeiling;
+        console.log(
+            '  ' +
+                line(
+                    [
+                        margin.toFixed(4),
+                        target.toFixed(3),
+                        target > MIN_WAGE ? 'above: fires' : 'below: dead',
+                        h[h.length - 1].wage.toFixed(3),
+                    ],
+                    [10, 10, 14, 10],
+                ),
+        );
+    }
+}
+
 function trace(): void {
     const p = defaults();
     const h = run(p);
@@ -363,8 +411,12 @@ function main(): void {
         trace();
         return;
     }
+    if (arg === '--ignition') {
+        ignitionSweep();
+        return;
+    }
     console.log(
-        'usage: shortageToy.ts [--all | --hireCap | --capacity | --tightness | --hiring | --ceiling | --fix | --startup | --trace]',
+        'usage: shortageToy.ts [--all | --hireCap | --capacity | --tightness | --hiring | --ceiling | --fix | --startup | --ignition | --trace]',
     );
 }
 
